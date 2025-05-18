@@ -10,7 +10,7 @@ from concurrent.futures import ProcessPoolExecutor
 work_dir = os.path.dirname(os.path.realpath(__file__))
 
 paths = {
-	"YamlCuts": os.path.join(work_dir, "./yaml_makers/make_cutsets_cfgs.py"),
+	"YamlCuts": os.path.join(work_dir, "./make_cutsets_cfgs.py"),
 }
 
 def check_dir(dir):
@@ -31,7 +31,7 @@ def run_correlated_cut_variation(config, operations, nworkers, out_dir):
 	# make yaml file
 	if operations['make_yaml']:
 		print("\033[32mINFO: Make yaml will be performed\033[0m")
-		check_dir(f"{out_dir}/config")
+		check_dir(f"{out_dir}/cutsets")
 		print(f"\033[32mpython3 {paths['YamlCuts']} {config} -o {out_dir} --correlated\033[0m")
 		os.system(f"python3 {paths['YamlCuts']} {config} -o {out_dir} --correlated")
 	else:
@@ -44,7 +44,7 @@ def run_combined_cut_variation(config, operations, nworkers, out_dir):
 	# make yaml file
 	if operations['make_yaml']:
 		print("\033[32mINFO: Make yaml will be performed\033[0m")
-		check_dir(f"{out_dir}/config")
+		check_dir(f"{out_dir}/cutsets")
 		print(f"\033[32mpython3 {paths['YamlCuts']} {config} -o {out_dir}\033[0m")
 		os.system(f"python3 {paths['YamlCuts']} {config} -o {out_dir}")
 	else:
