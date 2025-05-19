@@ -1,0 +1,7 @@
+# folder to ignore
+**/.vscode/
+**/config/
+**/__pycache__/
+
+# test files to ignore
+test*
