@@ -1,5 +1,5 @@
 # Compute pt-weights
-**In O2Physics environment**, after **setting the parameters**, one could **run the following command** to compute the pt-weights:
+**In O2Physics environment** (Only **ROOT and Python are also supported**), after **configuring the necessary parameters** in `run_ComputePtweights.sh`, one could **run the following command** to compute the pt-weights:
 ```bash
 bash run_ComputePtweights.sh
 ```

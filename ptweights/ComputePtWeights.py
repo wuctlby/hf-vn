@@ -1,23 +1,23 @@
 '''
 Script for the computation of pT shape weights
 run: 
-    python ComputePtweights.py \
-        --Bspecie ${Bspecie} \
-        --ShapesD ${ShapesD} \
-        --ShapesB ${ShapesB} \
-        --Raa ${Raa} \
-        --Suffix ${Suffix}
+python ./ComputePtweights.py \
+        <config> \
+        --Bspecie <Bspecie> \
+        --suffix <suffix> \
+        --fonllD <{fonllD> \
+        --fonllB <fonllB> \
+        <Raa>
 '''
 import os
 import sys
 import argparse
 import yaml
 from ROOT import TFile, TCanvas, TLegend  # pylint: disable=import-error,no-name-in-module
-from ROOT import kBlack, kRed, kAzure, kGray, kOrange, kFullCircle, kFullSquare, kOpenCircle
-
+from ROOT import kBlack, kRed, kAzure # pylint: disable=import-error,no-name-in-module
 work_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append('../')
-from utils.ReadModel import ReadFONLL, ReadTAMU, ReadPHSD, ReadCatania, ReadMCatsHQ, ReadLIDO, ReadLGR  #pylint: disable=wrong-import-position,import-error
+from utils.ReadModel import ReadFONLL, ReadTAMU  #pylint: disable=wrong-import-position,import-error
 from utils.StyleFormatter import SetObjectStyle #pylint: disable=wrong-import-position,import-error
 from utils.sparse_dicts import get_sparses
 
@@ -85,7 +85,6 @@ def computePtWeights(config, Bspecie, suffix, fonllD, fonllB, Raa):
         hPtGenB.Scale(1./hPtGenB.Integral())
     
     if Bspecie == 'BsBmix':
-        #REVISE: check if this is the correct flag to add the Bs
         sparseGenB.GetAxis(axes['GenFD']['origin']).SetRange(3, 3)
         hPtGenBs = sparseGenB.Projection(axes['GenFD']['pt_bmoth'])
         hPtGenBs.SetDirectory(0)
@@ -101,73 +100,32 @@ def computePtWeights(config, Bspecie, suffix, fonllD, fonllB, Raa):
     sFONLLD, _, ptMinFONLL, ptMaxFONLL = ReadFONLL(fonllD, True, Dspecie)
     if Bspecie:
         sFONLLB, _, ptMinFONLLB, ptMaxFONLLB = ReadFONLL(fonllB, True, 'B')
-        # this ReadFONLL method should be modified to accept B meson species, but depends on the FONLL we will use
-        # now it will load all B meson
 
     if RaaD:
         sTAMU, _, ptMinTAMU, ptMaxTAMU = ReadTAMU(RaaD)
-    # if 'phsd' in shapesD and shapesD['phsd']['enabled']:
-    #     sPHSD, _, ptMinPHSD, ptMaxPHSD = ReadPHSD(shapesD['phsd']['file'])
-    # if 'catania' in shapesD and shapesD['catania']['enabled']:
-    #     sCatania, _, ptMinCatania, ptMaxCatania = ReadCatania(shapesD['catania']['file'])
-    # if 'mc@shq' in shapesD and shapesD['mc@shq']['enabled']:
-    #     sGossiaux, _, ptMinGoss, ptMaxGoss = ReadMCatsHQ(shapesD['mc@shq']['file'])
-    # if 'lido' in shapesD and shapesD['lido']['enabled']:
-    #     sLIDO, _, ptMinLIDO, ptMaxLIDO = ReadLIDO(shapesD['lido']['file'])
-    # if 'lgr' in shapesD and shapesD['lgr']['enabled']:
-    #     sLGR, _, ptMinLGR, ptMaxLGR = ReadLGR(shapesD['lgr']['file'])
-    # if 'datashape' in shapesD and shapesD['datashape']['enabled']:
-    #     fData, _, _ = FitSpectra(shapesD['datashape']['file'], shapesD['datashape']['hSpectraName'],
-    #                             shapesD['datashape']['systErrName'], shapesD['datashape']['parConfig'],
-    #                             shapesD['datashape']['controlFile'])
 
     if RaaB:
         if Bspecie in ['Ball', 'BsBmix']:
             sTAMUB, _, ptMinTAMUB, ptMaxTAMUB = ReadTAMU(RaaB)
-        # elif Bspecie in ['Bplus', 'Bzero']:
-        #     sTAMUB, _, ptMinTAMUB, ptMaxTAMUB = ReadTAMU(shapesB['tamu']['file']['B'])
-        # elif Bspecie == 'Bs':
-        #     sTAMUB, _, ptMinTAMUB, ptMaxTAMUB = ReadTAMU(shapesB['tamu']['file']['Bs'])
         elif Bspecie == 'BsBmix':
             sTAMUB, _, ptMinTAMUB, ptMaxTAMUB = ReadTAMU(RaaB)
             sTAMUBs, _, ptMinTAMUBs, ptMaxTAMUBs = ReadTAMU(RaaBs)
-    # if 'lido' in shapesB and shapesB['lido']['enabled']:
-    #     if Bspecie not in ['Bplus', 'Bzero']:
-    #         print(f'WARNING: no LIDO model available for {Bspecie} RAA, using B RAA as defult')
-    #     sLIDOB, _, ptMinLIDOB, ptMaxLIDOB = ReadLIDO(shapesB['lido']['file'])
 
     histoDNames = ['hPtFONLLDcent', 'hPtFONLLDmin', 'hPtFONLLDmax']
     histoBNames = ['hPtFONLLBcent', 'hPtFONLLBmin', 'hPtFONLLBmax']
     modelPred = ['yCent', 'yMin', 'yMax']
 
-    hPtFONLLD, hPtFONLLB, hPtFONLLtimesTAMUD, hPtFONLLtimesTAMUB, hPtFONLLtimesPHSDD, \
-        hPtFONLLtimesGossiauxD, hPtFONLLtimesCataniaD, hPtFONLLtimesLIDOD, hPtFONLLtimesLIDOB, \
-            hPtFONLLtimesLGRD, hPtDataShape = ([] for _ in range(11))
+    hPtFONLLD, hPtFONLLB, hPtFONLLtimesTAMUD, hPtFONLLtimesTAMUB = ([] for _ in range(4))
 
-    hPtWeightsFONLLD, hPtWeightsFONLLB, hPtWeightsFONLLtimesTAMUD, hPtWeightsFONLLtimesTAMUB, \
-        hPtWeightsFONLLtimesPHSDD, hPtWeightsFONLLtimesGossiauxD, hPtWeightsFONLLtimesCataniaD, \
-            hPtWeightsFONLLtimesLIDOD, hPtWeightsFONLLtimesLIDOB, hPtWeightsFONLLtimesLGRD, \
-                hPtWeightsDataShape = ([] for _ in range(11))
-
+    hPtWeightsFONLLD, hPtWeightsFONLLB, hPtWeightsFONLLtimesTAMUD, hPtWeightsFONLLtimesTAMUB = ([] for _ in range(4))
     print('INFO: Start computing pT weights')
+
     # D meson weights
     #___________________________________________________________________________________________________________________________
     for histoName, pred in zip(histoDNames, modelPred):
         hPtFONLLD.append(hPtGenD.Clone(histoName))
         if RaaD:
             hPtFONLLtimesTAMUD.append(hPtGenD.Clone(histoName.replace('FONLL', 'FONLLtimesTAMU')))
-        # if 'phsd' in shapesD and shapesD['phsd']['enabled']:
-        #     hPtFONLLtimesPHSDD.append(hPtGenD.Clone(histoName.replace('FONLL', 'FONLLtimesPHSD')))
-        # if 'mc@shq' in shapesD and shapesD['mc@shq']['enabled']:
-        #     hPtFONLLtimesGossiauxD.append(hPtGenD.Clone(histoName.replace('FONLL', 'FONLLtimesGossiaux')))
-        # if 'catania' in shapesD and shapesD['catania']['enabled']:
-        #     hPtFONLLtimesCataniaD.append(hPtGenD.Clone(histoName.replace('FONLL', 'FONLLtimesCatania')))
-        # if 'lido' in shapesD and shapesD['lido']['enabled']:
-        #     hPtFONLLtimesLIDOD.append(hPtGenD.Clone(histoName.replace('FONLL', 'FONLLtimesLIDO')))
-        # if 'lgr' in shapesD and shapesD['lgr']['enabled']:
-        #     hPtFONLLtimesLGRD.append(hPtGenD.Clone(histoName.replace('FONLL', 'FONLLtimesLGR')))
-        # if 'datashape' in shapesD and shapesD['datashape']['enabled']:
-        #     hPtDataShape.append(hPtGenD.Clone(histoName.replace('FONLL', 'DataShape')))
 
         for iPt in range(1, hPtFONLLD[-1].GetNbinsX()+1):
             ptCent = hPtFONLLD[-1].GetBinCenter(iPt)
@@ -187,50 +145,6 @@ def computePtWeights(config, Bspecie, suffix, fonllD, fonllB, Raa):
                 else:
                     hPtFONLLtimesTAMUD[-1].SetBinContent(iPt, sFONLLD[pred](ptCent) * sTAMU['yCent'](ptMinTAMU))
 
-            # if 'phsd' in shapesD and shapesD['phsd']['enabled']:
-            #     if ptMinPHSD <= ptCent <= ptMaxPHSD:
-            #         hPtFONLLtimesPHSDD[-1].SetBinContent(iPt, sFONLLD[pred](ptCent) * sPHSD['yCent'](ptCent))
-            #     elif ptCent > ptMaxPHSD:
-            #         hPtFONLLtimesPHSDD[-1].SetBinContent(iPt, sFONLLD[pred](ptCent) * sPHSD['yCent'](ptMaxPHSD))
-            #     else:
-            #         hPtFONLLtimesPHSDD[-1].SetBinContent(iPt, sFONLLD[pred](ptCent) * sPHSD['yCent'](ptMinPHSD))
-
-            # if 'mc@shq' in shapesD and shapesD['mc@shq']['enabled']:
-            #     if ptMinGoss <= ptCent <= ptMaxGoss:
-            #         hPtFONLLtimesGossiauxD[-1].SetBinContent(iPt, sFONLLD[pred](ptCent) * sGossiaux['yCent'](ptCent))
-            #     elif ptCent > ptMaxGoss:
-            #         hPtFONLLtimesGossiauxD[-1].SetBinContent(iPt, sFONLLD[pred](ptCent) * sGossiaux['yCent'](ptMaxGoss))
-            #     else:
-            #         hPtFONLLtimesGossiauxD[-1].SetBinContent(iPt, sFONLLD[pred](ptCent) * sGossiaux['yCent'](ptMinGoss))
-
-            # if 'catania' in shapesD and shapesD['catania']['enabled']:
-            #     if ptMinCatania <= ptCent <= ptMaxCatania:
-            #         hPtFONLLtimesCataniaD[-1].SetBinContent(iPt, sFONLLD[pred](ptCent) * sCatania['yCent'](ptCent))
-            #     elif ptCent > ptMaxCatania:
-            #         hPtFONLLtimesCataniaD[-1].SetBinContent(iPt, sFONLLD[pred](ptCent) * sCatania['yCent'](ptMaxCatania))
-            #     else:
-            #         hPtFONLLtimesCataniaD[-1].SetBinContent(iPt, sFONLLD[pred](ptCent) * sCatania['yCent'](ptMinCatania))
-
-            # if 'lido' in shapesD and shapesD['lido']['enabled']:
-            #     if ptMinLIDO <= ptCent <= ptMaxLIDO:
-            #         hPtFONLLtimesLIDOD[-1].SetBinContent(iPt, sFONLLD[pred](ptCent) * sLIDO['yCent'](ptCent))
-            #     elif ptCent > ptMaxLIDO:
-            #         hPtFONLLtimesLIDOD[-1].SetBinContent(iPt, sFONLLD[pred](ptCent) * sLIDO['yCent'](ptMaxLIDO))
-            #     else:
-            #         hPtFONLLtimesLIDOD[-1].SetBinContent(iPt, sFONLLD[pred](ptCent) * sLIDO['yCent'](ptMinLIDO))
-
-            # if 'lgr' in shapesD and shapesD['lgr']['enabled']:
-            #     if ptMinLGR <= ptCent <= ptMaxLGR:
-            #         hPtFONLLtimesLGRD[-1].SetBinContent(iPt, sFONLLD[pred](ptCent) * sLGR['yCent'](ptCent))
-            #     elif ptCent > ptMaxLGR:
-            #         hPtFONLLtimesLGRD[-1].SetBinContent(iPt, sFONLLD[pred](ptCent) * sLGR['yCent'](ptMaxLGR))
-            #     else:
-            #         hPtFONLLtimesLGRD[-1].SetBinContent(iPt, sFONLLD[pred](ptCent) * sLGR['yCent'](ptMinLGR))
-
-            # if 'datashape' in shapesD and shapesD['datashape']['enabled']:
-            #     # In this case we have to trust the data shape outside the fit range
-            #     hPtDataShape[-1].SetBinContent(iPt, fData(ptCent))
-
         hPtFONLLD[-1].Sumw2()
         hPtFONLLD[-1].Scale(1./hPtFONLLD[-1].Integral())
         hPtWeightsFONLLD.append(hPtFONLLD[-1].Clone(histoName.replace('Pt', 'PtWeights')))
@@ -242,44 +156,8 @@ def computePtWeights(config, Bspecie, suffix, fonllD, fonllB, Raa):
                 hPtFONLLtimesTAMUD[-1].Clone(hPtFONLLtimesTAMUD[-1].GetName().replace('Pt', 'PtWeights')))
             hPtWeightsFONLLtimesTAMUD[-1].Divide(hPtFONLLtimesTAMUD[-1], hPtGenD)
             hPtWeightsFONLLtimesTAMUD[-1].Smooth(smooth)
-        # if 'phsd' in shapesD and shapesD['phsd']['enabled']:
-        #     hPtFONLLtimesPHSDD[-1].Scale(1./hPtFONLLtimesPHSDD[-1].Integral())
-        #     hPtWeightsFONLLtimesPHSDD.append(
-        #         hPtFONLLtimesPHSDD[-1].Clone(hPtFONLLtimesPHSDD[-1].GetName().replace('Pt', 'PtWeights')))
-        #     hPtWeightsFONLLtimesPHSDD[-1].Divide(hPtFONLLtimesPHSDD[-1], hPtGenD)
-        #     hPtWeightsFONLLtimesPHSDD[-1].Smooth(smooth)
-        # if 'mc@shq' in shapesD and shapesD['mc@shq']['enabled']:
-        #     hPtFONLLtimesGossiauxD[-1].Scale(1./hPtFONLLtimesGossiauxD[-1].Integral())
-        #     hPtWeightsFONLLtimesGossiauxD.append(
-        #         hPtFONLLtimesGossiauxD[-1].Clone(hPtFONLLtimesGossiauxD[-1].GetName().replace('Pt', 'PtWeights')))
-        #     hPtWeightsFONLLtimesGossiauxD[-1].Divide(hPtFONLLtimesGossiauxD[-1], hPtGenD)
-        #     hPtWeightsFONLLtimesGossiauxD[-1].Smooth(smooth)
-        # if 'catania' in shapesD and shapesD['catania']['enabled']:
-        #     hPtFONLLtimesCataniaD[-1].Scale(1./hPtFONLLtimesCataniaD[-1].Integral())
-        #     hPtWeightsFONLLtimesCataniaD.append(
-        #         hPtFONLLtimesCataniaD[-1].Clone(hPtFONLLtimesCataniaD[-1].GetName().replace('Pt', 'PtWeights')))
-        #     hPtWeightsFONLLtimesCataniaD[-1].Divide(hPtFONLLtimesCataniaD[-1], hPtGenD)
-        #     hPtWeightsFONLLtimesCataniaD[-1].Smooth(smooth)
-        # if 'lido' in shapesD and shapesD['lido']['enabled']:
-        #     hPtFONLLtimesLIDOD[-1].Scale(1./hPtFONLLtimesLIDOD[-1].Integral())
-        #     hPtWeightsFONLLtimesLIDOD.append(
-        #         hPtFONLLtimesLIDOD[-1].Clone(hPtFONLLtimesLIDOD[-1].GetName().replace('Pt', 'PtWeights')))
-        #     hPtWeightsFONLLtimesLIDOD[-1].Divide(hPtFONLLtimesLIDOD[-1], hPtGenD)
-        #     hPtWeightsFONLLtimesLIDOD[-1].Smooth(smooth)
-        # if 'lgr' in shapesD and shapesD['lgr']['enabled']:
-        #     hPtFONLLtimesLGRD[-1].Scale(1./hPtFONLLtimesLGRD[-1].Integral())
-        #     hPtWeightsFONLLtimesLGRD.append(
-        #         hPtFONLLtimesLGRD[-1].Clone(hPtFONLLtimesLGRD[-1].GetName().replace('Pt', 'PtWeights')))
-        #     hPtWeightsFONLLtimesLGRD[-1].Divide(hPtFONLLtimesLGRD[-1], hPtGenD)
-        #     hPtWeightsFONLLtimesLGRD[-1].Smooth(smooth)
-        # if 'datashape' in shapesD and shapesD['datashape']['enabled']:
-        #     hPtDataShape[-1].Scale(1./hPtDataShape[-1].Integral())
-        #     hPtWeightsDataShape.append(
-        #         hPtDataShape[-1].Clone(hPtDataShape[-1].GetName().replace('Pt', 'PtWeights')))
-        #     hPtWeightsDataShape[-1].Divide(hPtDataShape[-1], hPtGenD)
-        #     hPtWeightsDataShape[-1].Smooth(smooth)
+    print('INFO: D pT weights calculated')
 
-    print('INFO: pT weights calculated')
     # B meson weights
     #___________________________________________________________________________________________________________________________
     if Bspecie:
@@ -287,8 +165,6 @@ def computePtWeights(config, Bspecie, suffix, fonllD, fonllB, Raa):
             hPtFONLLB.append(hPtGenB.Clone(histoName))
             if RaaB:
                 hPtFONLLtimesTAMUB.append(hPtGenB.Clone(histoName.replace('FONLL', 'FONLLtimesTAMU')))
-            # if 'lido' in shapesB and shapesB['lido']['enabled']:
-            #     hPtFONLLtimesLIDOB.append(hPtGenB.Clone(histoName.replace('FONLL', 'FONLLtimesLIDO')))
 
             for iPt in range(1, hPtFONLLB[-1].GetNbinsX()+1):
                 ptCent = hPtFONLLB[-1].GetBinCenter(iPt)
@@ -318,13 +194,6 @@ def computePtWeights(config, Bspecie, suffix, fonllD, fonllB, Raa):
                         else:
                             rAAMix = (sTAMUB['yCent'](ptMinMix) + sTAMUBs['yCent'](ptMinMix)) / 2
                         hPtFONLLtimesTAMUB[-1].SetBinContent(iPt, sFONLLB[pred](ptCent) * rAAMix)
-                # if 'lido' in shapesB and shapesB['lido']['enabled']:
-                #     if ptMinLIDOB <= ptCent <= ptMaxLIDOB:
-                #         hPtFONLLtimesLIDOB[-1].SetBinContent(iPt, sFONLLB[pred](ptCent) * sLIDOB['yCent'](ptCent))
-                #     elif ptCent > ptMaxLIDOB:
-                #         hPtFONLLtimesLIDOB[-1].SetBinContent(iPt, sFONLLB[pred](ptCent) * sLIDOB['yCent'](ptMaxLIDOB))
-                #     else:
-                #         hPtFONLLtimesLIDOB[-1].SetBinContent(iPt, sFONLLB[pred](ptCent) * sLIDOB['yCent'](ptMinLIDOB))
 
             hPtFONLLB[-1].Sumw2()
             hPtFONLLB[-1].Scale(1./hPtFONLLB[-1].Integral())
@@ -337,14 +206,8 @@ def computePtWeights(config, Bspecie, suffix, fonllD, fonllB, Raa):
                     hPtFONLLtimesTAMUB[-1].Clone(hPtFONLLtimesTAMUB[-1].GetName().replace('Pt', 'PtWeights')))
                 hPtWeightsFONLLtimesTAMUB[-1].Divide(hPtFONLLtimesTAMUB[-1], hPtGenB)
                 hPtWeightsFONLLtimesTAMUB[-1].Smooth(smooth)
-            # if 'lido' in shapesB and shapesB['lido']['enabled']:
-            #     hPtFONLLtimesLIDOB[-1].Scale(1./hPtFONLLtimesLIDOB[-1].Integral())
-            #     hPtWeightsFONLLtimesLIDOB.append(
-            #         hPtFONLLtimesLIDOB[-1].Clone(hPtFONLLtimesLIDOB[-1].GetName().replace('Pt', 'PtWeights')))
-            #     hPtWeightsFONLLtimesLIDOB[-1].Divide(hPtFONLLtimesLIDOB[-1], hPtGenB)
-            #     hPtWeightsFONLLtimesLIDOB[-1].Smooth(smooth)
+    print('INFO: B pT weights calculated')
 
-    print('INFO: pT weights calculated')
     # save output
     #___________________________________________________________________________________________________________________________
     outputDir = f'{work_dir}/weights/{Dspecie}/{cent}/'
@@ -359,33 +222,12 @@ def computePtWeights(config, Bspecie, suffix, fonllD, fonllB, Raa):
         if RaaD:
             hPtFONLLtimesTAMUD[iHisto].Write()
             hPtWeightsFONLLtimesTAMUD[iHisto].Write()
-        # if 'phsd' in shapesD and shapesD['phsd']['enabled']:
-        #     hPtFONLLtimesPHSDD[iHisto].Write()
-        #     hPtWeightsFONLLtimesPHSDD[iHisto].Write()
-        # if 'mc@shq' in shapesD and shapesD['mc@shq']['enabled']:
-        #     hPtFONLLtimesGossiauxD[iHisto].Write()
-        #     hPtWeightsFONLLtimesGossiauxD[iHisto].Write()
-        # if 'catania' in shapesD and shapesD['catania']['enabled']:
-        #     hPtFONLLtimesCataniaD[iHisto].Write()
-        #     hPtWeightsFONLLtimesCataniaD[iHisto].Write()
-        # if 'lido' in shapesD and shapesD['lido']['enabled']:
-        #     hPtFONLLtimesLIDOD[iHisto].Write()
-        #     hPtWeightsFONLLtimesLIDOD[iHisto].Write()
-        # if 'lgr' in shapesD and shapesD['lgr']['enabled']:
-        #     hPtFONLLtimesLGRD[iHisto].Write()
-        #     hPtWeightsFONLLtimesLGRD[iHisto].Write()
-        # if 'datashape' in shapesD and shapesD['datashape']['enabled']:
-        #     hPtDataShape[iHisto].Write()
-        #     hPtWeightsDataShape[iHisto].Write()
         if Bspecie:
             hPtFONLLB[iHisto].Write()
             hPtWeightsFONLLB[iHisto].Write()
             if RaaB:
                 hPtFONLLtimesTAMUB[iHisto].Write()
                 hPtWeightsFONLLtimesTAMUB[iHisto].Write()
-            # if 'lido' in shapesB and shapesB['lido']['enabled']:
-            #     hPtFONLLtimesLIDOB[iHisto].Write()
-            #     hPtWeightsFONLLtimesLIDOB[iHisto].Write()
 
     # pT shape D
     #___________________________________________________________________________________________________________________________
@@ -407,10 +249,8 @@ def computePtWeights(config, Bspecie, suffix, fonllD, fonllB, Raa):
     SetObjectStyle(hPtFONLLtimesTAMUD[0], color=kBlack, markersize=0.5)
     leg.AddEntry(hPtFONLLtimesTAMUD[0], 'FONLL #times TAMU (R_{AA})', 'lp')
     SetObjectStyle(hPtFONLLD[0], color=kAzure, markersize=0.5)
-    #leg.AddEntry(hPtFONLLD[0], 'FONLL', 'lp')
 
     hPtFONLLtimesTAMUD[0].Draw('same')
-    #hPtFONLLD[0].Draw('same')
     hPtGenD.Draw('same')
     leg.Draw()
 
@@ -426,10 +266,8 @@ def computePtWeights(config, Bspecie, suffix, fonllD, fonllB, Raa):
     SetObjectStyle(hPtWeightsFONLLtimesTAMUD[0], color=kBlack, markersize=1)
     legR.AddEntry(hPtWeightsFONLLtimesTAMUD[0], 'FONLL #times TAMU (R_{AA})', 'lp')
     SetObjectStyle(hPtWeightsFONLLD[0], color=kAzure, markersize=1)
-    #legR.AddEntry(hPtWeightsFONLLD[0], 'FONLL', 'lp')
 
     hPtWeightsFONLLtimesTAMUD[0].Draw('same')
-    #hPtWeightsFONLLD[0].Draw('same')
     legR.Draw()
 
     canvPtshape.Write()
@@ -456,10 +294,8 @@ def computePtWeights(config, Bspecie, suffix, fonllD, fonllB, Raa):
     SetObjectStyle(hPtFONLLtimesTAMUB[0], color=kBlack, markersize=0.5)
     legB.AddEntry(hPtFONLLtimesTAMUB[0], 'FONLL #times TAMU (R_{AA})', 'lp')
     SetObjectStyle(hPtFONLLB[0], color=kAzure, markersize=0.5)
-    #legB.AddEntry(hPtFONLLB[0], 'FONLL', 'lp')
 
     hPtFONLLtimesTAMUB[0].Draw('same')
-    #hPtFONLLB[0].Draw('same')
     hPtGenB.Draw('same')
     legB.Draw()
 
@@ -475,10 +311,8 @@ def computePtWeights(config, Bspecie, suffix, fonllD, fonllB, Raa):
     SetObjectStyle(hPtWeightsFONLLtimesTAMUB[0], color=kBlack, markersize=1)
     legBR.AddEntry(hPtWeightsFONLLtimesTAMUB[0], 'FONLL #times TAMU (R_{AA})', 'lp')
     SetObjectStyle(hPtWeightsFONLLB[0], color=kAzure, markersize=1)
-    #legBR.AddEntry(hPtWeightsFONLLB[0], 'FONLL', 'lp')
 
     hPtWeightsFONLLtimesTAMUB[0].Draw('same')
-    #hPtWeightsFONLLB[0].Draw('same')
     legBR.Draw()
 
     canvPtshapeB.Write()
