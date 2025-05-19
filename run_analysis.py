@@ -2,53 +2,37 @@ import os
 import sys
 import argparse
 import yaml
-import shutil
 import concurrent.futures
 import time
 import subprocess
 from concurrent.futures import ProcessPoolExecutor
 work_dir = os.path.dirname(os.path.realpath(__file__))
+from utils import check_dir
 
 paths = {
 	"YamlCuts": os.path.join(work_dir, "./make_cutsets_cfgs.py"),
 }
 
-def check_dir(dir):
+def make_yaml(config, outdir, correlated=False, combined=False):
+	print("\033[32mINFO: Make yaml will be performed\033[0m")
+	check_dir(f"{outdir}/cutsets")
+	print(f"\033[32mpython3 {paths['YamlCuts']} {config} -o {outdir} --correlated\033[0m")
+	if correlated:
+		os.system(f"python3 {paths['YamlCuts']} {config} -o {outdir} --correlated")
+	if combined:
+		os.system(f"python3 {paths['YamlCuts']} {config} -o {outdir}")
 
-	if not os.path.exists(dir):
-		print(f"\033[32m{dir} does not exist, it will be created\033[0m")
-		os.makedirs(dir)
-	else:
-		print(f"\033[33m{dir} already exists, it will be overwritten\033[0m")
-		shutil.rmtree(dir)
-		os.makedirs(dir)
+def run_correlated_cut_variation(config, operations, nworkers, outdir):
 
-	return
-
-def run_correlated_cut_variation(config, operations, nworkers, out_dir):
-
-#___________________________________________________________________________________________________________________________
+	#___________________________________________________________________________________________________________________________
 	# make yaml file
-	if operations['make_yaml']:
-		print("\033[32mINFO: Make yaml will be performed\033[0m")
-		check_dir(f"{out_dir}/cutsets")
-		print(f"\033[32mpython3 {paths['YamlCuts']} {config} -o {out_dir} --correlated\033[0m")
-		os.system(f"python3 {paths['YamlCuts']} {config} -o {out_dir} --correlated")
-	else:
-		print("\033[33mWARNING: Make yaml will not be performed\033[0m")
+	make_yaml(config, outdir, correlated=True) if operations['make_yaml'] else print("\033[33mWARNING: Make yaml will not be performed\033[0m")
 
+def run_combined_cut_variation(config, operations, nworkers, outdir):
 
-def run_combined_cut_variation(config, operations, nworkers, out_dir):
-
-#___________________________________________________________________________________________________________________________
+	#___________________________________________________________________________________________________________________________
 	# make yaml file
-	if operations['make_yaml']:
-		print("\033[32mINFO: Make yaml will be performed\033[0m")
-		check_dir(f"{out_dir}/cutsets")
-		print(f"\033[32mpython3 {paths['YamlCuts']} {config} -o {out_dir}\033[0m")
-		os.system(f"python3 {paths['YamlCuts']} {config} -o {out_dir}")
-	else:
-		print("\033[33mWARNING: Make yaml will not be performed\033[0m")
+	make_yaml(config, outdir, combined=True) if operations['make_yaml'] else print("\033[33mWARNING: Make yaml will not be performed\033[0m")
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Arguments')
@@ -66,22 +50,25 @@ if __name__ == "__main__":
 	operations = config['operations']
 	nworkers = config['nworkers']
 	if args.correlated:
-		output_dir = f"{config['out_dir']}/cutvar_{config['suffix']}" + "_correlated"
+		outdir = f"{config['outdir']}/cutvar_{config['suffix']}" + "_correlated"
 	else:
-		output_dir = f"{config['out_dir']}/cutvar_{config['suffix']}" + "_combined"
-	os.system(f"mkdir -p {output_dir}")
+		outdir = f"{config['outdir']}/cutvar_{config['suffix']}" + "_combined"
+	os.system(f"mkdir -p {outdir}")
   
 	# copy the configuration file
 	nfile = 0
-	os.makedirs(f'{output_dir}/config_flow', exist_ok=True)
-	while os.path.exists(f'{output_dir}/config_flow/{os.path.splitext(os.path.basename(args.flow_config))[0]}_{config['suffix']}_{nfile}.yml'):
+	os.makedirs(f'{outdir}/config_flow', exist_ok=True)
+	while os.path.exists(f'{outdir}/config_flow/{os.path.splitext(os.path.basename(args.flow_config))[0]}_{config['suffix']}_{nfile}.yml'):
 		nfile = nfile + 1
-	os.system(f'cp {args.flow_config} {output_dir}/config_flow/{os.path.splitext(os.path.basename(args.flow_config))[0]}_{config['suffix']}_{nfile}.yml')
+	os.system(f'cp {args.flow_config} {outdir}/config_flow/{os.path.splitext(os.path.basename(args.flow_config))[0]}_{config['suffix']}_{nfile}.yml')
 
+	if not args.correlated and not args.combined:
+		print("\033[33mWARNING: No cut variation will be performed\033[0m")
+		sys.exit(0)
 	if args.correlated:
-		run_correlated_cut_variation(args.flow_config, operations, nworkers, output_dir)
+		run_correlated_cut_variation(args.flow_config, operations, nworkers, outdir)
 	if args.combined:
-		run_combined_cut_variation(args.flow_config, operations, nworkers, output_dir)
+		run_combined_cut_variation(args.flow_config, operations, nworkers, outdir)
   
 	end_time = time.time()
 	execution_time = end_time - start_time

@@ -79,8 +79,8 @@ def make_yaml(flow_config, outputdir, correlated):
                 'score_bkg': {'min': [0.0] * len(ptmins), 'max': bkg_max},
                 'score_FD': {'min': fd_min, 'max': fd_max},
             },
-            'fitrangemin': cfg['MassMin'],
-            'fitrangemax': cfg['MassMax'],
+            'fitrangemin': [range[0] for range in cfg['MassFitRanges']],
+            'fitrangemax': [range[1] for range in cfg['MassFitRanges']],
         }
 
         with open(f'{outputdir}/cutsets/cutset_{iCut:02}.yml', 'w') as file:
