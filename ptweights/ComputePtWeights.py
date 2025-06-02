@@ -16,7 +16,7 @@ import yaml
 from ROOT import TFile, TCanvas, TLegend  # pylint: disable=import-error,no-name-in-module
 from ROOT import kBlack, kRed, kAzure # pylint: disable=import-error,no-name-in-module
 work_dir = os.path.dirname(os.path.realpath(__file__))
-sys.path.append('../')
+sys.path.append(os.path.abspath(os.path.join(work_dir, '../')))
 from utils.ReadModel import ReadFONLL, ReadTAMU  #pylint: disable=wrong-import-position,import-error
 from utils.StyleFormatter import SetObjectStyle #pylint: disable=wrong-import-position,import-error
 from utils.sparse_dicts import get_sparses
