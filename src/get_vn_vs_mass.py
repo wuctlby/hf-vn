@@ -312,7 +312,7 @@ def get_vn_vs_mass(flow_config, centClass, inFileName,
 
     #_____________________________________________________
     # Vn estimation with Scalar Product      
-    _, vnFitter = [], []
+    vnFitter = []
     for iPt, (hM, hV, ptMin, ptMax, reb, sgnEnum, bkgEnum, bkgVnEnum, secPeak, massMin, massMax) in enumerate(
             zip(hMass, hVn, ptMins, ptMaxs, rebins, SgnFunc, BkgFunc, BkgFuncVn, inclSecPeak, massMins, massMaxs)):
         iCanv = iPt

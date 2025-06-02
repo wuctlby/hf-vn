@@ -1,4 +1,3 @@
-import ROOT
 import yaml
 from ROOT import TFile # pyright: ignore # type: ignore
 
