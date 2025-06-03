@@ -28,10 +28,11 @@ def pre_process_data_mc(config):
     centmin, centmax = get_centrality_bins(config['centrality'])[1]
 
     # Load the ThnSparse
-    data_sparses, reco_sparses, gen_sparses, sparse_axes, resolutions = get_sparses(config, True)
-    outputDir = config['out_dir']
-    os.makedirs(f'{outputDir}/preprocess', exist_ok=True)
+    data_sparses, reco_sparses, gen_sparses, sparse_axes, resolutions = get_sparses(config, config["operations"]["preprocess_data"], 
+                                                                                    config["operations"]["preprocess_mc"], True)
 
+    outputDir = config['outdir']
+    os.makedirs(f'{outputDir}/preprocess', exist_ok=True)
     if os.path.exists(f'{outputDir}/preprocess/DebugPreprocess.root'):
         print(f'Updating file: {outputDir}/preprocess/DebugPreprocess.root')
         debugPreprocessFile = TFile.Open(f'{outputDir}/preprocess/DebugPreprocess.root', 'update')
@@ -39,17 +40,30 @@ def pre_process_data_mc(config):
         print(f'Creating file: {outputDir}/preprocess/DebugPreprocess.root')
         debugPreprocessFile = TFile(f'{outputDir}/preprocess/DebugPreprocess.root', 'recreate')
 
-    def process_pt_bin_data(config, ptmin, ptmax, centmin, centmax, bkg_max_cut):
-        print(f'[Data] Processing pT bin {ptmin} - {ptmax}, cent {centmin}-{centmax}')
+    def write_pt_bin_reso(ptmin, ptmax):
         outFilePath = f'{outputDir}/preprocess/AnalysisResults_pt_{int(ptmin*10)}_{int(ptmax*10)}.root'
         if os.path.exists(outFilePath):
-            print(f"    Updating file: {outFilePath}")
+            print(f"    [Reso] Updating file: {outFilePath}")
             outFile = TFile(outFilePath, 'update')
             write_opt = TObject.kOverwrite
         else:
-            print(f"    Creating file: {outFilePath}")
+            print(f"    [Reso] Creating file: {outFilePath}")
             outFile = TFile.Open(outFilePath, 'recreate')
             write_opt = 0 # Standard
+
+        for key, _ in data_sparses.items():
+            make_dir_root_file(f'Data_{key}', outFile)
+            outFile.cd(f'Data_{key}')
+            resolutions[f"Reso_{key}"].Write('hResolution', write_opt)
+            
+        outFile.Close()
+        print(f'[Reso] Finished processing pT bin {ptmin} - {ptmax}\n\n')
+
+    def process_pt_bin_data(config, ptmin, ptmax, centmin, centmax, bkg_max_cut):
+        print(f'[Data] Processing pT bin {ptmin} - {ptmax}, cent {centmin}-{centmax}')
+        outFilePath = f'{outputDir}/preprocess/AnalysisResults_pt_{int(ptmin*10)}_{int(ptmax*10)}.root'
+        print(f"    [Data] Creating file: {outFilePath}")
+        outFile = TFile.Open(outFilePath, 'recreate')
 
         axes_data, rebin_data = [], []
         for ax, rebin in config['preprocess']["axes_data"].items(): 
@@ -75,8 +89,7 @@ def pre_process_data_mc(config):
         
             make_dir_root_file(f'Data_{key}', outFile)
             outFile.cd(f'Data_{key}')
-            merged_sparse_pt.Write('hSparseFlowCharm', write_opt)
-            resolutions[f"Reso_{key}"].Write('hResolution', write_opt)
+            merged_sparse_pt.Write('hSparseFlowCharm')
             del merged_sparse_pt
 
         outFile.Close()
@@ -86,11 +99,11 @@ def pre_process_data_mc(config):
         print(f'[MC] Processing pT bin {ptmin} - {ptmax}, cent {centmin}-{centmax}')
         outFilePath = f'{outputDir}/preprocess/AnalysisResults_pt_{int(ptmin*10)}_{int(ptmax*10)}.root'
         if os.path.exists(outFilePath):
-            print(f"    Updating file: {outFilePath}")
+            print(f"    [MC] Updating file: {outFilePath}")
             outFile = TFile(outFilePath, 'update')
             write_opt = TObject.kOverwrite
         else:
-            print(f"    Creating file: {outFilePath}")
+            print(f"    [MC] Creating file: {outFilePath}")
             outFile = TFile.Open(outFilePath, 'recreate')
             write_opt = 0 # Standard
 
@@ -162,9 +175,9 @@ def pre_process_data_mc(config):
                 sparse.GetAxis(sparse_axes['Flow']['cent']).SetRangeUser(centmin, centmax)
                 sparse.GetAxis(sparse_axes['Flow']['score_bkg']).SetRangeUser(0, max(bkg_maxs))
         with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
-            tasks = [executor.submit(process_pt_bin_data, config, ptmin, ptmax, centmin, centmax, bkg_maxs[iPt]) for iPt, (ptmin, ptmax) in enumerate(zip(ptmins, ptmaxs))]
-            for task in concurrent.futures.as_completed(tasks):
-                task.result()
+            tasks_data = [executor.submit(process_pt_bin_data, config, ptmin, ptmax, centmin, centmax, bkg_maxs[iPt]) for iPt, (ptmin, ptmax) in enumerate(zip(ptmins, ptmaxs))]
+        with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
+            tasks_reso = [executor.submit(write_pt_bin_reso, ptmin, ptmax) for ptmin, ptmax in zip(ptmins, ptmaxs)]
         print("Finished processing data")
 
     if config["operations"]["preprocess_mc"] and config['preprocess'].get('mc'):
@@ -176,10 +189,7 @@ def pre_process_data_mc(config):
         for key, sparse_type in gen_sparses.items():
             [sparse.GetAxis(sparse_axes[key]['cent']).SetRangeUser(centmin, centmax) for sparse in sparse_type]
         with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
-            tasks = [executor.submit(process_pt_bin_mc, config, ptmin, ptmax, centmin, centmax, bkg_maxs[iPt]) for iPt, (ptmin, ptmax) in enumerate(zip(ptmins, ptmaxs))]
-            for task in concurrent.futures.as_completed(tasks):
-                task.result()
-
+            tasks_mc = [executor.submit(process_pt_bin_mc, config, ptmin, ptmax, centmin, centmax, bkg_maxs[iPt]) for iPt, (ptmin, ptmax) in enumerate(zip(ptmins, ptmaxs))]
         print("Finished processing MC")
 
     if not config["operations"]["preprocess_data"] and not config["operations"]["preprocess_mc"]:

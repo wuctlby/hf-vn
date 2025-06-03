@@ -1,5 +1,6 @@
 import shutil
 import os
+import sys
 import ROOT
 from ROOT import TH1, TH2, TH3
 import numpy as np
@@ -46,83 +47,10 @@ def get_vn_versus_mass(thnSparses, resolutions, inv_mass_bins, mass_axis, vn_axi
     hist_vn_vs_mass.SetDirectory(0)
 
     if sampling != -1:
-        print('Sampling vn versus mass...')
-        for i in range(hist_vn_vs_mass.GetNbinsX()):
-            bin_low_edge = hist_vn_vs_mass.GetXaxis().GetBinLowEdge(i)
-            bin_high_edge = hist_vn_vs_mass.GetXaxis().GetBinUpEdge(i)
-            print(f'Bin {i}: Low Edge = {bin_low_edge}, High Edge = {bin_high_edge}')
-            vn_values = np.array([])
-            sparse_integrals = []
-            for _, sparse in thnSparses.items():
-                # Selecting the mass range associated to the bin
-                sparse.GetAxis(mass_axis).SetRangeUser(bin_low_edge, bin_high_edge)
-                sparse_integrals.append(sparse.Projection(mass_axis).Integral())
-            for iThn, ((key, sparse), (reso_key, reso)) in enumerate(zip(thnSparses.items(), resolutions.items())):
-                hist_sp_temp = sparse.Projection(vn_axis)
-                hist_sp_temp.SetName(f'hist_sp_{iThn}')
-                hist_sp_temp.SetDirectory(0)
-
-                x = ROOT.RooRealVar("x", "x", -0.8, 0.8)
-                data_hist = ROOT.RooDataHist("data_hist", "Histogram data", ROOT.RooArgList(x), hist_sp_temp)
-
-                # Step 3: Create a RooHistPdf directly from the histogram (no fitting)
-                hist_pdf = ROOT.RooHistPdf("hist_pdf", "Histogram PDF", ROOT.RooArgList(x), data_hist)
-
-                # Step 4: Sample 1000 points from the histogram PDF
-                n_samples = 10000
-                samples = hist_pdf.generate(ROOT.RooArgList(x), n_samples)
-
-                # print(f"type(samples): {type(samples)}")
-                # samples = samples.GetClonedTree()
-                # print(f"type(samples): {type(samples)}")
-                # print(f"samples.GetEntries(): {samples.GetEntries()}")
-
-                # Step 5: Create a plot to visualize
-                frame = x.frame(ROOT.RooFit.Title("Histogram PDF"))
-                data_hist.plotOn(frame)
-                hist_pdf.plotOn(frame)
-
-                # Show the plot
-                canvas = ROOT.TCanvas("canvas", "Histogram PDF", 800, 600)
-                frame.Draw()
-                canvas.SaveAs(f"/home/mdicosta/alice/hf-vn/test_output/images/hist_pdf_{i}.png")
-
-                # Print samples to check their status
-                print(f"samples: {samples}")
-
-                # Step 6: Extract and save the sampled points
-                sampled_points = []
-
-                # Loop over the rows in the RooAbsData (samples)
-                print(f"samples.numEntries(): {samples.numEntries()}")
-                for i in range(samples.numEntries()):
-                    sample = samples.get(i)  # Get the i-th sample (RooArgSet)
-                    value = sample.getRealValue('x')  # Extract the 'x' value from the sample
-                    sampled_points.append(value)  # Append the value to the list
-
-                # Convert the list to a numpy array
-                sampled_points = np.array(sampled_points)
-
-                # Print the sampled points (optional)
-                print(f"\nsampled_points: {sampled_points}\n")
-
-                # Optionally save to a text file for later use
-                np.savetxt(f"sampled_points_{i}.txt", sampled_points)
-
-                # Optionally, print a few values
-                print(f"First 10 sampled points: {sampled_points[:10]}")
-
-
-            mean_sp = 0.
-            mean_sp_err = 0.
-            hist_vn_vs_mass.SetBinContent(i+1, mean_sp)
-            hist_vn_vs_mass.SetBinError(i+1, mean_sp_err)
+        print('Sampling vn versus mass to be implemented!')
     else:
-        print('No sampling, using the original histograms...')
-        for iThn, (key, sparse) in enumerate(thnSparses.items()):
-            print(f'Processing {key}...')
-            print(f'Processing {iThn}...')
-            print(f'Processing {sparse}...')
+        for iThn, ((_, sparse), (_, reso)) in enumerate(zip(thnSparses.items(), resolutions.items())):
+            resolution = reso.GetBinContent(1)
             hist_vn_proj_temp = sparse.Projection(vn_axis, mass_axis)
             hist_vn_proj_temp.SetName(f'hist_vn_proj_{iThn}')
             hist_vn_proj_temp.SetDirectory(0)
@@ -140,8 +68,8 @@ def get_vn_versus_mass(thnSparses, resolutions, inv_mass_bins, mass_axis, vn_axi
             profile = hist_vn_proj.ProfileY(f'profile_{bin_low}_{bin_high}', bin_low, bin_high)
             mean_sp = profile.GetMean()
             mean_sp_err = profile.GetMeanError()
-            hist_vn_vs_mass.SetBinContent(i+1, mean_sp)
-            hist_vn_vs_mass.SetBinError(i+1, mean_sp_err)
+            hist_vn_vs_mass.SetBinContent(i+1, mean_sp / resolution)
+            hist_vn_vs_mass.SetBinError(i+1, mean_sp_err / resolution)
 
     if debug:
         outfile = ROOT.TFile('debug.root', 'RECREATE')
@@ -209,56 +137,40 @@ def get_centrality_bins(centrality):
         print(f"ERROR: cent class \'{centrality}\' is not supported! Exit")
     sys.exit()
 
+def reweight_histo_1D(histo, weights, binned=False):
+    for iBin in range(1, histo.GetNbinsX()+1):
+        ptCent = histo.GetBinCenter(iBin)
+        weight = weights[iBin-1] if binned else weights(ptCent) if weights(ptCent) > 0 else 0
+        histo.SetBinContent(iBin, histo.GetBinContent(iBin) * weight)
+        histo.SetBinError(iBin, histo.GetBinError(iBin) * weight)
+    proj_hist = histo.Clone(histo.GetName())
+    return proj_hist
 
-def reweight_histo(histo, weights, histoname, specieweights=[]):
-    if specieweights != []:
-        if isinstance(histo, TH2) and not isinstance(histo, TH3):
-            for iBinX in range(1, histo.GetXaxis().GetNbins()+1):
-                for iBinY in range(1, histo.GetYaxis().GetNbins()+1):
-                    origContent = histo.GetBinContent(iBinX, iBinY)
-                    origError = histo.GetBinError(iBinX, iBinY)
-                    weight = specieweights[iBinY-1]
-                    content = origContent * weight
-                    error = origError * weight if weight > 0 else 0
-                    histo.SetBinContent(iBinX, iBinY, content)
-                    histo.SetBinError(iBinX, iBinY, error)
-            proj_hist = histo.ProjectionX(histoname, 0, histo.GetYaxis().GetNbins()+1, 'e')
+def reweight_histo_2D(histo, weights, binned=False):
+    for iBinX in range(1, histo.GetXaxis().GetNbins()+1):
+        for iBinY in range(1, histo.GetYaxis().GetNbins()+1):
+            if binned:
+                weight = weights[iBinY-1]
+            else:
+                binCentVal = histo.GetYaxis().GetBinCenter(iBinY)
+                weight = weights(binCentVal) if weights(binCentVal) > 0 else 0
+            weighted_content = histo.GetBinContent(iBinX, iBinY) * weight
+            weighted_error = histo.GetBinError(iBinX, iBinY) * weight if weight > 0 else 0
+            histo.SetBinContent(iBinX, iBinY, weighted_content)
+            histo.SetBinError(iBinX, iBinY, weighted_error)
+    proj_hist = histo.ProjectionX(histo.GetName(), 0, histo.GetYaxis().GetNbins()+1, 'e')
+    return proj_hist
 
-        if isinstance(histo, TH3):
-            for iBinX in range(1, histo.GetXaxis().GetNbins()+1):
-                for iBinY in range(1, histo.GetYaxis().GetNbins()+1):
-                    for iBinZ in range(1, histo.GetZaxis().GetNbins()+1):
-                        binCentVal = histo.GetYaxis().GetBinCenter(iBinY)
-                        origContent = histo.GetBinContent(iBinX, iBinY, iBinZ)
-                        origError = histo.GetBinError(iBinX, iBinY, iBinZ)
-                        weight = specieweights[iBinZ-1]*weights(binCentVal) if weights(binCentVal) > 0 else specieweights[iBinZ-1] 
-                        content = origContent * weight
-                        error = origError * weight if weight > 0 else 0
-                        histo.SetBinContent(iBinX, iBinY, iBinZ, content)
-                        histo.SetBinError(iBinX, iBinY, iBinZ, error)
-            proj_hist = histo.ProjectionX(histoname, 0, histo.GetYaxis().GetNbins()+1,
-                                          0, histo.GetZaxis().GetNbins()+1, 'e')
-
-    else:
-        if isinstance(histo, TH1) and not isinstance(histo, TH2):
-            for iBin in range(1, histo.GetNbinsX()+1):
-                if histo.GetBinContent(iBin) > 0.:
-                    relStatUnc = histo.GetBinError(iBin) / histo.GetBinContent(iBin)
-                    ptCent = histo.GetBinCenter(iBin)
-                    histo.SetBinContent(iBin, histo.GetBinContent(iBin) * weights(ptCent))
-                    histo.SetBinError(iBin, histo.GetBinContent(iBin) * relStatUnc)
-            proj_hist = histo.Clone(histoname)
-        if isinstance(histo, TH2) and not isinstance(histo, TH3):
-            for iBinX in range(1, histo.GetXaxis().GetNbins()+1):
-                for iBinY in range(1, histo.GetYaxis().GetNbins()+1):
-                    binCentVal = histo.GetYaxis().GetBinCenter(iBinY)
-                    origContent = histo.GetBinContent(iBinX, iBinY)
-                    origError = histo.GetBinError(iBinX, iBinY)
-                    weight = weights(binCentVal) if weights(binCentVal) > 0 else 0
-                    content = origContent * weight
-                    error = origError * weight if weight > 0 else 0
-                    histo.SetBinContent(iBinX, iBinY, content)
-                    histo.SetBinError(iBinX, iBinY, error)
-            proj_hist = histo.ProjectionX(histoname, 0, histo.GetYaxis().GetNbins()+1, 'e')
-        
+def reweight_histo_3D(histo, weightsY, weightsZ):
+    for iBinX in range(1, histo.GetXaxis().GetNbins()+1):
+        for iBinY in range(1, histo.GetYaxis().GetNbins()+1):
+            for iBinZ in range(1, histo.GetZaxis().GetNbins()+1):
+                binCenterY = histo.GetYaxis().GetBinCenter(iBinY)
+                weight = weightsZ[iBinZ-1]*weightsY(binCenterY) if weightsY(binCenterY) > 0 else weightsZ[iBinZ-1] 
+                weighted_content = histo.GetBinContent(iBinX, iBinY, iBinZ) * weight
+                weighted_error = histo.GetBinError(iBinX, iBinY, iBinZ) * weight if weight > 0 else 0
+                histo.SetBinContent(iBinX, iBinY, iBinZ, weighted_content)
+                histo.SetBinError(iBinX, iBinY, iBinZ, weighted_error)
+    proj_hist = histo.ProjectionX(histo.GetName(), 0, histo.GetYaxis().GetNbins()+1,
+                                  0, histo.GetZaxis().GetNbins()+1, 'e')
     return proj_hist
