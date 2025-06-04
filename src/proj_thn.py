@@ -12,7 +12,8 @@ import os
 import glob
 from pathlib import Path
 from functools import partial
-from ROOT import TFile, TObject
+from ROOT import TFile, TObject, TH2D
+import array
 from alive_progress import alive_bar
 from scipy.interpolate import make_interp_spline
 sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/../utils")
@@ -69,10 +70,47 @@ def proj_multitrial(config, multitrial_folder):
     with ThreadPoolExecutor(max_workers=8) as executor:
         executor.map(partial(process_cutset, default_histos=default_histos), multitrial_dirs)
 
-def proj_data(i_bin, sparse, axes, resolution, proj_cfg, writeopt):
+def proj_data_cms(sparses_dict, axes, sp_ranges, sp_windows_nbins):
 
-    proj_vars = ['Mass', 'Sp', 'ScoreFD', 'ScoreBkg'] if proj_cfg.get('storeML') else ['Mass', 'Sp']
-    proj_axes = [axes['FlowSP'][var] for var in proj_vars]
+    # first_key = next(iter(sparses_dict))
+    # axis_sp = sparses_dict[first_key].GetAxis(axes['Flow']['sp'])
+    # sp_bins = axis_sp.GetNbins()
+    # sp_edges = [axis_sp.GetBinLowEdge(i) for i in range(1, sp_bins + 2, sp_windows_nbins) if abs(axis_sp.GetBinLowEdge(i)) < sp_ranges]
+
+    for isparse, (_, sparse) in enumerate(sparses_dict.items()):
+        hist_mass_sp_temp = sparse.Projection(axes['Flow']['sp'], axes['Flow']['Mass'])
+        hist_mass_sp_temp.SetName(f'hMassSp_{isparse}')
+        if isparse == 0:
+            hist_mass_sp = hist_mass_sp_temp.Clone(f'hMassSp')
+            hist_mass_sp.Reset()
+
+        hist_mass_sp.Add(hist_mass_sp_temp)
+
+    hist_mass_sp.Write(f'hMassSp')
+
+
+    # for sp_min, sp_max in zip(sp_edges[:-1], sp_edges[1:]):
+    #     for isparse, (_, sparse) in enumerate(sparses_dict.items()):
+    #         print(f"sp_min = {sp_min}, sp_max = {sp_max}")
+    #         sparse.GetAxis(axes['Flow']['sp']).SetRangeUser(sp_min, sp_max)
+    #         hist_var_temp = sparse.Projection(axes['Flow']['Mass'])
+    #         hist_var_temp.SetName(f'hMass_{isparse}')
+    #         if isparse == 0:
+    #             hist_var = hist_var_temp.Clone(f'hMass')
+    #             hist_var.Reset()
+
+    #         hist_var.Add(hist_var_temp)
+
+    #     hist_var.Write(f'hMass_{sp_min:.2f}_{sp_max:.2f}')
+    print(f"Projected data with CMS method ended!")
+
+def proj_data_simfit(i_bin, sparse, axes, resolution, proj_cfg, writeopt):
+
+    proj_vars = ['Mass', 'sp', 'score_FD', 'score_bkg'] if proj_scores else ['Mass', 'sp']
+    proj_axes = [axes['Flow'][var] for var in proj_vars]
+
+    for reso_name, reso in reso_dict.items():
+        reso.Write(f'hResolution_{reso_name}', writeopt)
 
     for var, ax in zip(proj_vars, proj_axes):
         hist_var = sparse.Projection(ax)
@@ -296,7 +334,11 @@ if __name__ == "__main__":
             if operations["proj_data"]:
                 sparse_flow["FlowSP"].GetAxis(axes['FlowSP']['ScoreFD']).SetRangeUser(fd_min, fd_max)
                 sparse_flow["FlowSP"].GetAxis(axes['FlowSP']['ScoreBkg']).SetRangeUser(bkg_min, bkg_max)
-                proj_data(iPt, sparse_flow["FlowSP"], axes, resolution, config["projections"], write_opt_data)
+                if config['projections'].get("CMSMethod"):
+                    logger("Projecting data with CMS method!", "WARNING")
+                    proj_data_cms(sparse_flow["FlowSP"], axes, config["projections"]['sp_ranges'][iPt], config["projections"]['sp_windows_nbins'][iPt])
+                else:
+                    proj_data_simfit(iPt, sparse_flow["FlowSP"], axes, resolution, config["projections"], write_opt_data)
                 print(f"Projected data!")
 
             if operations.get("proj_mc"):
