@@ -1,0 +1,12 @@
+Dmeson: 'Dplus'
+Centrality: 'k3050'
+Suffix: 'test_Dplus'
+mc: '/home/mdicosta/alice/hf-vn/datasets/MC_Dplus_3050_vsphi_ptsmear20.root'
+Bspecie: Ball # Ball or BsBmix, if empty no B pt weights
+Rebin: 1
+Smooth: 100
+
+PtShapeFONLL_D: /home/mdicosta/FlowDplus/MLanalysis/PtWeights/fonll_pythia_beautyFFee_charmhadrons_5dot5tev_y0dot5.root
+RaaTAMU_D: /home/mdicosta/alice/DmesonAnalysis/models/tamu/PromptD0_TAMU_RAA_5TeV_3050.txt
+PtShapeFONLL_B: /home/mdicosta/FlowDplus/MLanalysis/PtWeights/fonll_pythia_beautyFFee_charmhadrons_5dot5tev_y0dot5.root
+RaaTAMU_B: /home/mdicosta/alice/DmesonAnalysis/models/tamu/B_TAMU_RAA_5TeV_3050.txt

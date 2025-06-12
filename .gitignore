@@ -2,6 +2,8 @@
 **/.vscode/
 **/config/
 **/__pycache__/
+**/resolution/reso*
 
 # test files to ignore
 test*
+*.pyc
