@@ -7,12 +7,13 @@ import time
 import subprocess
 from concurrent.futures import ProcessPoolExecutor
 work_dir = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(f"{work_dir}/utils")
 from utils import check_dir
 
 paths = {
-	"Preprocess": os.path.join(work_dir, "./pre_process.py"),
-	"YamlCuts": os.path.join(work_dir, "./make_cutsets_cfgs.py"),
-	"Projections": os.path.join(work_dir, "./proj_thn.py"),
+	"Preprocess": os.path.join(work_dir, "./src/pre_process.py"),
+	"YamlCuts": os.path.join(work_dir, "./src/make_cutsets_cfgs.py"),
+	"Projections": os.path.join(work_dir, "./src/proj_thn.py"),
 }
 
 def make_yaml(config, outdir, correlated=False, combined=False):

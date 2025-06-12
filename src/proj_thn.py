@@ -1,8 +1,7 @@
 '''
 Script to project the MC distributions and apply the pt weights from the AnRes.root of Dtask
-python3 proj_thn_mc.py config_flow.yml config_cutset.yml -o path/to/output -s text
-                                                        --ptWeights path/to/file histName 
-                                                        --ptWeightsB path/to/file histName
+python3 proj_thn.py config_flow.yml --cutsetConfig config_cutset.yml [-c --correlated]
+If the last argument is not provided, the script will project the combined cutsets.
 '''
 import ROOT
 import uproot
@@ -13,9 +12,10 @@ import os
 from ROOT import TFile, TObject
 from alive_progress import alive_bar
 from scipy.interpolate import make_interp_spline
-sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/utils")
+sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/../utils")
 from sparse_dicts import get_pt_preprocessed_sparses
 from utils import reweight_histo_1D, reweight_histo_2D, reweight_histo_3D, get_vn_versus_mass, make_dir_root_file
+# from utils.utils import reweight_histo_1D, reweight_histo_2D, reweight_histo_3D, get_vn_versus_mass, make_dir_root_file
 
 ROOT.TH1.AddDirectory(False)
 
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     write_opt_mc = TObject.kOverwrite if operations["proj_mc"] else 0 
 
     # compute info for pt weights
-    sPtWeightsD, sPtWeightsB, Bspeciesweights = get_pt_weights(config["projections"])
+    sPtWeightsD, sPtWeightsB, Bspeciesweights = get_pt_weights(config["projections"]) if config['projections'].get('PtWeightsFile') else (None, None, None)
 
     with alive_bar(len(cutSetCfg['Pt']['min']), title='Processing pT bins') as bar:
         for iPt, (ptMin, ptMax, bkg_min, bkg_max, fd_min, fd_max) in enumerate(zip(cutSetCfg['Pt']['min'], cutSetCfg['Pt']['max'],

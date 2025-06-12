@@ -1,6 +1,6 @@
 operations:
-    preprocess_data: false
-    preprocess_mc: false
+    preprocess_data: true
+    preprocess_mc: true
     make_yaml: true
     proj_data: true
     proj_mc: true
@@ -88,8 +88,8 @@ MassFitRanges: [
        ]
 
 projections:
-    PtWeightsFile: '/home/mdicosta/alice/hf-vn/ptweights/weights/Dplus/k3050/pTweight_Dplus_k3050_test_Dplus.root'
-    ApplyPtWeightsD: True
+    # PtWeightsFile: '/home/mdicosta/alice/hf-vn/ptweights/weights/Dplus/k3050/pTweight_Dplus_k3050_test_Dplus.root'
+    ApplyPtWeightsD: False
     ApplyPtWeightsB: False
     ApplyBSpeciesWeights: False
     storeML: False

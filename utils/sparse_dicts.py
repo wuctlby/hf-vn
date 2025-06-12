@@ -178,7 +178,7 @@ def get_sparses(config, get_data=True, get_mc=True, debug=False):
 
     sparsesFlow, sparsesReco, sparsesGen, resolutions = {}, {}, {}, {}
     axes_dict = get_sparses_dicts(config)
-    pre_cfg = config['preprocess'] if config.get('preprocess') else pre_cfg = config
+    pre_cfg = config['preprocess'] if config.get('preprocess') else config
     if get_data:
         infileflow = []
         resolutions = {}
