@@ -2,6 +2,7 @@ import shutil
 import os
 import sys
 import ROOT
+import ctypes
 from ROOT import TH1, TH2, TH3
 import numpy as np
 
@@ -102,6 +103,292 @@ def get_vn_versus_mass(thnSparses, resolutions, inv_mass_bins, mass_axis, vn_axi
         outfile.Close()
 
     return hist_vn_vs_mass
+
+def get_vnfitter_results(vnFitter, secPeak, useRefl, useTempl):
+    '''
+    Get vn fitter results:
+    0: BkgInt
+    1: BkgSlope
+    2: SgnInt
+    3: Mean
+    4: Sigma
+    5: SecPeakInt
+    6: SecPeakMean
+    7: SecPeakSigma
+    8: ConstVnBkg
+    9: SlopeVnBkg
+    10: v2Sgn
+    11: v2SecPeak
+    12: reflection
+
+    Input:
+        - vnfitter:
+            VnVsMassFitter, vn fitter object
+        - secPeak:
+            bool, if True, save secondary peak results
+        - useRefl:
+            bool, if True, save the results with reflection
+
+    Output:
+        - vn_results:
+            dict, dictionary with vn results
+            vn: vn value
+            vnUnc: uncertainty of vn value
+            mean: mean value
+            meanUnc: uncertainty of mean value
+            sigma: sigma value
+            sigmaUnc: uncertainty of sigma value
+            ry: raw yield
+            ryUnc: uncertainty of raw yield
+            ryTrue: true raw yield
+            ryTrueUnc: uncertainty of true raw yield
+            signif: significance
+            signifUnc: uncertainty of significance
+            chi2: reduced chi2
+            prob: fit probability
+            fTotFuncMass: total fit function for mass
+            fTotFuncVn: total fit function for vn
+            secPeakMeanMass: secondary peak mean mass
+            secPeakMeanMassUnc: uncertainty of secondary peak mean mass
+            secPeakSigmaMass: secondary peak sigma mass
+            secPeakSigmaMassUnc: uncertainty of secondary peak sigma mass
+            secPeakMeanVn: secondary peak mean vn
+            secPeakMeanVnUnc: uncertainty of secondary peak mean vn
+            secPeakSigmaVn: secondary peak sigma vn
+            secPeakSigmaVnUnc: uncertainty of secondary peak sigma vn
+            vnSecPeak: vn secondary peak
+            vnSecPeakUnc: uncertainty of vn secondary peak
+            fMassRflFunc: mass reflection function
+            fMassBkgRflFunc: mass background reflection function
+    '''
+    vn_results = {}
+    vn_results['vn'] = vnFitter.GetVn()
+    vn_results['vnUnc'] = vnFitter.GetVnUncertainty()
+    vn_results['mean'] = vnFitter.GetMean()
+    vn_results['meanUnc'] = vnFitter.GetMeanUncertainty()
+    vn_results['sigma'] = vnFitter.GetSigma()
+    vn_results['sigmaUnc'] = vnFitter.GetSigmaUncertainty()
+    vn_results['ry'] = vnFitter.GetRawYield()
+    vn_results['ryUnc'] = vnFitter.GetRawYieldUncertainty()
+    vn_results['chi2'] = vnFitter.GetReducedChiSquare()
+    vn_results['prob'] = vnFitter.GetFitProbability()
+    vn_results['fTotFuncMass'] = vnFitter.GetMassTotFitFunc()
+    vn_results['fTotFuncVn'] = vnFitter.GetVnVsMassTotFitFunc()
+    vn_results['fBkgFuncMass'] = vnFitter.GetMassBkgFitFunc()
+    vn_results['fBkgFuncVn'] = vnFitter.GetVnVsMassBkgFitFunc()
+    vn_results['fSgnFuncMass'] = vnFitter.GetMassSignalFitFunc()
+    
+    vn_results['fVnCompsFuncts'] = {}
+    vnComps = vnFitter.GetVnCompsFuncts()
+    vn_results['fVnCompsFuncts']['vnSgn'] = vnComps[0]
+    vn_results['fVnCompsFuncts']['vnBkg'] = vnComps[1]
+    if secPeak:
+        vn_results['fVnCompsFuncts']['vnSecPeak'] = vnComps[2]
+    vn_results['fMassTemplFuncts'] = vnFitter.GetMassTemplFuncts()
+    if useTempl:
+        for iTempl in range(len(vn_results['fMassTemplFuncts'])):
+            vn_results['fVnCompsFuncts'][f'vnTempl{iTempl}'] = vnComps[2+secPeak+iTempl]
+    
+    bkg, bkgUnc = ctypes.c_double(), ctypes.c_double()
+    vnFitter.Background(3, bkg, bkgUnc)
+    vn_results['bkg'] = bkg.value
+    vn_results['bkgUnc'] = bkgUnc.value
+    sgn, sgnUnc = ctypes.c_double(), ctypes.c_double()
+    vnFitter.Signal(3, sgn, sgnUnc)
+    vn_results['ryTrue'] = sgn.value
+    vn_results['ryTrueUnc'] = sgnUnc.value
+    signif, signifUnc = ctypes.c_double(), ctypes.c_double()
+    vnFitter.Significance(3, signif, signifUnc)
+    vn_results['signif'] = signif.value
+    vn_results['signifUnc'] = signifUnc.value
+
+    massSgnPars = vnFitter.GetNMassSgnPars()
+    massBkgPars = vnFitter.GetNMassBkgPars()
+    massSecPeakPars = vnFitter.GetNMassSecPeakPars()
+    massReflPars = vnFitter.GetNMassReflPars()
+    massTemplPars = len(vn_results['fMassTemplFuncts'])
+    totMassPars = massSgnPars + massBkgPars + massSecPeakPars +  massReflPars + massTemplPars
+    vnSgnPars = vnFitter.GetNVnSgnPars()
+    vnBkgPars = vnFitter.GetNVnBkgPars()
+
+    if secPeak:
+        vn_results['fMassSecPeakFunc'] = vnFitter.GetMassSecPeakFunc()
+        vn_results['fVnSecPeakFunct'] = vnFitter.GetVnSecPeakFunc()
+        vn_results['secPeakMeanMass'] = vn_results['fTotFuncMass'].GetParameter(vn_results['fTotFuncMass'].GetParName(massSgnPars + massBkgPars + 1))
+        vn_results['secPeakMeanMassUnc'] = vn_results['fTotFuncMass'].GetParError(massSgnPars + massBkgPars + 1)
+        vn_results['secPeakSigmaMass'] = vn_results['fTotFuncMass'].GetParameter(vn_results['fTotFuncMass'].GetParName(massSgnPars + massBkgPars + 2))
+        vn_results['secPeakSigmaMassUnc'] = vn_results['fTotFuncMass'].GetParError(massSgnPars + massBkgPars + 2)
+        vn_results['secPeakMeanVn'] = vn_results['fTotFuncVn'].GetParameter(vn_results['fTotFuncVn'].GetParName(totMassPars + vnSgnPars + vnBkgPars + 1))
+        vn_results['secPeakMeanVnUnc'] = vn_results['fTotFuncVn'].GetParError(vnSgnPars + vnBkgPars + 1)
+        vn_results['secPeakSigmaVn'] = vn_results['fTotFuncVn'].GetParameter(vn_results['fTotFuncVn'].GetParName(totMassPars + vnSgnPars + vnBkgPars + 2))
+        vn_results['secPeakSigmaVnUnc'] = vn_results['fTotFuncVn'].GetParError(vnSgnPars + vnBkgPars + 2)
+        vn_results['vnSecPeak'] = vn_results['fTotFuncVn'].GetParameter(vn_results['fTotFuncVn'].GetParName(totMassPars + vnSgnPars + vnBkgPars))
+        vn_results['vnSecPeakUnc'] = vn_results['fTotFuncVn'].GetParError(totMassPars + vnSgnPars + vnBkgPars)
+
+    if useRefl:
+        vn_results['fMassRflFunc'] = vnFitter.GetMassRflFunc()
+        vn_results['fMassBkgRflFunc'] = vnFitter.GetMassBkgRflFunc()
+    
+    if useTempl:
+        vn_results['vnTemplates'] = list(vnFitter.GetVnTemplates())
+        vn_results['vnTemplatesUncs'] = list(vnFitter.GetVnTemplatesUncertainties())
+
+    return vn_results
+
+def get_particle_info(particleName):
+    '''
+    Get particle information
+
+    Input:
+        - particleName: 
+            the name of the particle
+
+    Output:
+        - particleTit: 
+            the title of the particle
+        - massAxisTit: 
+            the title of the mass axis
+        - decay: 
+            the decay of the particle
+        - massForFit: 
+            float, the mass of the particle
+    '''
+
+    if particleName == 'Dplus':
+        particleTit = 'D^{+}'
+        massAxisTit = '#it{M}(K#pi#pi) (GeV/#it{c}^{2})'
+        massForFit = ROOT.TDatabasePDG.Instance().GetParticle(411).Mass()
+        decay = 'D^{+} #rightarrow K^{#minus}#pi^{+}#pi^{+}'
+        massSecPeak = ROOT.TDatabasePDG.Instance().GetParticle(413).Mass() # D* mass
+        secPeakLabel = 'D^{*+}'
+    elif particleName == 'Ds':
+        particleTit = 'D_{s}^{+}'
+        massAxisTit = '#it{M}(KK#pi) (GeV/#it{c}^{2})'
+        decay = 'D_{s}^{+} #rightarrow #phi#pi^{+} #rightarrow K^{+}K^{#minus}#pi^{+}'
+        massForFit = ROOT.TDatabasePDG.Instance().GetParticle(431).Mass()
+        massSecPeak = ROOT.TDatabasePDG.Instance().GetParticle(411).Mass() # D+ mass
+        secPeakLabel = 'D^{+}'
+    elif particleName == 'LctopKpi':
+        particleTit = '#Lambda_{c}^{+}'
+        massAxisTit = '#it{M}(pK#pi) (GeV/#it{c}^{2})'
+        decay = '#Lambda_{c}^{+} #rightarrow pK^{#minus}#pi^{+}'
+        massForFit = ROOT.TDatabasePDG.Instance().GetParticle(4122).Mass()
+    elif particleName == 'LctopK0s':
+        massAxisTit = '#it{M}(pK^{0}_{s}) (GeV/#it{c}^{2})'
+        decay = '#Lambda_{c}^{+} #rightarrow pK^{0}_{s}'
+        massForFit = 2.25 # please calfully check the mass of Lc->pK0s, it is constant
+        # massForFit = ROOT.TDatabasePDG.Instance().GetParticle(4122).Mass()
+    elif particleName == 'Dstar':
+        particleTit = 'D^{*+}'
+        massAxisTit = '#it{M}(K#pi#pi) - #it{M}(K#pi) (GeV/#it{c}^{2})'
+        decay = 'D^{*+} #rightarrow D^{0}#pi^{+} #rightarrow K^{#minus}#pi^{+}#pi^{+}'
+        massForFit = ROOT.TDatabasePDG.Instance().GetParticle(413).Mass() - ROOT.TDatabasePDG.Instance().GetParticle(421).Mass()
+    elif particleName == 'Dzero':
+        particleTit = 'D^{0}'
+        massAxisTit = '#it{M}(K#pi) (GeV/#it{c}^{2})'
+        decay = 'D^{0} #rightarrow K^{#minus}#pi^{+}'
+        massForFit = ROOT.TDatabasePDG.Instance().GetParticle(421).Mass()
+    elif particleName == 'Xic':
+        particleTit = 'X_{c}^{+}'
+        massAxisTit = '#it{M}(pK#pi) (GeV/#it{c}^{2})'
+        decay = 'X_{c}^{+} #rightarrow pK^{#minus}#pi^{+}'
+        massForFit = ROOT.TDatabasePDG.Instance().GetParticle(4132).Mass()
+        massSecPeak = ROOT.TDatabasePDG.Instance().GetParticle(4122).Mass() # Lc mass
+        secPeakLabel = '#Lambda_{c}^{+}'
+    else:
+        print(f'ERROR: the particle "{particleName}" is not supported! Choose between Dzero, Dplus, Ds, Dstar, and Lc. Exit!')
+        sys.exit()
+
+    return particleTit, massAxisTit, decay, massForFit, massSecPeak if 'massSecPeak' in locals() else None, secPeakLabel if 'secPeakLabel' in locals() else None
+
+def check_file_exists(file_path):
+    '''
+    Check if file exists
+
+    Input:
+        - file_path:
+            str, file path
+
+    Output:
+        - file_exists:
+            bool, if True, file exists
+    '''
+    file_exists = False
+    if os.path.exists(file_path):
+        file_exists = True
+    return file_exists
+
+def check_histo_exists(file, histo_name):
+    '''
+    Check if histogram exists in file
+
+    Input:
+        - file:
+            TFile, ROOT file
+        - histo_name:
+            str, histogram name
+
+    Output:
+        - histo_exists:
+            bool, if True, histogram exists
+    '''
+    if not check_file_exists(file):
+        return False
+    file = ROOT.TFile(file, 'READ')
+    histo_exists = False
+    if file.Get(histo_name):
+        histo_exists = True
+    return histo_exists
+
+def get_refl_histo(reflFile, centMinMax, ptMins, ptMaxs):
+    '''
+    Method that loads MC histograms for the reflections of D0
+
+    Input:
+        - reflFile:
+           TFile, ROOT file, include reflections of D0
+        - centMinMax:
+            list, min and max centrality
+        - ptMins:
+            list, min pt bins
+        - ptMaxs:
+            list, max pt bins
+    
+    Output:
+        - useRefl:
+            bool, if True, MC histograms for the reflections of D0 exists
+        - hMCSgn:
+            lsit, signal histograms of D0
+        - hMCRefl:
+            list, reflection histograms of D0
+    '''
+    hMCSgn, hMCRefl = [], []
+    if not check_file_exists(reflFile):
+        print(f'Error: reflection file {reflFile} does not exist! Turning off reflections usage')
+        return False
+    
+    reflFile = ROOT.TFile(reflFile, 'READ')
+
+    for iPt, (ptMin, ptMax) in enumerate(zip(ptMins, ptMaxs)):
+        dirName = f'cent_bins{centMinMax[0]}_{centMinMax[1]}/pt_bins{ptMin}_{ptMax}'
+        hMCSgn.append(reflFile.Get(f'{dirName}/hFDMass'))
+        hMCSgn[iPt].Add(reflFile.Get(f'{dirName}/hPromptMass'), 1)
+        if hMCSgn[iPt] == None:
+            print(f'In directory {dirName}, hFDMass not found! Turning off reflections usage')
+            return False
+        hMCSgn[iPt].SetName(f'histSgn_{iPt}')
+        hMCSgn[iPt].SetDirectory(0)
+
+        hMCRefl.append(reflFile.Get(f'{dirName}/hReflMass'))
+        if hMCRefl[iPt] == None:
+            print(f'In directory {dirName}, hReflMass_{ptMin}_{ptMax} not found! Turning off reflections usage')
+            return False
+        hMCRefl[iPt].SetName(f'histRfl_{iPt}')
+        hMCRefl[iPt].SetDirectory(0)
+
+    reflFile.Close()
+
+    return True, hMCSgn, hMCRefl
 
 def get_centrality_bins(centrality):
     '''

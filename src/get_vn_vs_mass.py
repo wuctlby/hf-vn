@@ -8,22 +8,21 @@ import numpy as np
 import yaml
 import os
 import itertools
-from ROOT import TLatex, TFile, TCanvas, TLegend, TH1D, TH1F, TDatabasePDG, TGraphAsymmErrors # pylint: disable=import-error,no-name-in-module
+from ROOT import TLatex, TFile, TCanvas, TLegend, TH1D, TH1F, TGraphAsymmErrors # pylint: disable=import-error,no-name-in-module
 from ROOT import gROOT, gPad, gInterpreter, kBlack, kRed, kAzure, kOrange, kGreen, kFullCircle, kFullSquare, kOpenCircle # pylint: disable=import-error,no-name-in-module
-from utils.flow_analysis_utils import get_centrality_bins, get_vnfitter_results, get_refl_histo, get_particle_info # pylint: disable=import-error,no-name-in-module
 script_dir = os.path.dirname(os.path.realpath(__file__))
 gInterpreter.ProcessLine(f'#include "{script_dir}/../invmassfitter/InvMassFitter.cxx"')
 gInterpreter.ProcessLine(f'#include "{script_dir}/../invmassfitter/VnVsMassFitter.cxx"')
 from ROOT import InvMassFitter, VnVsMassFitter
 from utils.StyleFormatter import SetGlobalStyle, SetObjectStyle
 from utils.fit_utils import RebinHisto
-from utils.utils import logger
+from utils.utils import logger, get_centrality_bins, get_vnfitter_results, get_refl_histo, get_particle_info
 #from utils.kde_producer import kde_producer # TODO: add correlated backgrounds
 
 def get_vn_vs_mass(fitConfigFileName, inFileName,
                    outputdir, suffix, batch):
-
-
+    #______________________________________________________
+    # Read configuration file    
     with open(fitConfigFileName, 'r', encoding='utf8') as ymlfitConfigFile:
         config = yaml.load(ymlfitConfigFile, yaml.FullLoader)
 
@@ -31,7 +30,7 @@ def get_vn_vs_mass(fitConfigFileName, inFileName,
     SetGlobalStyle(padleftmargin=0.14, padbottommargin=0.12, padtopmargin=0.12, opttitle=1)
     _, centMinMax = get_centrality_bins(config["centrality"])
 
-    # read global configuration
+    # Read global configuration
     ptmins = config['ptbins'][:-1]
     ptmaxs = config['ptbins'][1:]
     ptLims = list(ptmins)
@@ -42,7 +41,7 @@ def get_vn_vs_mass(fitConfigFileName, inFileName,
     particleName = config['Dmeson']
     harmonic = config.get('harmonic', 2) # default is v2
     
-    # read fit configuration
+    # Read fit configuration
     configfit = config['simfit']
     fixSigma = configfit.get('FixSigma', 0)
     fixSigmaFromFile = configfit.get('FixSigmaFromFile', '')
@@ -76,7 +75,7 @@ def get_vn_vs_mass(fitConfigFileName, inFileName,
     if not isinstance(inclSecPeak, list):
         inclSecPeak = [inclSecPeak] * nPtBins
 
-    # sanity check of fit configuration
+    # Sanity check of fit configuration
     if 1 in inclSecPeak and not configfit.get('SigmaSecPeak'):
         logger('Second peak enabled, but SigmaSecPeak not provided. Check your config file.', level='ERROR')
 
@@ -120,19 +119,10 @@ def get_vn_vs_mass(fitConfigFileName, inFileName,
         else:
             logger('Only kGaus, k2Gaus and k2GausSigmaRatioPar signal functions supported! Exit!', level='ERROR')
 
-    # set particle configuration
-    if particleName == 'Dzero':
-        _, massAxisTit, decay, massForFit = get_particle_info(particleName)
-    if particleName == 'Ds':
-        _, massAxisTit, decay, massForFit = get_particle_info(particleName)
-        massDplus = TDatabasePDG.Instance().GetParticle(411).Mass()
-    if particleName == 'Dplus':
-        _, massAxisTit, decay, massForFit = get_particle_info(particleName)
-        massDstar = TDatabasePDG.Instance().GetParticle(413).Mass()
-    else:
-        _, massAxisTit, decay, massForFit = get_particle_info(particleName)
+    # Set particle configuration
+    _, massAxisTit, decay, massForFit, massSecPeak, secPeakLabel = get_particle_info(particleName)
 
-    # load histos
+    # Load histos
     infile = TFile.Open(inFileName)
     if not infile or not infile.IsOpen():
         logger(f'File "{inFileName}" cannot be opened. Exit.', level='ERROR')
@@ -154,7 +144,7 @@ def get_vn_vs_mass(fitConfigFileName, inFileName,
 
     hSigmaToFix = None
     if configfit.get('FixSigmaRatio'):
-        # load sigma of first gaussian
+        # Load sigma of first gaussian
         infileSigma = TFile.Open(configfit['SigmaRatioFile'])
         if not infileSigma:
             logger(f'File "{infileSigma}" cannot be opened. Exit.', level='ERROR')
@@ -164,7 +154,7 @@ def get_vn_vs_mass(fitConfigFileName, inFileName,
         if hSigmaToFix.GetNbinsX() != nPtBins:
             logger('DDifferent number of bins for this analysis and histo for fix sigma', level='WARNING')
         infileSigma.Close()
-        # load sigma of second gaussian
+        # Load sigma of second gaussian
         infileSigma2 = TFile.Open(configfit['SigmaRatioFile'])
         if not infileSigma2:
             logger(f'File "{infileSigma2}" cannot be opened. Exit.', level='ERROR')
@@ -174,18 +164,19 @@ def get_vn_vs_mass(fitConfigFileName, inFileName,
             logger('Different number of bins for this analysis and histo for fix sigma', level='WARNING')
         infileSigma2.Close()
 
-    # check reflections
-    if useRefl and particleName == 'Dzero':
-        if reflFile == '':
-            reflFile = inFileName
-            useRefl, hMCSgn, hMCRefl = get_refl_histo(reflFile, centMinMax, ptmins, ptmaxs)
+    # Check reflections
+    if useRefl:
+        if particleName != 'Dzero':
+            logger('Reflections are only supported for Dzero. Set useRefl to False.', level='WARNING')
+            useRefl = False
         else:
-            useRefl, hMCSgn, hMCRefl = get_refl_histo(reflFile, centMinMax, ptmins, ptmaxs)
-    if useRefl and particleName != 'Dzero':
-        logger('Reflections are only supported for Dzero. Set useRefl to False.', level='WARNING')
-        useRefl = False
+            if reflFile == '':
+                reflFile = inFileName
+                useRefl, hMCSgn, hMCRefl = get_refl_histo(reflFile, centMinMax, ptmins, ptmaxs)
+            else:
+                useRefl, hMCSgn, hMCRefl = get_refl_histo(reflFile, centMinMax, ptmins, ptmaxs)
 
-    # create histos for fit results
+    # Create histos for fit results
     hSigmaSimFit = TH1D('hSigmaSimFit', f';{ptTit};#sigma', nPtBins, ptBinsArr)
     hMeanSimFit = TH1D('hMeanSimFit', f';{ptTit};mean', nPtBins, ptBinsArr)
     hMeanSecPeakFitMass = TH1D('hMeanSecondPeakFitMass', f';{ptTit};mean second peak mass fit', nPtBins, ptBinsArr)
@@ -237,17 +228,16 @@ def get_vn_vs_mass(fitConfigFileName, inFileName,
     SetObjectStyle(gvnUnc, color=kBlack, markerstyle=kFullCircle)
     SetObjectStyle(gvnUncSecPeak, color=kRed, markerstyle=kOpenCircle)
 
-    # create canvases
+    # Create canvases
     cSimFit = []
     for i in range(nPtBins):
         ptLow = ptmins[i]
         ptHigh = ptmaxs[i]
-        cSimFit.append(TCanvas(f'cSimFit_Pt{ptLow}_{ptHigh}', f'cSimFit_Pt{ptLow}_{ptHigh}', 400, 900))
+        cSimFit.append(TCanvas(f'cSimFit_pt{ptLow}_{ptHigh}', f'cSimFit_pt{ptLow}_{ptHigh}', 400, 900))
         cSimFit[-1].Divide(1, 2)
     latex = TLatex()
     latex.SetNDC()
     latex.SetTextSize(0.035)
-
     canvVn = TCanvas('cVn', 'cVn', 900, 900)
     canvVnUnc = TCanvas('canvVnUnc', 'canvVnUnc', 900, 900)
 
@@ -306,16 +296,9 @@ def get_vn_vs_mass(fitConfigFileName, inFileName,
         # nSigma4SB
         if configfit.get('NSigma4SB'):
             vnFitter[iPt].SetNSigmaForVnSB(configfit['NSigma4SB'][iPt])
-        # Second peak (Ds specific)
-        if secPeak and particleName == 'Ds':
-            vnFitter[iPt].IncludeSecondGausPeak(massDplus, False, configfit['SigmaSecPeak'][iPt], False, 1, configfit.get('FixVnSecPeakToSgn', False))
-            secPeakLabel = 'D^{+}'
-            if fixSigma[iPt]:
-                vnFitter[iPt].SetInitialGaussianSigma2Gaus(configfit['SigmaSecPeak'][iPt], 2)
-        # Second peak (Dplus specific)
-        if secPeak and particleName == 'Dplus':
-            vnFitter[iPt].IncludeSecondGausPeak(massDstar, False, configfit['SigmaSecPeak'][iPt], False, 1, configfit.get('FixVnSecPeakToSgn', False))
-            secPeakLabel = 'D^{*}'
+        # Second peak
+        if secPeak:
+            vnFitter[iPt].IncludeSecondGausPeak(massSecPeak, False, configfit['SigmaSecPeak'][iPt], False, 1, configfit.get('FixVnSecPeakToSgn', False))
             if fixSigma[iPt]:
                 vnFitter[iPt].SetInitialGaussianSigma2Gaus(configfit['SigmaSecPeak'][iPt], 2)
         vnFitter[iPt].FixFrac2GausFromMassFit()
@@ -331,10 +314,12 @@ def get_vn_vs_mass(fitConfigFileName, inFileName,
             if configfit['InitBkg'][iPt] != []:
                 vnFitter[iPt].SetBkgPars(list(itertools.chain(*configfit['InitBkg'][iPt])))
 
-        # collect fit results
+        # Collect fit results
         isfitGood = vnFitter[iPt].SimultaneousFit(False)
-        if not isfitGood and particleName == 'Ds' and secPeak:
-            logger(f'Fit failed for {particleName} in pt bin {iPt+1}/{nPtBins}: {ptMin} - {ptMax} GeV/c. Try recovering by disabling second peak fit.', level='WARNING')
+        
+        # Try recovering fit if it failed for disappearing second peak
+        if not isfitGood and secPeak:
+            logger(f'Fit failed in pt bin {iPt+1}/{nPtBins}: {ptMin} - {ptMax} GeV/c. Try recovering by disabling second peak fit.', level='WARNING')
             vnFitter[iPt].ExcludeSecondGausPeak()
             isfitGood = vnFitter[iPt].SimultaneousFit(False)
             secPeak = False
@@ -458,9 +443,11 @@ def get_vn_vs_mass(fitConfigFileName, inFileName,
                 legVnCompn.SetTextSize(0.03)
                 legVnCompn.AddEntry(fBkgFuncVn[iPt], f'#it{{v}}{harmonic} Bkg Func.', 'l')
                 legVnCompn.AddEntry(fTotFuncVn[iPt], f'#it{{v}}{harmonic} Tot Func.', 'l')
+                
                 SetObjectStyle(fVnCompFuncts[iPt]['vnSgn'], fillcolor=kAzure+4, fillstyle=3245, linewidth=0)
-                legVnCompn.AddEntry(fVnCompFuncts[iPt]['vnSgn'], f"Signal #it{{v}}{harmonic}", 'f')
                 SetObjectStyle(fVnCompFuncts[iPt]['vnBkg'], color=kOrange+1, linestyle=1, linewidth=2)
+                
+                legVnCompn.AddEntry(fVnCompFuncts[iPt]['vnSgn'], f"Signal #it{{v}}{harmonic}", 'f')
                 legVnCompn.AddEntry(fVnCompFuncts[iPt]['vnBkg'], f"Bkg #it{{v}}{harmonic}", 'l')
                 if secPeak:
                     SetObjectStyle(fVnCompFuncts[iPt]['vnSecPeak'], fillcolor=kGreen+1, fillstyle=3254, linewidth=0)
@@ -484,7 +471,7 @@ def get_vn_vs_mass(fitConfigFileName, inFileName,
             fVnSecPeakFunc.append(None)
             fVnCompFuncts.append(None)
 
-            logger(f'Fit failed for pt bin {iPt+1}/{nPtBins}: {ptMin} - {ptMax} GeV/c. Skipping.', level='WARNING')
+            logger(f'Fit failed for pt bin {ptMin} - {ptMax} GeV/c. Skipping.', level='WARNING')
 
     canvVn.cd().SetLogx()
     hframe = canvVn.DrawFrame(0.5, -0.5, gvnSimFit.GetXaxis().GetXmax()+0.5, 0.5,
@@ -528,10 +515,10 @@ def get_vn_vs_mass(fitConfigFileName, inFileName,
 
     for canv in cSimFit:
         canv.Write()
-    for hist in hMass:
-        hist.Write('hist_mass')
-    for hist in hVn:
-        hist.Write('hist_vn')
+    for ih, hist in enumerate(hMass):
+        hist.Write(f'hist_mass_pt{ptmins[ih]*10:.0f}_{ptmaxs[ih]*10:.0f}')
+    for ih, hist in enumerate(hVn):
+        hist.Write(f'hist_vn_pt{ptmins[ih]*10:.0f}_{ptmaxs[ih]*10:.0f}')
     for ipt, (ptmin, ptmax) in enumerate(zip(ptmins, ptmaxs)):
         try:
             fTotFuncMass[ipt].Write(f'fTotFuncMass_pt{ptmin*10:.0f}_{ptmax*10:.0f}')
@@ -542,22 +529,22 @@ def get_vn_vs_mass(fitConfigFileName, inFileName,
         except:
             logger(f'Fit function for pt {ptmin*10:.0f}-{ptmax*10:.0f} not available. Skipping.', level='WARNING')
                     
-        hSigmaSimFit.Write()
-        hMeanSimFit.Write()
-        hMeanSecPeakFitMass.Write()
-        hMeanSecPeakFitVn.Write()
-        hSigmaSecPeakFitMass.Write()
-        hSigmaSecPeakFitVn.Write()
-        hRawYieldsSimFit.Write()
-        hRawYieldsTrueSimFit.Write()
-        hRawYieldsSecPeakSimFit.Write()
-        hRawYieldsSignificanceSimFit.Write()
-        hRawYieldsSoverBSimFit.Write()
-        hRedChi2SimFit.Write()
-        hProbSimFit.Write()
-        hRedChi2SBVnPrefit.Write()
-        hProbSBVnPrefit.Write()
-        hvnSimFit.Write()
+    hSigmaSimFit.Write()
+    hMeanSimFit.Write()
+    hMeanSecPeakFitMass.Write()
+    hMeanSecPeakFitVn.Write()
+    hSigmaSecPeakFitMass.Write()
+    hSigmaSecPeakFitVn.Write()
+    hRawYieldsSimFit.Write()
+    hRawYieldsTrueSimFit.Write()
+    hRawYieldsSecPeakSimFit.Write()
+    hRawYieldsSignificanceSimFit.Write()
+    hRawYieldsSoverBSimFit.Write()
+    hRedChi2SimFit.Write()
+    hProbSimFit.Write()
+    hRedChi2SBVnPrefit.Write()
+    hProbSBVnPrefit.Write()
+    hvnSimFit.Write()
 
     gvnSimFit.Write()
     gvnUnc.Write()
