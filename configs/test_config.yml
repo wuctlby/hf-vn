@@ -4,6 +4,7 @@ operations:
     make_yaml: true
     proj_data: true
     proj_mc: true
+    get_vn_vs_mass: true
 
 outdir: '/home/mdicosta/alice/hf-vn/test_output'
 suffix: 'test'
@@ -70,22 +71,6 @@ cut_variation:
                 - [0.00, 0.40, 0.60, 0.75, 1.00] # pt 13
                 - [0.00, 0.50, 0.70, 1.00] # pt 14
 
-MassFitRanges: [
-    [1.75, 1.95],
-    [1.75, 1.95],
-    [1.75, 1.95],
-    [1.75, 1.95],
-    [1.75, 1.95],
-    [1.75, 1.95],
-    [1.75, 1.95],
-    [1.75, 1.95],
-    [1.70, 1.95],
-    [1.70, 1.95],
-    [1.66, 1.97],
-    [1.66, 2.04],
-    [1.66, 2.17],
-    [1.66, 2.17],
-       ]
 
 projections:
     # PtWeightsFile: '/home/mdicosta/alice/hf-vn/ptweights/weights/Dplus/k3050/pTweight_Dplus_k3050_test_Dplus.root'
@@ -153,3 +138,50 @@ preprocess:
     }
     workers: 1
     bkg_cuts: [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
+
+simfit:
+    Sigma: [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]
+    MassFitRanges: [
+        [1.75, 2.05],
+        [1.75, 2.05],
+        [1.75, 2.05],
+        [1.75, 2.05],
+        [1.75, 2.05],
+        [1.75, 2.05],
+        [1.75, 2.05],
+        [1.75, 2.05],
+        [1.70, 2.05],
+        [1.70, 2.05],
+        [1.66, 1.97],
+        [1.66, 2.04],
+        [1.66, 2.17],
+        [1.66, 2.17],
+           ]
+    BkgFunc: 'kExpo' # background function. If a single value is provided, it will be used for all pt bins.
+    SgnFunc: 'kGaus' # signal function. If a single value is provided, it will be used for all pt bins.
+    BkgFuncVn: 'kLin' # background function for vn. If a single value is provided, it will be used for all pt bins.
+    
+    #_________________________________________________________________________________________________________________________
+    # Optional fit configurations, if not set, the default values will be used. If single value is provided, it will be used for all pt bins.
+    #FixMean: 0 # 0: do not fix mean, 1: fix mean, default: 0
+    #MeanFile: '' # default: ''
+    #BoundMean: 0 # 0: Do not set limits on mean range, 1: the mean is set to be between MassMin[i] and MassMax[i]
+    #FixSigma: 0 # default: 0
+    #FixSigmaFromFile: '' # default: ''
+    #SigmaFile: '' # default: ''
+    #SigmaMultFactor: 1. # default: 1
+    #FixSigmaRatio: 0 # default: 0
+    #SigmaRatioFile: "" # default: ""
+    #NSigma4SB: 3 # optional
+    #Rebin: 1 # optional, default: 1
+    #InclSecPeak: 0 # 0: do not include secondary peak, 1: include secondary peak, default: 0
+    #SigmaSecPeak: [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02] # optional, default: []. If InclSecPeak = 1, then SigmaSecPeak must be provided.
+    #SigmaFileSecPeak: '' # optional, default: ''
+    #SigmaMultFactorSecPeak: 1. # optional, default: 1
+    #FixSigmaToFirstPeak: 0 # 0: do not fix sigma to the first peak, 1: fix sigma to the first peak, default: 0
+    #enableRef: false #reflection for D0. 
+    #ReflFunc: "2gaus" # reflection function, default: "2gaus". D0 specific, not available for others
+    #reflFile: ''
+    # if `enableRef` is set to `true`,  and `ReflFile` is empty, then `ReflFile` will be aotumatically filled.
+    # if `ReflFile` is filled, then it will use the filled one
+    #__________________________________________________________________________________________________________________________
