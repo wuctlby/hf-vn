@@ -1,6 +1,9 @@
-import ROOT
-import yaml
+import sys
+from alive_progress import alive_bar
+import os
 from ROOT import TFile # pyright: ignore # type: ignore
+sys.path.append("./")
+from utils import logger
 
 def get_sparses_dicts(config):
     
@@ -126,7 +129,7 @@ def get_sparses_dicts(config):
 
 def get_pt_preprocessed_sparses(config, iPt):
     
-    print("Loading preprocessed sparses")
+    logger("Loading preprocessed sparses", level='INFO')
     sparsesFlow, sparsesReco, sparsesGen, axes_dict, resolutions = {}, {}, {}, {}, {}
     pre_cfg = config['preprocess']
     axes_dict['Flow'] = {ax: iax for iax, (ax, _) in enumerate(pre_cfg['axes_data'].items())}
@@ -173,18 +176,34 @@ def get_sparses(config, get_data=True, get_mc=True, debug=False):
         axes_dict (dict): dictionary of the axes for each sparse
     """
 
-    print("Getting sparses")
-    print(f"get_data: {get_data}, get_mc: {get_mc}")
-
     sparsesFlow, sparsesReco, sparsesGen, resolutions = {}, {}, {}, {}
     axes_dict = get_sparses_dicts(config)
     pre_cfg = config['preprocess'] if config.get('preprocess') else config
     if get_data:
+        logger(f"\t\t[Data] Loading data sparses from: {pre_cfg['data']}")
         infileflow = []
         resolutions = {}
         for name, dataset in pre_cfg['data'].items():
-            infileflow = [TFile(dataset["files"])] if isinstance(dataset["files"], str) else [TFile(file) for file in dataset["files"]]
-            sparsesFlow[f'Flow_{name}'] = [infile.Get('hf-task-flow-charm-hadrons/hSparseFlowCharm') for infile in infileflow]
+            # Collect all files starting with AnalysisResults_ and ending with .root in the dataset['files'] string
+            if isinstance(dataset["files"], str) and not dataset["files"].endswith(".root"):
+                list_of_files = [f for f in os.listdir(dataset["files"]) if f.endswith(".root")]
+                infileflow = [TFile(os.path.join(dataset["files"], file)) for file in list_of_files]
+            elif isinstance(dataset["files"], list):
+                if len(dataset["files"]) == 1:
+                    if dataset["files"][0].endswith(".root"):
+                        infileflow = [TFile(dataset["files"][0])]
+                    else:
+                        list_of_files = [f for f in os.listdir(dataset["files"][0]) if f.endswith(".root")]
+                        infileflow = [TFile(os.path.join(dataset["files"][0], file)) for file in list_of_files]
+                elif len(dataset["files"]) > 1 and not all(file.endswith(".root") for file in dataset["files"]):
+                    logger("The dataset contains multiple files, but not all of them are root files. Provide a single root file or a list of root files or a directory containing all root files.", level='ERROR')
+            else:
+                infileflow = [TFile(dataset["files"])] if isinstance(dataset["files"], str) else [TFile(file) for file in dataset["files"]]
+            sparsesFlow[f'Flow_{name}'] = []
+            with alive_bar(len(infileflow), title=f"[INFO]\t\t[Data] Loading data sparses for {name}") as bar:
+                for infile in infileflow:
+                    sparsesFlow[f'Flow_{name}'].append(infile.Get('hf-task-flow-charm-hadrons/hSparseFlowCharm'))
+                    bar()
             [infile.Close() for infile in infileflow]
             resofile = TFile.Open(dataset["resolution"], 'r')
             det_A = config.get('detA', 'FT0c')
@@ -240,14 +259,14 @@ def get_sparses(config, get_data=True, get_mc=True, debug=False):
 
         [infile.Close() for infile in infiletask]
 
-    print(f"Loaded sparses!")
+    logger("Sparses loaded", level='INFO')
     if debug:
         print('\n')
         print('###############################################################')
         for key, value in axes_dict.items():
-            print(f"{key}:")
+            logger(f"{key}:", level='DEBUG')
             for sub_key, sub_value in value.items():
-                print(f"    {sub_key}: {sub_value}")
+                logger(f"    {sub_key}: {sub_value}", level='DEBUG')
         print('###############################################################')
         print('\n')
     return sparsesFlow, sparsesReco, sparsesGen, axes_dict, resolutions

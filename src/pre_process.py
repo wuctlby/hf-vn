@@ -13,11 +13,12 @@ import ROOT
 from ROOT import TFile, TObject
 import argparse
 import itertools
+from alive_progress import alive_bar
 import concurrent.futures
 script_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(f"{script_dir}/")
 sys.path.append(f"{script_dir}/../utils/")
-from utils import get_centrality_bins, make_dir_root_file
+from utils import get_centrality_bins, make_dir_root_file, logger
 from sparse_dicts import get_sparses
 
 def check_existing_outputs(ptmin, ptmax, outputDir, stage):
@@ -52,49 +53,51 @@ def write_pt_bin_reso(ptmin, ptmax, outputDir, resolutions, data_sparses):
         resolutions[f"Reso_{key}"].Write('hResolution', write_opt)
 
     outFile.Close()
-    print(f'[Reso] Finished processing pT bin {ptmin} - {ptmax}\n\n')
+    logger(f'[Reso] Finished processing pT bin {ptmin} - {ptmax}\n\n')
 
 def process_pt_bin_data(config, ptmin, ptmax, centmin, centmax, bkg_max_cut, debugPreprocessFile, outputDir, data_sparses, sparse_axes):
-    print(f'[Data] Processing pT bin {ptmin} - {ptmax}, cent {centmin}-{centmax}')
+    logger(f'[Data] Processing pT bin {ptmin} - {ptmax}, cent {centmin}-{centmax}')
     
     # Force recreate of the output file when data are reprocessed, other operations are lightweight
     outFilePath = f'{outputDir}/preprocess/AnalysisResults_pt_{int(ptmin*10)}_{int(ptmax*10)}.root'
-    print(f"    [Data] Creating file: {outFilePath}")
+    logger(f"\t\t[Data] Creating file: {outFilePath}")
     outFile = TFile.Open(outFilePath, 'recreate')
 
     axes_data, rebin_data = [], []
     for ax, rebin in config['preprocess']["axes_data"].items(): 
         axes_data.append(ax)
         rebin_data.append(rebin)
-    print(f"data_sparses: {data_sparses}")
-    for key, dataset_sparses in data_sparses.items():
-        print(f'    [Data] Processing dataset: {key}')
-        for iSparse, sparse in enumerate(dataset_sparses):
-            sparse.GetAxis(sparse_axes['Pt']).SetRangeUser(ptmin, ptmax)
-            sparse.GetAxis(sparse_axes['score_bkg']).SetRangeUser(0, bkg_max_cut)
-            proj_axes = [sparse_axes[axtokeep] for axtokeep in axes_data]
-            proj_sparse = sparse.Projection(len(proj_axes), array.array('i', proj_axes), 'O')
-            proj_sparse.SetName(sparse.GetName())
-            proj_sparse = proj_sparse.Rebin(array.array('i', rebin_data))
-            
-            if iSparse == 0:
-                merged_sparse_pt = proj_sparse.Clone()
-                make_dir_root_file(f'pt_{int(ptmin*10)}_{int(ptmax*10)}/{key}', debugPreprocessFile)
-                print(f'    [Data] Writing sparse for {key} with {merged_sparse_pt.GetNdimensions()} dimensions')
-                debugPreprocessFile.cd(f'pt_{int(ptmin*10)}_{int(ptmax*10)}/{key}')
-                for iDim in range(merged_sparse_pt.GetNdimensions()):
-                    merged_sparse_pt.Projection(iDim).Write(axes_data[iDim], TObject.kOverwrite)
-            else:
-                merged_sparse_pt.Add(proj_sparse)
+    
+        for key, dataset_sparses in data_sparses.items():
+            logger(f'\t\t[Data] Processing dataset: {key}')
+            with alive_bar(len(dataset_sparses), title=f'[INFO] \t\t[Data] Processing {key}', bar='smooth') as bar:
+                for iSparse, sparse in enumerate(dataset_sparses):
+                    sparse.GetAxis(sparse_axes['Pt']).SetRangeUser(ptmin, ptmax)
+                    sparse.GetAxis(sparse_axes['score_bkg']).SetRangeUser(0, bkg_max_cut)
+                    proj_axes = [sparse_axes[axtokeep] for axtokeep in axes_data]
+                    proj_sparse = sparse.Projection(len(proj_axes), array.array('i', proj_axes), 'O')
+                    proj_sparse.SetName(sparse.GetName())
+                    proj_sparse = proj_sparse.Rebin(array.array('i', rebin_data))
 
-        make_dir_root_file(f'Data_{key}', outFile)
-        outFile.cd(f'Data_{key}')
-        print(f'    [Data] Writing sparse for {key} with {merged_sparse_pt.GetNdimensions()} dimensions')
-        merged_sparse_pt.Write('hSparseFlowCharm')
-        del merged_sparse_pt
+                    if iSparse == 0:
+                        merged_sparse_pt = proj_sparse.Clone()
+                        make_dir_root_file(f'pt_{int(ptmin*10)}_{int(ptmax*10)}/{key}', debugPreprocessFile)
+                        logger(f'\t[Data] Writing sparse for {key} with {merged_sparse_pt.GetNdimensions()} dimensions')
+                        debugPreprocessFile.cd(f'pt_{int(ptmin*10)}_{int(ptmax*10)}/{key}')
+                        for iDim in range(merged_sparse_pt.GetNdimensions()):
+                            merged_sparse_pt.Projection(iDim).Write(axes_data[iDim], TObject.kOverwrite)
+                    else:
+                        merged_sparse_pt.Add(proj_sparse)
+
+                    bar()
+            make_dir_root_file(f'Data_{key}', outFile)
+            logger(f'\t[Data] Writing sparse for {key} with {merged_sparse_pt.GetNdimensions()} dimensions')
+            outFile.cd(f'Data_{key}')
+            merged_sparse_pt.Write('hSparseFlowCharm')
+            del merged_sparse_pt
 
     outFile.Close()
-    print(f'[Data] Finished processing pT bin {ptmin} - {ptmax}\n\n')
+    logger(f'[Data] Finished processing pT bin {ptmin} - {ptmax}\n\n')
 
 def process_pt_bin_mc(config, ptmin, ptmax, centmin, centmax, bkg_max_cut, debugPreprocessFile, outputDir, reco_sparses, gen_sparses, sparse_axes):
     print(f'[MC] Processing pT bin {ptmin} - {ptmax}, cent {centmin}-{centmax}')
@@ -179,21 +182,19 @@ def pre_process_data_mc(config):
     data_sparses, reco_sparses, gen_sparses, sparse_axes, resolutions = get_sparses(config, config["operations"]["preprocess_data"], 
                                                                                     config["operations"]["preprocess_mc"], True)
 
-    print("Sparses loaded")
-
     outputDir = config['outdir']
     os.makedirs(f'{outputDir}/preprocess', exist_ok=True)
     if os.path.exists(f'{outputDir}/preprocess/DebugPreprocess.root'):
-        print(f'Updating file: {outputDir}/preprocess/DebugPreprocess.root')
+        logger(f'File {outputDir}/preprocess/DebugPreprocess.root already exists, updating it.')
         debugPreprocessFile = TFile.Open(f'{outputDir}/preprocess/DebugPreprocess.root', 'update')
     else:
-        print(f'Creating file: {outputDir}/preprocess/DebugPreprocess.root')
+        logger(f'Creating file {outputDir}/preprocess/DebugPreprocess.root')
         debugPreprocessFile = TFile(f'{outputDir}/preprocess/DebugPreprocess.root', 'recreate')
 
     bkg_maxs = config['preprocess']['bkg_cuts']
     max_workers = config['preprocess']['workers'] # hyperparameter
     if config["operations"]["preprocess_data"] and config['preprocess'].get('data'):
-        print("##### Skimming data #####")
+        logger("##### Skimming Data #####")
         ### Centrally cut on centrality and max of bkg scores
         for key, dataset_sparses in data_sparses.items():
             for sparse in dataset_sparses:
@@ -202,13 +203,13 @@ def pre_process_data_mc(config):
         with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
             tasks_data = [executor.submit(process_pt_bin_data, config, ptmin, ptmax, centmin, centmax, bkg_maxs[iPt], 
                                                                debugPreprocessFile, outputDir, data_sparses, sparse_axes['Flow']) for iPt, (ptmin, ptmax) in enumerate(zip(ptmins, ptmaxs))]
-        print("Finished processing data")
+        logger("Finished processing data")
         with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
             tasks_reso = [executor.submit(write_pt_bin_reso, ptmin, ptmax, outputDir, resolutions, data_sparses) for ptmin, ptmax in zip(ptmins, ptmaxs)]
-        print("Finished processing resolutions")
+        logger("Finished processing resolutions")
 
     if config["operations"]["preprocess_mc"] and config['preprocess'].get('mc'):
-        print("##### Skimming Monte Carlo #####")
+        logger("##### Skimming Monte Carlo #####")
         ### Centrally cut on centrality and max of bkg scores
         for key, sparse_type in reco_sparses.items():
             [sparse.GetAxis(sparse_axes[key]['cent']).SetRangeUser(centmin, centmax) for sparse in sparse_type]
@@ -218,11 +219,10 @@ def pre_process_data_mc(config):
         with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
             tasks_mc = [executor.submit(process_pt_bin_mc, config, ptmin, ptmax, centmin, centmax, bkg_maxs[iPt], 
                                                            debugPreprocessFile, outputDir, reco_sparses, gen_sparses, sparse_axes) for iPt, (ptmin, ptmax) in enumerate(zip(ptmins, ptmaxs))]
-        print("Finished processing MC")
+        logger("Finished processing MC")
 
     if not config["operations"]["preprocess_data"] and not config["operations"]["preprocess_mc"]:
-        print("No data or mc pre-processing enabled. Exiting.")
-        sys.exit()
+        logger("No data or mc pre-processing enabled. Exiting.", level='ERROR')
     
     debugPreprocessFile.Close()
 

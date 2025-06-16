@@ -25,7 +25,7 @@ def logger(message, level='INFO'):
 		message (str): The message to log.
 		level (str): The level of the message ('INFO', 'WARNING', 'ERROR').
 	"""
-	message = f"{level}: {message}"
+	message = f"[{level}] {message}"
 	if level == 'INFO':
 		print(f"\033[32m{message}\033[0m")
 	elif level == 'WARNING':

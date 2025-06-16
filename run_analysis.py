@@ -160,6 +160,8 @@ if __name__ == "__main__":
 	if operations.get('preprocess_data') or operations.get('preprocess_mc'):
 		print("\033[32mINFO: Preprocess will be performed\033[0m")
 		os.system(f"python3 {paths['Preprocess']} {args.flow_config}")
+	else:
+		print("\033[33mWARNING: Preprocess will not be performed\033[0m")
 
 	if not args.correlated and not args.combined:
 		print("\033[33mWARNING: No cut variation will be performed\033[0m")
