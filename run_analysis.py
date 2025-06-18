@@ -14,6 +14,7 @@ paths = {
 	"Preprocess": os.path.join(work_dir, "./src/pre_process.py"),
 	"YamlCuts": os.path.join(work_dir, "./src/make_cutsets_cfgs.py"),
 	"Projections": os.path.join(work_dir, "./src/proj_thn.py"),
+	"Efficiencies": os.path.join(work_dir, "./src/compute_efficiencies.py"),
 	"GetVnVsMass": os.path.join(work_dir, "./src/get_vn_vs_mass.py"),
 }
 
@@ -56,12 +57,31 @@ def project(config, nworkers, mCutSets, correlated=True):
 	with concurrent.futures.ThreadPoolExecutor(max_workers=nworkers) as executor:
 		results_proj = list(executor.map(run_projections, range(mCutSets)))
 
+def efficiencies(config, nworkers, mCutSets):
+	print("\033[32mINFO: Efficiencies will be computed\033[0m")
+	check_dir(f"{outdir}/eff")
+
+	def run_efficiency(i):
+		"""Run efficiency computation for a given cutset index."""
+		iCutSet = f"{i:02d}"
+		print(f"\033[32mProcessing cutset {iCutSet}...\033[0m")
+
+		proj_cutset = f"{outdir}/proj/proj_{iCutSet}.root"
+		cmd = (
+			f"python3 {paths['Efficiencies']} {config} {proj_cutset} -b"
+		)
+		print(f"\033[32m{cmd}\033[0m")
+		os.system(cmd)
+
+	with concurrent.futures.ThreadPoolExecutor(max_workers=nworkers) as executor:
+		results_eff = list(executor.map(run_efficiency, range(mCutSets)))
+
 def get_vn_vs_mass(config, nworkers, mCutSets, batch=False):
 	print("\033[32mINFO: Fit v2 vs mass will be performed\033[0m")
 	check_dir(f"{outdir}/vn")
 
 	def run_fit(i):
-		"""Run simutlaneous fit for a given cutset index."""
+		"""Run simultaneous fit for a given cutset index."""
 		iCutSets = f"{i:02d}"
 		print(f"\033[32mProcessing cutset {iCutSets}...\033[0m")
 
@@ -97,6 +117,13 @@ def run_correlated_cut_variation(config, operations, nworkers, outdir):
 		print("\033[33mWARNING: Projections will not be performed\033[0m")
 
 #___________________________________________________________________________________________________________________________
+	# Efficiencies
+	if operations["efficiencies"]:
+		efficiencies(config, nworkers, mCutSets)
+	else:
+		print("\033[33mWARNING: Efficiencies will not be computed\033[0m")
+
+#___________________________________________________________________________________________________________________________
 	# Simultaneous fit
 	if operations["get_vn_vs_mass"]:
 		get_vn_vs_mass(config, nworkers, mCutSets, True)
@@ -121,6 +148,13 @@ def run_combined_cut_variation(config, operations, nworkers, outdir):
 		project(config, nworkers, mCutSets, correlated=False)
 	else:
 		print("\033[33mWARNING: Projections will not be performed\033[0m")
+
+#___________________________________________________________________________________________________________________________
+	# Efficiencies
+	if operations["efficiencies"]:
+		efficiencies(config, nworkers, mCutSets)
+	else:
+		print("\033[33mWARNING: Efficiencies will not be computed\033[0m")
 
 #___________________________________________________________________________________________________________________________
 	# Simultaneous fit

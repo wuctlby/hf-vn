@@ -1,10 +1,11 @@
 operations:
-    preprocess_data: true
-    preprocess_mc: true
-    make_yaml: true
-    proj_data: true
-    proj_mc: true
-    get_vn_vs_mass: true
+    preprocess_data: false
+    preprocess_mc: false
+    make_yaml: false
+    proj_data: false
+    proj_mc: false
+    efficiencies: true
+    get_vn_vs_mass: false
 
 outdir: '/home/mdicosta/alice/hf-vn/test_output'
 suffix: 'test'
