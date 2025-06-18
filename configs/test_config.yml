@@ -10,7 +10,7 @@ outdir: '/home/mdicosta/alice/hf-vn/test_output'
 suffix: 'test'
 centrality: 'k3050'
 Dmeson: 'Dplus'
-nworkers: 38
+nworkers: 1
 
 # pt bins
 ptbins: [

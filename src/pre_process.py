@@ -88,12 +88,11 @@ def process_pt_bin_data(config, ptmin, ptmax, centmin, centmax, bkg_max_cut, deb
                             merged_sparse_pt.Projection(iDim).Write(axes_data[iDim], TObject.kOverwrite)
                     else:
                         merged_sparse_pt.Add(proj_sparse)
-
                     bar()
             make_dir_root_file(f'Data_{key}', outFile)
             logger(f'\t[Data] Writing sparse for {key} with {merged_sparse_pt.GetNdimensions()} dimensions')
             outFile.cd(f'Data_{key}')
-            merged_sparse_pt.Write('hSparseFlowCharm')
+            merged_sparse_pt.Write('hSparseFlowCharm', TObject.kOverwrite)
             del merged_sparse_pt
 
     outFile.Close()
@@ -173,7 +172,7 @@ def process_pt_bin_mc(config, ptmin, ptmax, centmin, centmax, bkg_max_cut, debug
 
 def pre_process_data_mc(config):
 
-    # Load the configuration    
+    # Load the configuration
     ptmins = config['ptbins'][:-1]
     ptmaxs = config['ptbins'][1:] 
     centmin, centmax = get_centrality_bins(config['centrality'])[1]
@@ -181,7 +180,6 @@ def pre_process_data_mc(config):
     # Load the ThnSparse
     data_sparses, reco_sparses, gen_sparses, sparse_axes, resolutions = get_sparses(config, config["operations"]["preprocess_data"], 
                                                                                     config["operations"]["preprocess_mc"], True)
-
     outputDir = config['outdir']
     os.makedirs(f'{outputDir}/preprocess', exist_ok=True)
     if os.path.exists(f'{outputDir}/preprocess/DebugPreprocess.root'):
@@ -223,7 +221,6 @@ def pre_process_data_mc(config):
 
     if not config["operations"]["preprocess_data"] and not config["operations"]["preprocess_mc"]:
         logger("No data or mc pre-processing enabled. Exiting.", level='ERROR')
-    
     debugPreprocessFile.Close()
 
 if __name__ == "__main__":
