@@ -1,6 +1,6 @@
 '''
 Script for extracting v_n vs invariant mass for D mesons
-run: python get_vn_vs_mass.py fitConfigFileName.yml inFileName.root -o outputdir [--suffix _suffix] [--batch]
+run: python get_vn_vs_mass.py fitConfigFileName.yml inFileName.root [--batch]
 '''
 
 import argparse
@@ -14,17 +14,20 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 gInterpreter.ProcessLine(f'#include "{script_dir}/../invmassfitter/InvMassFitter.cxx"')
 gInterpreter.ProcessLine(f'#include "{script_dir}/../invmassfitter/VnVsMassFitter.cxx"')
 from ROOT import InvMassFitter, VnVsMassFitter
-from utils.StyleFormatter import SetGlobalStyle, SetObjectStyle
-from utils.fit_utils import RebinHisto
-from utils.utils import logger, get_centrality_bins, get_vnfitter_results, get_refl_histo, get_particle_info
+os.sys.path.append(os.path.join(script_dir, '..', 'utils'))
+from StyleFormatter import SetGlobalStyle, SetObjectStyle
+from fit_utils import RebinHisto
+from utils import logger, get_centrality_bins, get_vnfitter_results, get_refl_histo, get_particle_info
 #from utils.kde_producer import kde_producer # TODO: add correlated backgrounds
 
-def get_vn_vs_mass(fitConfigFileName, inFileName,
-                   outputdir, suffix, batch):
+def get_vn_vs_mass(fitConfigFileName, inFileName, batch):
     #______________________________________________________
-    # Read configuration file    
+    # Read configuration file
     with open(fitConfigFileName, 'r', encoding='utf8') as ymlfitConfigFile:
         config = yaml.load(ymlfitConfigFile, yaml.FullLoader)
+
+    # Set outfile name
+    outFileName = inFileName.replace('proj', 'raw_yields').replace('.root', '') 
 
     gROOT.SetBatch(batch)
     SetGlobalStyle(padleftmargin=0.14, padbottommargin=0.12, padtopmargin=0.12, opttitle=1)
@@ -132,8 +135,8 @@ def get_vn_vs_mass(fitConfigFileName, inFileName,
     fMassSecPeakFunc, fBkgFuncVn, fVnSecPeakFunc, fVnCompFuncts,\
     hMCSgn, hMCRefl = ([] for _ in range(16))
     for iPt, (ptMin, ptMax) in enumerate(zip(ptmins, ptmaxs)):
-        hMass.append(infile.Get(f'pt_{ptMin*10:.0f}_{ptMax*10:.0f}/hMass_data'))
-        hVn.append(infile.Get(f'pt_{ptMin*10:.0f}_{ptMax*10:.0f}/hVnVsMass'))
+        hMass.append(infile.Get(f'pt_{ptMin*10:.0f}_{ptMax*10:.0f}/hMassData'))
+        hVn.append(infile.Get(f'pt_{ptMin*10:.0f}_{ptMax*10:.0f}/hVnVsMassData'))
         
         hMass[iPt].SetDirectory(0)
         hVn[iPt].SetDirectory(0)
@@ -499,6 +502,7 @@ def get_vn_vs_mass(fitConfigFileName, inFileName,
 
     # Save output histos
     logger('Saving output histos', level='INFO')
+    os.makedirs(os.path.dirname(outFileName), exist_ok=True)
     for iPt, (ptMin, ptMax) in enumerate(zip(ptmins, ptmaxs)):
         if iPt == 0:
             suffix_pdf = '('
@@ -507,11 +511,10 @@ def get_vn_vs_mass(fitConfigFileName, inFileName,
         else:
             suffix_pdf = ''
         if len(ptmins)==1:
-            cSimFit[iPt].SaveAs(f'{outputdir}/SimFit{suffix}_{particleName}.pdf')
+            cSimFit[iPt].SaveAs(f'{outFileName}.pdf')
         else:
-            cSimFit[iPt].SaveAs(f'{outputdir}/SimFit{suffix}_{particleName}.pdf{suffix_pdf}')
-    outfile_name = f'{outputdir}/raw_yields{suffix}.root'
-    outFile = TFile(outfile_name, 'recreate')
+            cSimFit[iPt].SaveAs(f'{outFileName}.pdf{suffix_pdf}')
+    outFile = TFile(f'{outFileName}.root', 'recreate')
 
     for canv in cSimFit:
         canv.Write()
@@ -555,23 +558,17 @@ def get_vn_vs_mass(fitConfigFileName, inFileName,
     outFile.Close()
 
     if not batch:
-        logger(f'Output file saved as {outfile_name}', level='INFO')
+        logger(f'Output file saved as {outFileName}.pdf', level='INFO')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Arguments')
     parser.add_argument('fitConfigFileName', metavar='text', default='config_Ds_Fit.yml')
     parser.add_argument('inFileName', metavar='text', default='')
-    parser.add_argument("--outputdir", "-o", metavar="text",
-                        default=".", help="output directory")
-    parser.add_argument("--suffix", "-s", metavar="text",
-                        default="", help="suffix for output files")
     parser.add_argument('--batch', help='suppress video output', action='store_true')
     args = parser.parse_args()
 
     get_vn_vs_mass(
         args.fitConfigFileName,
         args.inFileName,
-        args.outputdir,
-        args.suffix,
         args.batch
     )

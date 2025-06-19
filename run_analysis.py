@@ -26,21 +26,11 @@ def make_yaml(config, outdir, correlated=False, combined=False):
 	if combined:
 		os.system(f"python3 {paths['YamlCuts']} {config} -o {outdir}")
 
-def make_yaml(config, outdir, correlated=False, combined=False):
-	print("\033[32mINFO: Make yaml will be performed\033[0m")
-	check_dir(f"{outdir}/cutsets")
-	print(f"\033[32mpython3 {paths['YamlCuts']} {config} -o {outdir} --correlated\033[0m")
-	if correlated:
-		os.system(f"python3 {paths['YamlCuts']} {config} -o {outdir} --correlated")
-	if combined:
-		os.system(f"python3 {paths['YamlCuts']} {config} -o {outdir}")
-
-def project(config, nworkers, mCutSets, correlated=True, multitrial=False):
+def project(config, nworkers, mCutSets, correlated=True):
 	print("\033[32mINFO: Projections will be performed\033[0m")
 	check_dir(f"{outdir}/proj")
 
 	method = "--correlated" if correlated else ""
-	multitrial = "--multitrial" if multitrial else ""
 
 	def run_projections(i):
 		"""Run sparse projection for a given cutset index."""
@@ -49,7 +39,7 @@ def project(config, nworkers, mCutSets, correlated=True, multitrial=False):
 
 		config_cutset = f"{outdir}/cutsets/cutset_{iCutSets}.yml"
 		cmd = (
-			f"python3 {paths['Projections']} {config} -cc {config_cutset} {method} {multitrial}"
+			f"python3 {paths['Projections']} {config} -cc {config_cutset} {method}"
 		)
 		print(f"\033[32m{cmd}\033[0m")
 		os.system(cmd)
@@ -68,7 +58,7 @@ def get_vn_vs_mass(config, nworkers, mCutSets, batch=False):
 
 		proj_cutset = f"{outdir}/proj/proj_{iCutSets}.root"
 		cmd = (
-			f"python3 {paths['GetVnVsMass']} {config} {proj_cutset} -o {outdir}/vn -s _{iCutSets}"
+			f"python3 {paths['GetVnVsMass']} {config} {proj_cutset}"
 		)
 		if batch: 
 			cmd += " --batch"
@@ -76,7 +66,7 @@ def get_vn_vs_mass(config, nworkers, mCutSets, batch=False):
 		os.system(cmd)
 
 	with concurrent.futures.ThreadPoolExecutor(max_workers=nworkers) as executor:
-		results_proj = list(executor.map(run_fit, range(mCutSets)))
+		results_fit = list(executor.map(run_fit, range(mCutSets)))
 
 def run_correlated_cut_variation(config, operations, nworkers, outdir):
 
@@ -117,8 +107,8 @@ def run_combined_cut_variation(config, operations, nworkers, outdir):
 
 #___________________________________________________________________________________________________________________________
 	# Projection for MC and apply the ptweights
-	if operations["proj_mc"] or operations["proj_data"] or operations.get('proj_multitrial', False):
-		project(config, nworkers, mCutSets, correlated=False, multitrial=operations.get('proj_multitrial', False))
+	if operations["proj_mc"] or operations["proj_data"]:
+		project(config, nworkers, mCutSets, correlated=False)
 	else:
 		print("\033[33mWARNING: Projections will not be performed\033[0m")
 

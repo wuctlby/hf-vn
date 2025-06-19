@@ -61,8 +61,8 @@ def modify_yaml_bdt(config_flow, config_mod, output_dir):
         pt_bin_index = cfg_flow['ptbins'].index(ptmin)
         ref_config_ptbin = get_reference_config_pt_bin(cfg_flow, pt_bin_index)
         
-        os.makedirs(f"{output_dir}_multitrial/pt_{int(ptmin*10)}_{int(ptmax*10)}/config_sys/", exist_ok=True)
-        output_file = os.path.join(f"{output_dir}_multitrial/pt_{int(ptmin*10)}_{int(ptmax*10)}/config_sys/", f"config_reference.yml")
+        os.makedirs(f"{output_dir}_multitrial/pt_{int(ptmin*10)}_{int(ptmax*10)}/", exist_ok=True)
+        output_file = os.path.join(f"{output_dir}_multitrial/pt_{int(ptmin*10)}_{int(ptmax*10)}/", f"config_reference.yml")
         with open(output_file, 'w') as out_file:
             yaml.dump(ref_config_ptbin, out_file, default_flow_style=False)
 
@@ -124,8 +124,8 @@ def modify_yaml_bdt(config_flow, config_mod, output_dir):
                 # function would be empty, leading to a crash
                 cfg_variant["NSigma4SB"] = [2]
 
-
-            output_file = os.path.join(f"{output_dir}_multitrial/pt_{int(ptmin*10)}_{int(ptmax*10)}/config_sys/", f"config_var_{idx}.yml")
+            os.makedirs(os.path.join(f"{output_dir}_multitrial/pt_{int(ptmin*10)}_{int(ptmax*10)}/trial_{idx}"), exist_ok=True)
+            output_file = os.path.join(f"{output_dir}_multitrial/pt_{int(ptmin*10)}_{int(ptmax*10)}/trial_{idx}", f"config_trial_{idx}.yml")
             with open(output_file, 'w') as out_file:
                 yaml.dump(cfg_variant, out_file, default_flow_style=False, sort_keys=False)
 

@@ -75,16 +75,12 @@ def make_yaml(flow_config, outputdir, correlated):
         combinations = {
             'icutset': iCut,
             'Pt': {'min': ptmins, 'max': ptmaxs},
-            'cutvars': {
-                'score_bkg': {'min': [0.0] * len(ptmins), 'max': bkg_max},
-                'score_FD': {'min': fd_min, 'max': fd_max},
-            },
-            'fitrangemin': [range[0] for range in cfg["simfit"]['MassFitRanges']],
-            'fitrangemax': [range[1] for range in cfg["simfit"]['MassFitRanges']],
+            'score_bkg': {'min': [0.0] * len(ptmins), 'max': bkg_max},
+            'score_FD': {'min': fd_min, 'max': fd_max},
         }
 
         with open(f'{outputdir}/cutsets/cutset_{iCut:02}.yml', 'w') as file:
-            yaml.dump(combinations, file, default_flow_style=False)
+            yaml.dump(combinations, file, default_flow_style=False, sort_keys=False)
 
     print(f'Cutsets saved in {outputdir}/cutsets')
 

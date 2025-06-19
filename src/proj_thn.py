@@ -4,11 +4,14 @@ python3 proj_thn.py config_flow.yml --cutsetConfig config_cutset.yml [-c --corre
 If the last argument is not provided, the script will project the combined cutsets.
 '''
 import ROOT
-import uproot
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import yaml
 import argparse
 import sys
 import os
+import glob
+from pathlib import Path
+from functools import partial
 from ROOT import TFile, TObject
 from alive_progress import alive_bar
 from scipy.interpolate import make_interp_spline
@@ -21,43 +24,54 @@ ROOT.TH1.AddDirectory(False)
 import yaml
 from ROOT import TFile
 
-def proj_multitrial(config, config_cutsets):
-    # Load the original YAML config
-    with open(config['OriginalConfig'], 'r') as ymlCfgFile:
-        original_config = yaml.load(ymlCfgFile, yaml.FullLoader)
+def proj_multitrial(config, multitrial_folder):
 
-    print("Processing multitrial projections...")
+    pt_bin_label = Path(multitrial_folder).name
+    print(f"\n\n\nProcessing multitrial projections for pt bin {pt_bin_label} ...")
 
-    # Define the pt bin directory name
-    pt_bin_label = f"pt_{int(config_cutsets['Pt']['min'][0] * 10)}_{int(config_cutsets['Pt']['max'][0] * 10)}"
-    icut = config_cutsets['icutset']
-    trial = config['iTrial']
+    # Load default cutsets
+    default_cutsets = [f"{config['outdir']}/cutvar_{config['suffix']}_combined/cutsets/{f}" for f in os.listdir(f"{config['outdir']}/cutvar_{config['suffix']}_combined/cutsets") if f.endswith('.yml')]
+    # Load Mass and MassSp histos from the default cases
+    default_histos = {}
+    for default_cutset in default_cutsets:
+        suffix = os.path.basename(default_cutset).replace(".yml", "").replace("cutset_", "")
+        default_proj = TFile.Open(default_cutset.replace(".yml", ".root").replace("cutsets", "proj").replace("cutset", "proj"), "READ")
+        default_histos[suffix] = {}
+        default_histos[suffix]['Mass'] = default_proj.Get(f"{pt_bin_label}/hMassData")
+        default_histos[suffix]['Mass'].SetDirectory(0)
+        default_histos[suffix]['MassSp'] = default_proj.Get(f"{pt_bin_label}/hMassSpData")
+        default_histos[suffix]['MassSp'].SetDirectory(0)
+        default_proj.Close()
 
-    # Input and output file paths
-    in_file_path = f"{original_config['outdir']}/cutvar_{original_config['suffix']}_combined/proj/proj_{icut:02d}.root"
-    original_file = TFile.Open(in_file_path, "READ")
-    hist_mass_sp = original_file.Get(f"{pt_bin_label}/hMassSpData")
-    first_reso_key = next(iter(config['preprocess']['data']))            # Changes required when more than one dataset will be processed
-    reso = original_file.Get(f"{pt_bin_label}/hResolution_Reso_Flow_{first_reso_key}").GetBinContent(1)
+    def process_cutset(multitrial_dir, default_histos):
+        print(f"Processing multitrial cutset in {multitrial_dir}")
+        trial_number = Path(multitrial_dir).name.replace("trial_", "")
+        try:
+            with open(f"{multitrial_dir}/config_trial_{trial_number}.yml", 'r') as ymlCutSetFile:
+                config_trial = yaml.safe_load(ymlCutSetFile)
+        except Exception as e:
+            print(f"Error opening or reading config file for trial {trial_number}: {e}")
+            return
+        
+        multitrial_cutsets = glob.glob(f"{multitrial_dir}/cutsets/*.yml")
+        print(f"Processing multitrial cutsets for trial {trial_number}: {multitrial_cutsets}")
+        for multitrial_cutset in multitrial_cutsets:
+            suffix = os.path.basename(multitrial_cutset).replace(".yml", "").replace("cutset_", "")
+            output_dir = os.path.dirname(multitrial_cutset).replace('cutsets', 'proj')
+            os.makedirs(output_dir, exist_ok=True)
+            output_path = multitrial_cutset.replace('.yml', '.root').replace('cutsets', 'proj').replace('cutset', 'proj')
+            output_file = TFile.Open(output_path, "RECREATE")
+            output_file.mkdir(pt_bin_label)
+            output_file.cd(pt_bin_label)
+            default_histos[suffix]['Mass'].Write("hMassData")
+            hist_vn_vs_mass = profile_mass_sp(default_histos[suffix]['MassSp'], config_trial['projections']['inv_mass_bins'][0], 0.746)
+            hist_vn_vs_mass.Write("hVnVsMassData")
+            output_file.Close()
 
-    # Open new ROOT file for writing
-    out_file_path = f"{config['outdir']}/cutvar_{trial}_combined/proj/proj_{icut:02d}.root"
-    output_file = TFile.Open(out_file_path, "RECREATE")
-    output_file.mkdir(pt_bin_label)
-    output_file.cd(pt_bin_label)
-
-    # Project mass axis and write it
-    hist_mass_sp.ProjectionX().Write("hMassData")
-    # Compute vn vs mass profile histogram
-    hist_vn_vs_mass = profile_mass_sp(hist_mass_sp, config['projections']['inv_mass_bins'][0], reso)
-    hist_vn_vs_mass.SetName("hVnVsMassData")
-    hist_vn_vs_mass.Write()
-
-    print(f"Saved histograms to {out_file_path} under '{pt_bin_label}'")
-
-    # Close files
-    original_file.Close()
-    output_file.Close()
+    # Parallel execution
+    multitrial_dirs = [f for f in glob.glob(f"{multitrial_folder}/trial_*/")]
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        executor.map(partial(process_cutset, default_histos=default_histos), multitrial_dirs)
 
 def proj_data(sparses_dict, reso_dict, axes, inv_mass_bins, proj_scores, writeopt):
 
@@ -252,23 +266,23 @@ if __name__ == "__main__":
                         help='Optional cutset configuration file (default: cutsetConfig.yaml)')
     parser.add_argument("--correlated", "-c", action="store_true",
                         help="Produce projection files for correlated cuts")
-    parser.add_argument("--multitrial", "-mult", action="store_true",
-                        help="Produce projection files for multitrial systematics")
+    parser.add_argument("--multitrial_folder", "-multfolder", metavar="text",
+                        default="", help="Produce projection files for multitrial systematics")
     args = parser.parse_args()
 
     with open(args.config, 'r') as ymlCfgFile:
         config = yaml.load(ymlCfgFile, yaml.FullLoader)
     operations = config["operations"]
 
+    if args.multitrial_folder != "":
+        print(f"\n\nRunning multitrial projections!")
+        print(f"args.config: {args.config}")
+        proj_multitrial(config, args.multitrial_folder)
+        sys.exit(0)
+
     with open(args.cutsetConfig, 'r') as ymlCutSetFile:
         cutSetCfg = yaml.load(ymlCutSetFile, yaml.FullLoader)
         iCut = f"{int(cutSetCfg['icutset']):02d}"
-    cutVars = cutSetCfg['cutvars']
-
-    if args.multitrial:
-        print(f"\n\nRunning multitrial projections for cutset {iCut}!")
-        proj_multitrial(config, cutSetCfg)
-        sys.exit(0)
 
     method = "correlated" if args.correlated else "combined"
     outDir = config['outdir'] + f'/cutvar_{config["suffix"]}_{method}/proj/'
@@ -291,8 +305,8 @@ if __name__ == "__main__":
 
     with alive_bar(len(cutSetCfg['Pt']['min']), title='Processing pT bins') as bar:
         for iPt, (ptMin, ptMax, bkg_min, bkg_max, fd_min, fd_max) in enumerate(zip(cutSetCfg['Pt']['min'], cutSetCfg['Pt']['max'],
-                                                                                   cutVars['score_bkg']['min'], cutVars['score_bkg']['max'],
-                                                                                   cutVars['score_FD']['min'], cutVars['score_FD']['max'])):
+                                                                                   cutSetCfg['score_bkg']['min'], cutSetCfg['score_bkg']['max'],
+                                                                                   cutSetCfg['score_FD']['min'], cutSetCfg['score_FD']['max'])):
 
             # Cut on centrality and pt on data applied in the preprocessing
             print(f'Projecting distributions for {ptMin:.1f} < pT < {ptMax:.1f} GeV/c')
