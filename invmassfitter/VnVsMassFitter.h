@@ -108,6 +108,7 @@ public:
     fFixVnSecPeakToSgn=kFALSE;
   }
   void SetHarmonic(Int_t harmonic=2) {fHarmonic=harmonic;}
+  void SetSuppressOutput(Bool_t suppress) {fSuppressOutput=suppress;}
 
   //getters
   Double_t GetVn() const {return fVn;}
@@ -377,6 +378,7 @@ private:
   std::vector<Double_t> fMassInitWeights;               /// init values of the templates' weights
   std::vector<Double_t> fVnInitWeights;                 /// init values of the templates' weights
   Bool_t                fTemplSameVnOfSignal;           /// init values of the templates' weights
+  Bool_t                fSuppressOutput;                /// flag to suppress outputs (for multitrial fits) 
 
     /// \cond CLASSDEF
   ClassDef(VnVsMassFitter,5);

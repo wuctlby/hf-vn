@@ -3,15 +3,16 @@ ptbins:
 -   range: [1.0, 1.5]
     MaxChi2: 10
     MinSignificance: 5
-    MaxSignificance: 500
+    MaxSignificance: 400
     multitrial:
         inv_mass_bins_steps: [0.01, 0.02]
         MassMin: [1.71, 1.73] #, 1.75, 1.77, 1.79]
         MassMax: [1.93, 1.97] #, 1.97, 2.0]
-        # BkgFuncVn: ["kLin", "kPol2"]
-        # BkgFunc: ["kLin", "kPol2", "kPol3"]
+        BkgFuncVn: ["kLin", "kPol2"]
+        BkgFunc: ["kLin", "kPol2", "kPol3"]
+        SgnFunc: ["kGaus", "k2Gaus"]
         # Rebin: [1,2,3]
-            # FixMean: [1, 0]
+        # FixMean: [1, 0]
 # -   range: [1.5, 2.0]
 #     MaxChi2: 10
 #     MinSignificance: 5

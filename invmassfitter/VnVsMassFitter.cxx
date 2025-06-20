@@ -106,7 +106,8 @@ VnVsMassFitter::VnVsMassFitter()
   ,fFixSecWidth(kFALSE)
   ,fDoSecondPeakVn(kFALSE)
   ,fFixVnSecPeakToSgn(kFALSE)
-  ,fHarmonic(2) {
+  ,fHarmonic(2)
+  ,fSuppressOutput(kFALSE) {
 
     //default constructor
 }
@@ -195,7 +196,8 @@ VnVsMassFitter::VnVsMassFitter(TH1F* hMass, TH1F* hvn, Double_t min, Double_t ma
   ,fFixSecWidth(kFALSE)
   ,fDoSecondPeakVn(kFALSE)
   ,fFixVnSecPeakToSgn(kFALSE)
-  ,fHarmonic(2) {
+  ,fHarmonic(2)
+  ,fSuppressOutput(kFALSE) {
 
     //standard constructor
     fMassHisto = (TH1F*)hMass->Clone("fHistoInvMass");
@@ -229,7 +231,10 @@ VnVsMassFitter::~VnVsMassFitter() {
 
 //________________________________________________________________
 Bool_t VnVsMassFitter::SimultaneousFit(Bool_t drawFit) {
-
+  if (fSuppressOutput) {
+    cout << "Suppressing output for simultaneous fit" << std::endl;
+    gErrorIgnoreLevel = kFatal;
+  }
   if(!fMassHisto || !fVnVsMassHisto) {printf("Histograms not set! Exit."); return kFALSE;}
   DefineNumberOfParameters();
 
@@ -348,7 +353,9 @@ Bool_t VnVsMassFitter::SimultaneousFit(Bool_t drawFit) {
   if(!isFitOk) return kFALSE;
 
   ROOT::Fit::FitResult result = fitter.Result();
-  result.Print(std::cout);
+  if (!fSuppressOutput) {
+    result.Print(std::cout);
+  }
   if(fTemplates && fTemplSameVnOfSignal) {
     printf("\n --->Templates share the vn parameter with the signal! \n");
   }
@@ -607,6 +614,9 @@ Bool_t VnVsMassFitter::MassPrefit() {
     if(fFixRflOverSig) {fMassFitter->SetFixReflOverS(fRflOverSig);}
   }
   if(fTemplates) {fMassFitter->SetTemplates(fKDETemplates, fMassInitWeights, fMassWeightsLowerLims, fMassWeightsUpperLims);}
+  if (fSuppressOutput) {
+    fMassFitter->SetSuppressOutput(kTRUE);
+  }
   Bool_t status = fMassFitter->MassFitter(kFALSE);
 
   if(status) {
@@ -663,7 +673,12 @@ Bool_t VnVsMassFitter::VnSBPrefit() {
       printf("Error in setting signal par names: check fVnBkgFuncType");
       break;
   }
-  Int_t status = gVnVsMassSB->Fit(fVnBkgFuncSb,"","",fMassMin,fMassMax);
+  Int_t status{-1};
+  if (fSuppressOutput) {
+    status = gVnVsMassSB->Fit(fVnBkgFuncSb,"Q","",fMassMin,fMassMax);
+  } else {
+    status = gVnVsMassSB->Fit(fVnBkgFuncSb,"","",fMassMin,fMassMax);
+  }
 
   fSBVnPrefitChiSquare = fVnBkgFuncSb->GetChisquare();
   fSBVnPrefitNDF       = fVnBkgFuncSb->GetNDF();

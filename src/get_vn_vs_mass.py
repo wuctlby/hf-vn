@@ -20,7 +20,7 @@ from fit_utils import RebinHisto
 from utils import logger, get_centrality_bins, get_vnfitter_results, get_refl_histo, get_particle_info
 #from utils.kde_producer import kde_producer # TODO: add correlated backgrounds
 
-def get_vn_vs_mass(fitConfigFileName, inFileName, batch):
+def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
     #______________________________________________________
     # Read configuration file
     with open(fitConfigFileName, 'r', encoding='utf8') as ymlfitConfigFile:
@@ -274,6 +274,7 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch):
         vnFitter.append(VnVsMassFitter(hMassForFit[iPt], hVnForFit[iPt],
                                             massMin, massMax, bkgEnum, sgnEnum, bkgVnEnum))
         vnFitter[iPt].SetHarmonic(harmonic)
+        vnFitter[iPt].SetSuppressOutput(isMultitrial)
 
         #_____________________________________________________
         # Set the parameters for the fit
@@ -565,10 +566,12 @@ if __name__ == "__main__":
     parser.add_argument('fitConfigFileName', metavar='text', default='config_Ds_Fit.yml')
     parser.add_argument('inFileName', metavar='text', default='')
     parser.add_argument('--batch', help='suppress video output', action='store_true')
+    parser.add_argument('--multitrial', help='suppress reduntant prints', action='store_true')
     args = parser.parse_args()
 
     get_vn_vs_mass(
         args.fitConfigFileName,
         args.inFileName,
-        args.batch
+        args.batch,
+        args.multitrial
     )

@@ -44,7 +44,6 @@ def proj_multitrial(config, multitrial_folder):
         default_proj.Close()
 
     def process_cutset(multitrial_dir, default_histos):
-        print(f"Processing multitrial cutset in {multitrial_dir}")
         trial_number = Path(multitrial_dir).name.replace("trial_", "")
         try:
             with open(f"{multitrial_dir}/config_trial_{trial_number}.yml", 'r') as ymlCutSetFile:
@@ -54,7 +53,6 @@ def proj_multitrial(config, multitrial_folder):
             return
         
         multitrial_cutsets = glob.glob(f"{multitrial_dir}/cutsets/*.yml")
-        print(f"Processing multitrial cutsets for trial {trial_number}: {multitrial_cutsets}")
         for multitrial_cutset in multitrial_cutsets:
             suffix = os.path.basename(multitrial_cutset).replace(".yml", "").replace("cutset_", "")
             output_dir = os.path.dirname(multitrial_cutset).replace('cutsets', 'proj')

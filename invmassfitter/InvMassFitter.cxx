@@ -961,7 +961,11 @@ Bool_t InvMassFitter::PrepareHighPolFit(TF1 *fback){
       funcbkg->SetParameter(1,estimateslope);
     }
     printf("   ---> Pre-fit of background with pol degree %d ---\n",fCurPolDegreeBkg);
-    fHistoInvMass->Fit(funcbkg,"REMN","");
+    if (fSuppressOutput) {
+      fHistoInvMass->Fit(funcbkg,"REMNQ","");
+    } else {
+      fHistoInvMass->Fit(funcbkg,"REMN","");
+    }
     funcPrev=(TF1*)funcbkg->Clone("ftemp");
     delete funcbkg;
     fCurPolDegreeBkg++;
