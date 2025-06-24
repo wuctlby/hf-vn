@@ -107,6 +107,9 @@ class InvMassFitter : public TNamed {
     fMassWeightsUpperLims=maxweights;
     fTemplates=kTRUE;
   }
+  void SetSuppressOutput(Bool_t suppress){
+    if (suppress) fFitOption+="Q";
+  }
 
   void IncludeSecondGausPeak(Double_t mass, Bool_t fixm, Double_t width, Bool_t fixw){
     fSecondPeak=kTRUE; fSecMass=mass; fSecWidth=width;
@@ -261,7 +264,8 @@ class InvMassFitter : public TNamed {
   std::vector<Double_t> fMassWeightsUpperLims;     /// upper limit of the templates' weights
   std::vector<Double_t> fMassWeightsLowerLims;     /// lower limit of the templates' weights
   std::vector<Double_t> fMassInitWeights;          /// init value of the templates' weights
-  
+  Bool_t                fSuppressOutput;           /// flag to suppress outputs (for multitrial fits) 
+
   /// \cond CLASSIMP     
   ClassDef(InvMassFitter,9); /// class for invariant mass fit
   /// \endcond
