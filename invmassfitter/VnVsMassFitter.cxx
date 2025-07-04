@@ -609,7 +609,7 @@ Bool_t VnVsMassFitter::MassPrefit() {
   if(fMassBkgFuncType==kPoln) {fMassFitter->SetPolDegreeForBackgroundFit(fPolDegreeBkg);}
   if(fSecondPeak) {fMassFitter->IncludeSecondGausPeak(fSecMass,fFixSecMass,fSecWidth,fFixSecWidth);}
   if(fReflections) {
-    fHistoTemplRfl = (TH1F*)fMassFitter->SetTemplateReflections(fHistoTemplRflInit,fRflOpt,fMinRefl,fMaxRefl);
+    fHistoTemplRfl = (TH1F*)fMassFitter->SetTemplateReflections(fHistoTemplRflInit,fRflOpt,fMinRefl,fMaxRefl)->Clone("fHistoTemplRfl");
     if(fRflOverSig>0) {fMassFitter->SetInitialReflOverS(fRflOverSig);}
     if(fFixRflOverSig) {fMassFitter->SetFixReflOverS(fRflOverSig);}
   }
