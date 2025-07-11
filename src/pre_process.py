@@ -12,6 +12,7 @@ import array
 import ROOT
 from ROOT import TFile, TObject
 import argparse
+import gc
 import itertools
 from alive_progress import alive_bar
 import concurrent.futures
@@ -81,6 +82,9 @@ def process_pt_bin_data(config, ptmin, ptmax, centmin, centmax, bkg_max_cut, deb
 
                     if iSparse == 0:
                         merged_sparse_pt = proj_sparse.Clone()
+                        proj_sparse.Delete()  # Delete the original projection to save memory
+                        del proj_sparse
+                        gc.collect()
                         make_dir_root_file(f'pt_{int(ptmin*10)}_{int(ptmax*10)}/{key}', debugPreprocessFile)
                         logger(f'\t[Data] Writing sparse for {key} with {merged_sparse_pt.GetNdimensions()} dimensions')
                         debugPreprocessFile.cd(f'pt_{int(ptmin*10)}_{int(ptmax*10)}/{key}')
@@ -88,12 +92,17 @@ def process_pt_bin_data(config, ptmin, ptmax, centmin, centmax, bkg_max_cut, deb
                             merged_sparse_pt.Projection(iDim).Write(axes_data[iDim], TObject.kOverwrite)
                     else:
                         merged_sparse_pt.Add(proj_sparse)
+                        proj_sparse.Delete()  # Delete the original projection to save memory
+                        del proj_sparse
+                        gc.collect()
                     bar()
             make_dir_root_file(f'Data_{key}', outFile)
             logger(f'\t[Data] Writing sparse for {key} with {merged_sparse_pt.GetNdimensions()} dimensions')
             outFile.cd(f'Data_{key}')
             merged_sparse_pt.Write('hSparseFlowCharm', TObject.kOverwrite)
+            merged_sparse_pt.Delete()
             del merged_sparse_pt
+            gc.collect()
 
     outFile.Close()
     logger(f'[Data] Finished processing pT bin {ptmin} - {ptmax}\n\n')
@@ -113,12 +122,10 @@ def process_pt_bin_mc(config, ptmin, ptmax, centmin, centmax, bkg_max_cut, debug
     outFile, write_opt = check_existing_outputs(ptmin, ptmax, outputDir, "MC")
 
     axes_reco, rebin_reco, axes_gen, rebin_gen = [], [], [], []
-    for ax, rebin in config['preprocess']["axes_reco"].items(): 
-        axes_reco.append(ax)
-        rebin_reco.append(rebin)
-    for ax, rebin in config['preprocess']["axes_gen"].items(): 
-        axes_gen.append(ax)
-        rebin_gen.append(rebin)
+    axes_reco = config['preprocess']["axes_reco"]['axis_names']
+    rebin_reco = config['preprocess']["axes_reco"]['rebin_factors']
+    axes_gen = config['preprocess']["axes_gen"]['axis_names']
+    rebin_gen = config['preprocess']["axes_gen"]['rebin_factors']
 
     # cut on pt and bkg on all the reco and gen sparses
     make_dir_root_file('MC/Reco/', outFile)
@@ -142,6 +149,7 @@ def process_pt_bin_mc(config, ptmin, ptmax, centmin, centmax, bkg_max_cut, debug
             else:
                 processed_sparse.Add(proj_sparse)
         outFile.cd('MC/Reco/')
+        processed_sparse.SetName(f'h{key}')
         processed_sparse.Write(f'h{key}', write_opt)
         del processed_sparse
 
@@ -154,7 +162,7 @@ def process_pt_bin_mc(config, ptmin, ptmax, centmin, centmax, bkg_max_cut, debug
             proj_axes = [sparse_axes[key][axtokeep] for axtokeep in axes_gen if axtokeep in sparse_axes[key]]
             proj_sparse = cloned_sparse.Projection(len(proj_axes), array.array('i', proj_axes), 'O')
             proj_sparse.SetName(f"{cloned_sparse.GetName()}_{iSparse}")
-            proj_sparse = proj_sparse.Rebin(array.array('i', rebin_reco))
+            proj_sparse = proj_sparse.Rebin(array.array('i', rebin_gen))
 
             if iSparse == 0:
                 processed_sparse = proj_sparse.Clone()
@@ -180,7 +188,7 @@ def pre_process_data_mc(config):
     # Load the ThnSparse
     data_sparses, reco_sparses, gen_sparses, sparse_axes, resolutions = get_sparses(config, config["operations"]["preprocess_data"], 
                                                                                     config["operations"]["preprocess_mc"], True)
-    outputDir = config['outdir']
+    outputDir = config['outdirPrep']
     os.makedirs(f'{outputDir}/preprocess', exist_ok=True)
     if os.path.exists(f'{outputDir}/preprocess/DebugPreprocess.root'):
         logger(f'File {outputDir}/preprocess/DebugPreprocess.root already exists, updating it.')
