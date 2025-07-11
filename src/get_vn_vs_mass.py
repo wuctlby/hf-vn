@@ -175,9 +175,9 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
         else:
             if reflFile == '':
                 reflFile = inFileName
-                useRefl, hMCSgn, hMCRefl = get_refl_histo(reflFile, centMinMax, ptmins, ptmaxs)
+                useRefl, hMCSgn, hMCRefl = get_refl_histo(reflFile, ptmins, ptmaxs)
             else:
-                useRefl, hMCSgn, hMCRefl = get_refl_histo(reflFile, centMinMax, ptmins, ptmaxs)
+                useRefl, hMCSgn, hMCRefl = get_refl_histo(reflFile, ptmins, ptmaxs)
 
     # Create histos for fit results
     hSigmaSimFit = TH1D('hSigmaSimFit', f';{ptTit};#sigma', nPtBins, ptBinsArr)
@@ -308,8 +308,9 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
         vnFitter[iPt].FixFrac2GausFromMassFit()
         # Reflections for D0
         if useRefl:
-            SoverR = (hMCRefl[iPt].Integral(hMCRefl[iPt].FindBin(massMin*1.0001),hMCRefl[iPt].FindBin(massMax*0.9999)))/(
-                hMCSgn[iPt].Integral(hMCSgn[iPt].FindBin(massMin*1.0001),hMCSgn[iPt].FindBin(massMax*0.9999)))
+            Signals = hMCSgn[iPt].Integral(hMCSgn[iPt].FindBin(massMin*1.0001), hMCSgn[iPt].FindBin(massMax*0.9999))
+            Reflections = hMCRefl[iPt].Integral(hMCRefl[iPt].FindBin(massMin*1.0001), hMCRefl[iPt].FindBin(massMax*0.9999))
+            SoverR = Reflections / (Signals + Reflections)
             vnFitter[iPt].SetTemplateReflections(hMCRefl[iPt], reflFuncStr[iPt], massMin, massMax)
             vnFitter[iPt].SetFixReflOverS(SoverR)
             vnFitter[iPt].SetReflVnOption(0)
