@@ -36,8 +36,14 @@ def eval_eff(recoCounts, genCounts, recoCountsError, genCountsError):
     hTmpNum.SetBinError(1, recoCountsError)
     hTmpDen.SetBinError(1, genCountsError)
     hTmpNum.Divide(hTmpNum, hTmpDen, 1., 1, 'B')
+    
+    efficiency = hTmpNum.GetBinContent(1)
+    error = hTmpNum.GetBinError(1)
+    
+    hTmpDen.Delete()
+    hTmpNum.Delete()
 
-    return hTmpNum.GetBinContent(1), hTmpNum.GetBinError(1)
+    return efficiency, error
 
 def compute_eff(config, inputFile, batch=False):
     '''
@@ -132,8 +138,11 @@ def compute_eff(config, inputFile, batch=False):
 
     #_____________________________________________________________________________________
     # Save output
-    outFileName = inputFile.replace('proj', 'eff')
-    os.makedirs(os.path.basename(outFileName), exist_ok=True)
+    parentDir   = os.path.dirname(os.path.dirname(inputFile))
+    dirName     = os.path.dirname(inputFile).split('/')[-1].replace('proj', 'eff')
+    fileName    = os.path.basename(inputFile).replace('proj', 'eff')
+    outFileName = os.path.join(parentDir, dirName, fileName)
+    os.makedirs(os.path.dirname(outFileName), exist_ok=True)
     outFile = TFile(outFileName, 'recreate')
     hEffPrompt.Write()
     hEffFD.Write()
