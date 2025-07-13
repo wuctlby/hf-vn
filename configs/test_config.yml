@@ -6,9 +6,6 @@ operations:
     proj_mc: False
     efficiencies: False
     get_vn_vs_mass: False
-    ##########################
-    do_syst_frac: False
-    ##########################
     do_cut_variation: False
     data_driven_fraction: true
     get_v2_vs_frac: true
