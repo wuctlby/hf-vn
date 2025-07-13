@@ -38,9 +38,7 @@ def proj_multitrial(config, multitrial_folder):
         default_proj = TFile.Open(default_cutset.replace(".yml", ".root").replace("cutsets", "proj").replace("cutset", "proj"), "READ")
         default_histos[suffix] = {}
         default_histos[suffix]['Mass'] = default_proj.Get(f"{pt_bin_label}/hMassData")
-        default_histos[suffix]['Mass'].SetDirectory(0)
         default_histos[suffix]['MassSp'] = default_proj.Get(f"{pt_bin_label}/hMassSpData")
-        default_histos[suffix]['MassSp'].SetDirectory(0)
         default_proj.Close()
 
     def process_cutset(multitrial_dir, default_histos):
@@ -260,8 +258,6 @@ if __name__ == "__main__":
                         help='Optional cutset configuration file (default: cutsetConfig.yaml)')
     parser.add_argument("--multitrial_folder", "-multfolder", metavar="text",
                         default="", help="Produce projection files for multitrial systematics")
-    parser.add_argument("--mCutSets", metavar="int", type=int, default=-1,
-                        help="The maximum number of previous projection files allowed to keep. If -1, all previous projection files will be kept.")
     parser.add_argument("--outputDir", "-o", metavar="text",
                         default="", help="output directory, used only for directly running the script")
     args = parser.parse_args()
@@ -278,22 +274,10 @@ if __name__ == "__main__":
     with open(args.cutsetConfig, 'r') as ymlCutSetFile:
         cutSetCfg = yaml.load(ymlCutSetFile, yaml.FullLoader)
         iCut = f"{int(cutSetCfg['icutset']):02d}"
-    
-    parentDir = os.path.dirname(os.path.dirname(args.cutsetConfig))
-    outDir = os.path.join(parentDir, 'proj') if args.outputDir == "" else args.outputDir
-    outfilePath = f"{outDir}/proj_{iCut}.root"
-    os.makedirs(outDir, exist_ok=True)
 
-    if iCut == '00' and args.mCutSets != -1:
-        previousProjFiles = [f for f in os.listdir(outDir) if f.startswith('proj_') and f.endswith('.root')]
-        if len(previousProjFiles) > args.mCutSets:
-            logger(f"Found {len(previousProjFiles)} previous projection files, will keep only the last {args.mCutSets} files", level='INFO')
-            for file in previousProjFiles:
-                fileCut = int(file.split('_')[1].split('.')[0])
-                if fileCut > args.mCutSets:
-                    filePath = os.path.join(outDir, file)
-                    logger(f"\tRemoving previous projection file {filePath}", level='INFO')
-                    os.remove(filePath)
+    outDir = os.path.join(os.path.dirname(os.path.dirname(args.cutsetConfig)), 'proj') if args.outputDir == "" else args.outputDir
+    outfilePath = os.path.join(outDir, f"proj_{iCut}.root")
+    os.makedirs(outDir, exist_ok=True)
 
     if operations["proj_data"] or operations["proj_mc"]:
         if os.path.exists(outfilePath):

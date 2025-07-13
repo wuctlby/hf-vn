@@ -27,7 +27,9 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
         config = yaml.load(ymlfitConfigFile, yaml.FullLoader)
 
     # Set outfile name
-    outFileName = inFileName.replace('proj', 'raw_yields').replace('.root', '') 
+    outFileName = os.path.join(os.path.dirname(os.path.dirname(inFileName)),
+                               'ry',
+                               os.path.basename(inFileName).replace('proj', 'raw_yields').replace('.root', ''))
 
     gROOT.SetBatch(batch)
     SetGlobalStyle(padleftmargin=0.14, padbottommargin=0.12, padtopmargin=0.12, opttitle=1)

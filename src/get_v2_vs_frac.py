@@ -7,34 +7,15 @@ import argparse
 import os
 import yaml
 import sys
-from ROOT import TFile, TCanvas, TLegend, TLatex, TGraphErrors, TF1, TH1D, TVirtualFitter, Double_t, gROOT
-from ROOT import kBlack, kAzure, kOrange
-from ROOT import kFullCircle
+from ROOT import TFile, TH1, TCanvas, TLegend, TLatex, TGraphErrors, TF1, TH1D, TVirtualFitter, gROOT
+from ROOT import kBlack, kAzure, kOrange, kFullCircle
 script_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(script_dir, '..', 'utils'))
 from utils import get_particle_info
+from load_utils import load_root_files
 from StyleFormatter import SetObjectStyle, GetROOTColor
 
-def load_ry_files(inputdir):
-    if os.path.exists(f'{inputdir}'):
-        print(f'Loading v2 files from {inputdir}')
-        v2Files = [f'{inputdir}/{file}'
-                    for file in os.listdir(f'{inputdir}') if file.endswith('.root')]
-        print(os.listdir(f'{inputdir}'))
-        v2Files.sort()
-    else:
-        raise ValueError(f'No raw_yields folder found in {inputdir}')
-    return v2Files
-
-def load_frac_files(inputdir):
-    if os.path.exists(f'{inputdir}'):
-        print(f'Loading frac files from {inputdir}')
-        fracFiles = [f'{inputdir}/{file}'
-                        for file in os.listdir(f'{inputdir}') if file.endswith('.root')]
-        fracFiles.sort()
-    else:
-        raise ValueError(f'No frac folder found in {inputdir}')
-    return fracFiles
+TH1.AddDirectory(False)
 
 def set_frame_style(canv, Title, particleTit):
     canv.SetLeftMargin(0.15)
@@ -59,68 +40,40 @@ def set_frame_margin(canv):
     canv.SetBottomMargin(0.15)
     canv.SetTopMargin(0.05)
 
-def v2_vs_frac(flow_config, rawYieldFiles, fracFiles, correlated, batch=False):
+def v2_vs_frac(Dmeson, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, outputDir):
 
     gROOT.SetBatch(True)
     
-    #!!!!!!!! totall drop the uncorrelated cutsets change /home/wuct/ALICE/local/dev/hf-vn/src/cut_variation.py
-    # load the configuration
-    ptmins, ptmaxs, nPtBins, particleName, particleTit, decay, CutSets = None, None, None, None, None, None, None
-    with open(flow_config, 'r') as f:
-        cfg = yaml.safe_load(f)
-        
-        ptmins = cfg['ptbins'][:-1]
-        ptmaxs = cfg['ptbins'][1:]
-        nPtBins = len(ptmins)
-        particleName = cfg['Dmeson']
-        particleTit, _, decay, _, _, _ = get_particle_info(particleName)
-        import numpy as np
-        if correlated:
-            sig = cfg['cut_variation']['corr_bdt_cut']['sig']
-            CutSets = [len(list(np.arange(sig['min'][i], sig['max'][i], sig['step'][i]))) - 1 for i in range(nPtBins)]
-        else:
-            sig = cfg['cut_variation']['uncorr_bdt_cut']['sig']
-            CutSets = [len(sig[i]) - 1 for i in range(nPtBins)]
-
-    if len(fracFiles) != len(rawYieldFiles):
-        raise ValueError(f'Number of eff and frac files do not match: {len(fracFiles)} != {len(rawYieldFiles)}')
+    nPtBins = len(ptMins)
+    particleTit, _, decay, _, _, _ = get_particle_info(Dmeson)
 
     hV2, gV2, hFracFD, hFracPrompt = [], [], [], []
-    avrV2XErrL, avrV2XErrH = [], []
 
     for fracFile, v2File in zip(fracFiles, rawYieldFiles):
         inV2File = TFile.Open(v2File)
         hV2.append(inV2File.Get('hvnSimFit'))
         gV2.append(inV2File.Get('gvnSimFit'))
-        hV2[-1].SetDirectory(0)
 
         inFracFile = TFile.Open(fracFile)
         hFracFD.append(inFracFile.Get('hFDFrac'))
         hFracPrompt.append(inFracFile.Get('hPromptFrac'))
-        hFracFD[-1].SetDirectory(0)
-        hFracPrompt[-1].SetDirectory(0)
 
     gFracVsV2, hV2VsFrac = [], [] # gFracVsV2 used for fitting, hV2VsFrac used for plotting
     hV2VsPtFD = hV2[0].Clone("hV2VsPtFD")
     hV2VsPtPrompt = hV2[0].Clone("hV2VsPtPrompt")
 
     cFrac, ptStrings, chi2Strings = [], [], []
-    
-    nPtBins = len(ptmins)
-    for iPt, (ptMin, ptMax) in enumerate(zip(ptmins, ptmaxs)):
+
+    for iPt, (ptMin, ptMax) in enumerate(zip(ptMins, ptMaxs)):
         ptCent = (ptMin + ptMax) / 2
         nSets = CutSets[iPt]
 
         gFracVsV2.append(TGraphErrors(-1))
         hV2VsFrac.append(TH1D(f"hV2VsFrac_{iPt}", "", 1000, 0.0, 1.0))
-        hV2VsFrac[-1].SetDirectory(0)
         SetObjectStyle(hV2VsFrac[-1], markerstyle=kFullCircle, markersize=0)
         SetObjectStyle(gFracVsV2[-1], linecolor=kAzure+4, linewidth=2, markerstyle=kFullCircle, markersize=1, markercolor=kAzure+4)
 
         print(f"Processing pt bin {iPt+1}/{nPtBins}: {ptMin:.2f} < pT < {ptMax:.2f} GeV/c, nSets: {nSets}")
-        avrV2XErrL.append(Double_t(sum(gV2[i].GetErrorXlow(iPt) for i in range(nSets)) / nSets))
-        avrV2XErrH.append(Double_t(sum(gV2[i].GetErrorXhigh(iPt) for i in range(nSets)) / nSets))
-        
 
         v2Values = [hV2[i].GetBinContent(iPt + 1) for i in range(nSets)]
         v2Unc = [hV2[i].GetBinError(iPt + 1) for i in range(nSets)]
@@ -132,7 +85,6 @@ def v2_vs_frac(flow_config, rawYieldFiles, fracFiles, correlated, batch=False):
             gFracVsV2[iPt].SetPoint(iSet, fracFD, v2)
             gFracVsV2[iPt].SetPointError(iSet, fracFDUnc, v2Unc)
         
-        # gFracVsV2Fit = TGraphErrors(gFracVsV2[-1])
         linFunc = TF1("linear", "pol1", 0, 1)
         SetObjectStyle(linFunc, color=kOrange+1, linestyle=9, linewidth=2)
         gFracVsV2[-1].Fit("linear", "", "", 0, 1)
@@ -144,17 +96,17 @@ def v2_vs_frac(flow_config, rawYieldFiles, fracFiles, correlated, batch=False):
         fitter.GetConfidenceIntervals(hV2VsFrac[-1], 0.683)
         hV2VsFrac[-1].SetLineColorAlpha(kAzure+5, 0.15)
 
-        # get the v2 value at the FD fraction = 1, and it is not the last bin?
+        # get the v2 value at the FD fraction = 1
         hV2VsPtFD.SetBinContent(iPt + 1, 
                                 hV2VsFrac[-1].GetBinContent(hV2VsFrac[-1].GetNbinsX()))
         hV2VsPtFD.SetBinError(iPt + 1,
                                 hV2VsFrac[-1].GetBinError(hV2VsFrac[-1].GetNbinsX()))
         
-        # get the v2 value at the FD fraction = 0, and it is the first bin?
+        # get the v2 value at the FD fraction = 0
         hV2VsPtPrompt.SetBinContent(iPt + 1, 
-                                    hV2VsFrac[-1].GetBinContent(hV2VsFrac[-1].GetBin(1)))
+                                    hV2VsFrac[-1].GetBinContent(1))
         hV2VsPtPrompt.SetBinError(iPt + 1,
-                                    hV2VsFrac[-1].GetBinError(hV2VsFrac[-1].GetBin(1)))
+                                    hV2VsFrac[-1].GetBinError(1))
         
         #TODO: plot the v2 vs pt, and the center of the pt bin is calculate by the average of pT
 
@@ -163,20 +115,15 @@ def v2_vs_frac(flow_config, rawYieldFiles, fracFiles, correlated, batch=False):
 
 
     # save the results
-    parentDir = os.path.dirname(fracFiles[0])
-    dirName = os.path.basename(parentDir).replace('frac', 'v2VsFrac')
-    fileName = os.path.basename(fracFiles[0]).replace('frac', 'v2VsFrac')
-    outFileName = os.path.join(parentDir, dirName, fileName)
-    outputdir = os.path.dirname(outFileName)
-    os.makedirs(outputdir, exist_ok=True)
-    outFile = TFile(outFileName, "recreate")
+    os.makedirs(outputDir, exist_ok=True)
+    outFile = TFile(os.path.join(outputDir, 'v2VsFrac.root'), 'recreate')
     
     t = TLatex(8, 8, "")
     t.SetNDC()
     t.SetTextFont(42)
     t.SetTextColor(kBlack)
 
-    for iPt, (ptMin, ptMax) in enumerate(zip(ptmins, ptmaxs)):
+    for iPt, (ptMin, ptMax) in enumerate(zip(ptMins, ptMaxs)):
         if iPt == 0:
             suffix_pdf = '('
         elif iPt == nPtBins-1:
@@ -201,8 +148,8 @@ def v2_vs_frac(flow_config, rawYieldFiles, fracFiles, correlated, batch=False):
         cFrac[-1].Update()
         cFrac[-1].Write()
 
-        cFrac[iPt].SaveAs(f"{outputdir}/v2VsFrac.pdf{suffix_pdf}")
-        cFrac[iPt].SaveAs(f"{outputdir}/v2VsFrac_pt{ptMin}_{ptMax}.png")
+        cFrac[iPt].SaveAs(f"{outputDir}/v2VsFrac.pdf{suffix_pdf}")
+        cFrac[iPt].SaveAs(f"{outputDir}/v2VsFrac_pt{ptMin}_{ptMax}.png")
 
         outFile.mkdir(f"pt_{int(ptMin*10)}_{int(ptMax*10)}")
         outFile.cd(f"pt_{int(ptMin*10)}_{int(ptMax*10)}")
@@ -255,24 +202,48 @@ def v2_vs_frac(flow_config, rawYieldFiles, fracFiles, correlated, batch=False):
 
     hV2VsPtFD.Write()
     hV2VsPtPrompt.Write()
-    cV2VsPtFD.SaveAs(f"{outputdir}/v2VsPtFD.pdf")
-    cV2VsPtPrompt.SaveAs(f"{outputdir}/v2VsPtPrompt.pdf")
-    cPromptAndFDV2.SaveAs(f"{outputdir}/v2VsPtPromptAndFD.pdf")
-    cV2VsPtFD.SaveAs(f"{outputdir}/v2VsPtFD.png")
-    cV2VsPtPrompt.SaveAs(f"{outputdir}/v2VsPtPrompt.png")
-    cPromptAndFDV2.SaveAs(f"{outputdir}/v2VsPtPromptAndFD.png")
+    cV2VsPtFD.SaveAs(f"{outputDir}/v2VsPtFD.pdf")
+    cV2VsPtPrompt.SaveAs(f"{outputDir}/v2VsPtPrompt.pdf")
+    cPromptAndFDV2.SaveAs(f"{outputDir}/v2VsPtPromptAndFD.pdf")
+    cV2VsPtFD.SaveAs(f"{outputDir}/v2VsPtFD.png")
+    cV2VsPtPrompt.SaveAs(f"{outputDir}/v2VsPtPrompt.png")
+    cPromptAndFDV2.SaveAs(f"{outputDir}/v2VsPtPromptAndFD.png")
 
 def main_v2_vs_frac(flow_config, infilePathRy, infilePathFrac, correlated=False, batch=False):
+    
+    if batch:
+        gROOT.SetBatch(True)
 
-    rawYieldFiles = load_ry_files(infilePathRy)
-    fracFiles = load_frac_files(infilePathFrac)
+    rawYieldFiles = load_root_files(infilePathRy, prefix='raw_yields_')
+    fracFiles = load_root_files(infilePathFrac, prefix='frac_')
+    
+    if len(fracFiles) != len(rawYieldFiles):
+        raise ValueError(f'Number of eff and frac files do not match: {len(fracFiles)} != {len(rawYieldFiles)}')
+    
+    with open(flow_config, 'r') as f:
+        config = yaml.safe_load(f)
+        
+        ptMins = config['ptbins'][:-1]
+        ptMaxs = config['ptbins'][1:]
+        nPtBins = len(ptMins)
+        import numpy as np
+        if correlated:
+            sig = config['cut_variation']['corr_bdt_cut']['sig']
+            CutSets = [len(list(np.arange(sig['min'][i], sig['max'][i], sig['step'][i]))) - 1 for i in range(nPtBins)]
+        else:
+            sig = config['cut_variation']['uncorr_bdt_cut']['sig']
+            CutSets = [len(sig[i]) - 1 for i in range(nPtBins)]
+    
+    outputDir = os.path.join(os.path.dirname(infilePathFrac), 'v2')
     
     v2_vs_frac(
-        flow_config,
+        config['Dmeson'],
+        ptMins,
+        ptMaxs,
+        CutSets,
         rawYieldFiles,
         fracFiles,
-        correlated,
-        batch
+        outputDir
     )
 
 if __name__ == "__main__":

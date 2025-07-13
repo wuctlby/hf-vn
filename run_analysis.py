@@ -33,26 +33,25 @@ def make_yaml(flow_config, outdir, correlated=False):
 	logger(f"{cmd}", level="COMMAND")
 	os.system(cmd)
 
-#! I don't see any reason to use bool for correlated and combined here, this is just a flag to decide whether to add a suffix
 def project(flow_config, outdir, nworkers, mCutSets):
 	logger("Projections will be performed", level="INFO")
 	os.makedirs(f"{outdir}/proj", exist_ok=True)
 	logger(f"Output directory for projections: {outdir}/proj", level="INFO")
 
-	def run_projections(i, mCutSets):
+	def run_projections(i):
 		"""Run sparse projection for a given cutset index."""
 		iCutSets = f"{i:02d}"
 		print(f"\033[32mProcessing cutset {iCutSets}...\033[0m")
 
 		config_cutset = f"{outdir}/cutsets/cutset_{iCutSets}.yml"
 		cmd = (
-			f"python3 {paths['Projections']} {flow_config} -cc {config_cutset} --mCutSets {mCutSets}"
+			f"python3 {paths['Projections']} {flow_config} -cc {config_cutset}"
 		)
 		print(f"\033[32m{cmd}\033[0m")
 		os.system(cmd)
 
 	with concurrent.futures.ThreadPoolExecutor(max_workers=nworkers) as executor:
-		results_proj = list(executor.map(run_projections, range(mCutSets), [mCutSets] * mCutSets))
+		results_proj = list(executor.map(run_projections, range(mCutSets)))
 
 def efficiencies(flow_config, outdir, nworkers, mCutSets):
 	print("\033[32mINFO: Efficiencies will be computed\033[0m")
@@ -64,9 +63,6 @@ def efficiencies(flow_config, outdir, nworkers, mCutSets):
 		print(f"\033[32mProcessing cutset {iCutSet}...\033[0m")
 
 		proj_cutset = f"{outdir}/proj/proj_{iCutSet}.root"
-		if not os.path.exists(proj_cutset):
-			logger(f"Projection file {proj_cutset} does not exist, skipping cutset {iCutSet}", level="ERROR")
-			return
 		cmd = (
 			f"python3 {paths['Efficiencies']} {flow_config} {proj_cutset} -b"
 		)
@@ -78,7 +74,7 @@ def efficiencies(flow_config, outdir, nworkers, mCutSets):
 
 def get_vn_vs_mass(flow_config, outdir, nworkers, mCutSets, batch=False):
 	print("\033[32mINFO: Fit v2 vs mass will be performed\033[0m")
-	check_dir(f"{outdir}/raw_yields")
+	check_dir(f"{outdir}/ry")
 
 	def run_fit(i):
 		"""Run simultaneous fit for a given cutset index."""
@@ -102,12 +98,11 @@ def cut_variaion(flow_config, outdir, correlated, combined=False, operations=Non
 	if correlated:
 		logger("Cut variation will be performed", level="INFO")
 
-		ry_path = f"{outdir}/raw_yields"
+		ry_path = f"{outdir}/ry"
 		eff_path = f"{outdir}/eff"
-		method = "--correlated" if correlated else ""
 
 		cmd = (
-			f"python3 {paths['CutVariation']} {flow_config} {ry_path} {eff_path} {method}"
+			f"python3 {paths['CutVariation']} {flow_config} {ry_path} {eff_path}"
 		)
 		if batch:
 			cmd += " --batch"
@@ -140,7 +135,7 @@ def cut_variaion(flow_config, outdir, correlated, combined=False, operations=Non
 			with open(flow_config, 'r') as cfgFlow:
 				config = yaml.safe_load(cfgFlow)
 				config['operations'] = operationsCorr
-				config['outdir'] = outdirCorr #! make sure all output directories are set from function arguments not from config file
+				config['outdir'] = outdirCorr
 				with open(flow_configCorr, 'w') as cfgFlow:
 					yaml.dump(config, cfgFlow, default_flow_style=True)
 			logger(f"Using temporary flow config: {flow_configCorr}", level="WARNING")
@@ -154,7 +149,7 @@ def cut_variaion(flow_config, outdir, correlated, combined=False, operations=Non
 			logger(f"{cmd}", level="COMMAND")
 			os.system(cmd)
 
-def data_driven_fraction(outdir, syst_frac, batch=False):
+def data_driven_fraction(outdir, batch=False):
 	logger("Data driven fraction will be performed", level="INFO")
 	check_dir(f"{outdir}/frac")
  
@@ -164,8 +159,6 @@ def data_driven_fraction(outdir, syst_frac, batch=False):
 	cmd = (
 		f"python3 {paths['DataDrivenFraction']} {cutvar_file} {eff_path}"
 	)
-	if syst_frac:
-		cmd += " --syst_frac"
 	if batch:
 		cmd += " --batch"
 	logger(f"{cmd}", level="COMMAND")
@@ -175,7 +168,7 @@ def get_v2_vs_frac(flow_config, outdir, correlated=False, batch=False):
 	logger("Fit v2 vs fd fraction will be performed", level="INFO")
 	check_dir(f"{outdir}/v2")
 
-	ry_path = f"{outdir}/raw_yields"
+	ry_path = f"{outdir}/ry"
 	frac_path = f"{outdir}/frac"
 	cmd = (
 		f"python3 {paths['GetV2VsFrac']} {flow_config} {ry_path} {frac_path}"
@@ -230,7 +223,7 @@ def run_correlated_cut_variation(flow_config, operations, nworkers, outdir):
 	#___________________________________________________________________________________________________________________________
  	# Data driven fraction
 	if operations.get('data_driven_fraction', False):
-		data_driven_fraction(outdir, syst_frac=False, batch=True)
+		data_driven_fraction(outdir, batch=True)
 	else:
 		logger("Data driven fraction will not be performed", level="WARNING")
 
@@ -284,7 +277,7 @@ def run_combined_cut_variation(flow_config, operations, nworkers, outdir):
 	#___________________________________________________________________________________________________________________________
 	# Data driven fraction
 	if operations.get('data_driven_fraction', False):
-		data_driven_fraction(outdir, syst_frac=True, batch=True)
+		data_driven_fraction(outdir, batch=True)
 	else:
 		logger("Data driven fraction will not be performed", level="WARNING")
   

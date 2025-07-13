@@ -7,18 +7,19 @@ import sys
 import os
 import numpy as np # type: ignore
 from itertools import product
-import ROOT
-from ROOT import TFile, TCanvas, TLegend, TLatex, gROOT, gStyle
-from ROOT import TFile, TH1F, TH2F, TCanvas, TLegend, TLatex, gRandom  # pylint: disable=import-error,no-name-in-module
+from ROOT import TFile, TH1, TH1F, TH2F, TCanvas, TLegend, TLatex, gROOT, gStyle, gRandom  # pylint: disable=import-error,no-name-in-module
 from ROOT import kBlack, kRed, kAzure, kGreen, kRainBow # pylint: disable=import-error,no-name-in-module
 from ROOT import kFullCircle, kFullSquare, kOpenSquare, kOpenCircle # pylint: disable=import-error,no-name-in-module
 script_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(script_dir, '..', 'utils'))
 from utils import logger
 from frac_utils import GetMinimisation
+from load_utils import load_root_files
 from StyleFormatter import SetGlobalStyle, SetObjectStyle
 
-def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputPath, correlated=False, systOpt=None):
+TH1.AddDirectory(False)
+
+def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputPath):
 
     hRawYieldsVsCut, hRawYieldsVsCutReSum, hRawYieldPromptVsCut, hRawYieldFDVsCut = [], [], [], []
     hEffPromptVsCut, hEffFDVsCut = [], []
@@ -56,9 +57,10 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
         listEffPromptUnc, listEffFD, listEffFDUnc = ([] for i in range(6))
 
         for iCut, (hRaw, hEffP, hEffF) in enumerate(zip(hRawYields, hEffPrompt, hEffFD)):
+            #! due to there is filter on the file before, using skip_cuts to skip the duplicated cut sets
             # if skip_cuts is defined check if the cut number is present for that pt
             if 'skip_cuts' in config['cut_variation']['corr_bdt_cut']['skip_cuts']:
-                if iCut in config['minimisation']['skip_cuts'][iPt]:
+                if iCut in config['cut_variation']['corr_bdt_cut']['skip_cuts'][iPt]:
                     print(f'Skipping cut set {iCut} for pt {ptMin:.1f}-{ptMax:.1f}')
                     continue
             listRawYield.append(hRaw.GetBinContent(iPt+1))
@@ -68,65 +70,6 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
             listEffFD.append(hEffF.GetBinContent(iPt+1))
             listEffFDUnc.append(hEffF.GetBinError(iPt+1))
             oCuts.append(iCut)
-
-        if systOpt:
-            # Remove the loosest 3 cuts if 'minus3low' or 'minus' is in systOpt
-            if systOpt == 'minus3low' or systOpt == 'minus3':
-                listRawYield     = listRawYield[2:]
-                listRawYieldUnc  = listRawYieldUnc[2:]
-                listEffPrompt    = listEffPrompt[2:]
-                listEffPromptUnc = listEffPromptUnc[2:]
-                listEffFD        = listEffFD[2:]
-                listEffFDUnc     = listEffFDUnc[2:]
-            # Remove the tightest 3 cuts if 'minus3high' or 'minus' is in systOpt
-            if systOpt == 'minus3high' or systOpt == 'minus3':
-                listRawYield     = listRawYield[:-3]
-                listRawYieldUnc  = listRawYieldUnc[:-3]
-                listEffPrompt    = listEffPrompt[:-3]
-                listEffPromptUnc = listEffPromptUnc[:-3]
-                listEffFD        = listEffFD[:-3]
-                listEffFDUnc     = listEffFDUnc[:-3]
-            # Remove even-indexed elements if 'even' is in systOpt
-            if 'even' in systOpt:
-                listRawYield     = [x for i, x in enumerate(listRawYield) if i % 2 != 0]
-                listRawYieldUnc  = [x for i, x in enumerate(listRawYieldUnc) if i % 2 != 0]
-                listEffPrompt    = [x for i, x in enumerate(listEffPrompt) if i % 2 != 0]
-                listEffPromptUnc = [x for i, x in enumerate(listEffPromptUnc) if i % 2 != 0]
-                listEffFD        = [x for i, x in enumerate(listEffFD) if i % 2 != 0]
-                listEffFDUnc     = [x for i, x in enumerate(listEffFDUnc) if i % 2 != 0]
-            # Remove odd-indexed elements if 'odd' is in systOpt
-            if 'odd' in systOpt:
-                listRawYield     = [x for i, x in enumerate(listRawYield) if i % 2 == 0]
-                listRawYieldUnc  = [x for i, x in enumerate(listRawYieldUnc) if i % 2 == 0]
-                listEffPrompt    = [x for i, x in enumerate(listEffPrompt) if i % 2 == 0]
-                listEffPromptUnc = [x for i, x in enumerate(listEffPromptUnc) if i % 2 == 0]
-                listEffFD        = [x for i, x in enumerate(listEffFD) if i % 2 == 0]
-                listEffFDUnc     = [x for i, x in enumerate(listEffFDUnc) if i % 2 == 0]
-            # Remove elements randomly if 'random' is in systOpt
-            if 'random' in systOpt:
-                random_bools = [gRandom.Uniform() > 0.5 for _ in range(len(listRawYield))]
-                listRawYield     = [x for x, b in zip(listRawYield, random_bools) if b]
-                listRawYieldUnc  = [x for x, b in zip(listRawYieldUnc, random_bools) if b]
-                listEffPrompt    = [x for x, b in zip(listEffPrompt, random_bools) if b]
-                listEffPromptUnc = [x for x, b in zip(listEffPromptUnc, random_bools) if b]
-                listEffFD        = [x for x, b in zip(listEffFD, random_bools) if b]
-                listEffFDUnc     = [x for x, b in zip(listEffFDUnc, random_bools) if b]
-            # Remove 1 element every 3 '1in3' is in systOpt
-            if '1in3' in systOpt:
-                listRawYield     = [x for i, x in enumerate(listRawYield) if i % 3 == 0]
-                listRawYieldUnc  = [x for i, x in enumerate(listRawYieldUnc) if i % 3 == 0]
-                listEffPrompt    = [x for i, x in enumerate(listEffPrompt) if i % 3 == 0]
-                listEffPromptUnc = [x for i, x in enumerate(listEffPromptUnc) if i % 3 == 0]
-                listEffFD        = [x for i, x in enumerate(listEffFD) if i % 3 == 0]
-                listEffFDUnc     = [x for i, x in enumerate(listEffFDUnc) if i % 3 == 0]
-            # Remove 1 element every 4 '1in4' is in systOpt
-            if '1in4' in systOpt:
-                listRawYield     = [x for i, x in enumerate(listRawYield) if i % 4 == 0]
-                listRawYieldUnc  = [x for i, x in enumerate(listRawYieldUnc) if i % 4 == 0]
-                listEffPrompt    = [x for i, x in enumerate(listEffPrompt) if i % 4 == 0]
-                listEffPromptUnc = [x for i, x in enumerate(listEffPromptUnc) if i % 4 == 0]
-                listEffFD        = [x for i, x in enumerate(listEffFD) if i % 4 == 0]
-                listEffFDUnc     = [x for i, x in enumerate(listEffFDUnc) if i % 4 == 0]
 
         nSets = len(listRawYield)
         print(f'Pt: {ptMin:.1f}-{ptMax:.1f}, iPt: {iPt+1}')
@@ -281,12 +224,9 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
     hCorrYieldFD.Draw('same')
     legEff.Draw()
 
-    if systOpt:
-        outDir = inputPath.replace('eff', 'syst_frac') + f'/{systOpt}'
-    else:
-        outDir = inputPath.replace('eff', 'cutVar')
+    outDir = os.path.join(os.path.dirname(inputPath), 'cutVar')
     os.makedirs(outDir, exist_ok=True)
-    outFileName = f'{outDir}/cutVar.root'
+    outFileName = os.path.join(outDir, 'cutVar.root')
     outFile = TFile(outFileName, 'recreate')
     cCorrYield.Write()
     hCorrYieldPrompt.Write()
@@ -318,31 +258,19 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
         cFinalResPt[iPt].SaveAs(f'{outDir}/FinalResPt_pt{ptmins[iPt]}_{ptmaxs[iPt]}.png')
     
 
-def compute_frac_cut_var(config_flow, inputPathEff, inputPathRy, correlated=False, batch=False):
+def compute_frac_cut_var(config_flow, inputPathRy, inputPathEff, batch=False):
 
     gROOT.SetBatch(batch)
     gStyle.SetPaintTextFormat("4.2f")
 
     # load configuration
-    ptmins, ptmaxs = [], []
     with open(config_flow, 'r') as ymlCfgFile:
         config = yaml.safe_load(ymlCfgFile)
         ptmins = config['ptbins'][:-1]
         ptmaxs = config['ptbins'][1:]
 
-    if os.path.exists(inputPathEff):
-        effFiles = [f'{os.path.join(inputPathEff, file)}'
-                    for file in os.listdir(inputPathEff) if file.startswith('eff_') and file.endswith('.root')]
-    else:
-        logger(f'No eff folder found in {inputPathEff}', level='ERROR')
-        raise ValueError(f'No eff folder found in {inputPathEff}')
-
-    if os.path.exists(inputPathRy):
-        rawYieldFiles = [f'{os.path.join(inputPathRy, file)}'
-                         for file in os.listdir(inputPathRy) if file.startswith('raw_yields_') and file.endswith('.root')]
-    else:
-        logger(f'No vn folder found in {inputPathRy}', level='ERROR')
-        raise ValueError(f'No vn folder found in {inputPathRy}')
+    rawYieldFiles = load_root_files(inputPathRy, 'raw_yields_')
+    effFiles = load_root_files(inputPathEff, 'eff_')
     
     if len(effFiles) != len(rawYieldFiles):
         logger(f'Number of efficiency files ({len(effFiles)}) does not match number of raw yield files ({len(rawYieldFiles)}).', level='ERROR')
@@ -356,19 +284,16 @@ def compute_frac_cut_var(config_flow, inputPathEff, inputPathRy, correlated=Fals
     # load inputs raw yields and efficiencies
     for inFileNameRawYield, inFileNameEff in zip(rawYieldFiles, effFiles):
 
-        inFileRawYield = ROOT.TFile.Open(inFileNameRawYield)
+        inFileRawYield = TFile.Open(inFileNameRawYield)
         # if hRawYieldsSimFit not in file, skip it
         if not inFileRawYield.GetListOfKeys().Contains('hRawYieldsSimFit'):
             logger(f'File {inFileNameRawYield} does not contain hRawYieldsSimFit, skipping.', level='WARNING')
             continue
         hRawYields.append(inFileRawYield.Get('hRawYieldsSimFit'))
-        hRawYields[-1].SetDirectory(0)
         
         inFileEff = TFile.Open(inFileNameEff)
         hEffPrompt.append(inFileEff.Get('hEffPrompt'))
         hEffFD.append(inFileEff.Get('hEffFD'))
-        hEffPrompt[-1].SetDirectory(0)
-        hEffFD[-1].SetDirectory(0)
 
     SetGlobalStyle(padleftmargin=0.15, padtopmargin=0.08, titleoffsetx=1.,
                 titleoffsety=1.4, opttitle=1, palette=kRainBow, maxdigits=2)
@@ -394,12 +319,7 @@ def compute_frac_cut_var(config_flow, inputPathEff, inputPathRy, correlated=Fals
     latInfo.SetTextFont(42)
     latInfo.SetTextColor(1)
 
-    minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputPathEff, correlated=correlated)
-    if config['operations']['do_syst_frac'] and correlated:
-        for syst in config['minimisation']['systematics']:
-            logger(f'Running cut variation for systematics: {syst}')
-            minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputPathEff, correlated=correlated, systOpt=syst)
-
+    minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputPathEff)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Arguments')
@@ -409,11 +329,9 @@ if __name__ == "__main__":
                         default="input", help="input path to the raw yields")
     parser.add_argument("infilePathEff", metavar="text",
                         default="input", help="input path to the efficiencies")
-    parser.add_argument("--correlated", "-c", action="store_true",
-                        help="Produce cut variation files for correlated cuts")
     parser.add_argument("--batch", "-b", action="store_true",
                         help="run in batch mode")
     args = parser.parse_args()
 
-    compute_frac_cut_var(args.config_flow, args.infilePathEff, args.infilePathRy,
-                         correlated=args.correlated, batch=args.batch)
+    compute_frac_cut_var(args.config_flow, args.infilePathRy, args.infilePathEff,
+                         batch=args.batch)

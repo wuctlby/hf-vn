@@ -12,8 +12,11 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(script_dir, '..', 'utils'))
 from utils import logger
 from frac_utils import GetPromptFDFractionCutSet  # pylint: disable=import-error,no-name-in-module # pyignore # type: ignore
-from ROOT import TFile, TCanvas, TLegend, gROOT, kRed, kBlue  # pylint: disable=import-error,no-name-in-module # pyignore # type: ignore
+from load_utils import load_cutVar_histos, load_eff_histos, load_root_files
+from ROOT import TFile, TH1, TCanvas, TLegend, gROOT, kRed, kBlue  # pylint: disable=import-error,no-name-in-module # pyignore # type: ignore
 from StyleFormatter import SetGlobalStyle # pylint: disable=import-error,no-name-in-module # pyignore # type: ignore
+
+TH1.AddDirectory(False)
 
 def data_driven_frac(outputDir, iFile, hEffPrompt, hEffFD, \
                         hPromptFrac, hFDFrac, hPromptFracCorr, hFDFracCorr, \
@@ -102,71 +105,16 @@ def data_driven_frac(outputDir, iFile, hEffPrompt, hEffFD, \
     cEff.Write()
     outFile.Close()
 
-def load_cutVar_histos(cutVarFracFile):
-    cutVarFracFile   = TFile.Open(cutVarFracFile)
-
-    hCorrYieldPrompt = cutVarFracFile.Get('hCorrYieldPrompt')
-    hCorrYieldPrompt.SetDirectory(0)
-    hCorrYieldFD     = cutVarFracFile.Get('hCorrYieldFD')
-    hCorrYieldFD.SetDirectory(0)
-    hCovPromptPrompt = cutVarFracFile.Get('hCovPromptPrompt')
-    hCovPromptPrompt.SetDirectory(0)
-    hCovPromptFD     = cutVarFracFile.Get('hCovPromptFD')
-    hCovPromptFD.SetDirectory(0)
-    hCovFDFD         = cutVarFracFile.Get('hCovFDFD')
-    hCovFDFD.SetDirectory(0)
-    return hCorrYieldPrompt, hCorrYieldFD, hCovPromptPrompt, hCovPromptFD, hCovFDFD
-
-def load_eff_histos(effFiles):
-    hEffPrompts, hEffFDs, hPromptFracs, hFDFracs, hPromptFracCorrs, hFDFracCorrs = [], [], [], [], [], []
-    for effFile in effFiles:
-        effFile = TFile.Open(effFile)
-        hEffPrompt = effFile.Get('hEffPrompt')
-        hEffPrompt.SetDirectory(0)
-        hEffFD = effFile.Get('hEffFD')
-        hEffFD.SetDirectory(0)
-                             
-        hEffPrompts.append(hEffPrompt)
-        hEffFDs.append(hEffFD)
-        
-        hPromptFracs.append(hEffPrompt.Clone('hPromptFrac'))
-        hFDFracs.append(hEffFD.Clone('hFDFrac'))
-        hPromptFracs[-1].SetTitle(';#it{p}_{T} (GeV/#it{c}); #it{f}_{prompt}')
-        hFDFracs[-1].SetTitle(';#it{p}_{T} (GeV/#it{c}); #it{f}_{FD}')
-        hPromptFracs[-1].SetDirectory(0)
-        hFDFracs[-1].SetDirectory(0)
-        
-        hPromptFracCorrs.append(hEffPrompt.Clone('hPromptFracCorr'))
-        hFDFracCorrs.append(hEffFD.Clone('hFDFracCorr'))
-        hPromptFracCorrs[-1].SetTitle(';#it{p}_{T} (GeV/#it{c}); corrected #it{f}_{prompt}')
-        hFDFracCorrs[-1].SetTitle(';#it{p}_{T} (GeV/#it{c}); corrected #it{f}_{FD}')
-        hPromptFracCorrs[-1].SetDirectory(0)
-        hFDFracCorrs[-1].SetDirectory(0)
-    return hEffPrompts, hEffFDs, hPromptFracs, hFDFracs, hPromptFracCorrs, hFDFracCorrs
-
-def load_eff_files(inputdir):
-    if os.path.exists(inputdir):
-        effFiles = [f'{os.path.join(inputdir, file)}'
-                    for file in os.listdir(inputdir) if file.endswith('.root')]
-        effFiles.sort()
-    else:
-        logger(f'No eff folder found in {inputdir}', level='ERROR') 
-        raise ValueError(f'No eff folder found in {inputdir}')
-    return effFiles
-
-def main_data_driven_frac(cutVarFile, effPath, do_syst_frac=False, batch=False):
+def main_data_driven_frac(cutVarFile, effPath, batch=False):
 
     if batch:
         gROOT.SetBatch()
-
-    logger('Performing regular fraction estimation', level='INFO')
-    hEffPrompts, hEffFDs, hPromptFracs, hFDFracs, hPromptFracCorrs, hFDFracCorrs = load_eff_histos(load_eff_files(effPath))
+    
+    hEffPrompts, hEffFDs, hPromptFracs, hFDFracs, hPromptFracCorrs, hFDFracCorrs = load_eff_histos(load_root_files(effPath, 'eff_'))
     hCorrYieldPrompt, hCorrYieldFD, hCovPromptPrompt, hCovPromptFD, hCovFDFD = load_cutVar_histos(cutVarFile)
-    parentDir = os.path.dirname(os.path.dirname(cutVarFile))                       # ./cutvar_suffix/cutVar/cutVar.root ==> ./cutvar_suffix
-    dirName   = os.path.dirname(cutVarFile).split('/')[-1].replace('cutVar', 'frac') # cutVar ==> frac
-    outputDir = os.path.join(parentDir, dirName)                                       # ./cutvar_suffix/frac
+    outputDir = os.path.join(os.path.dirname(effPath), 'frac')
     logger(f'Output directory: {outputDir}', level='INFO')
-    os.makedirs(os.path.dirname(outputDir), exist_ok=True)
+    os.makedirs(outputDir, exist_ok=True)
     for iFile in range(len(hEffPrompts)):
         data_driven_frac(
             outputDir,
@@ -184,37 +132,6 @@ def main_data_driven_frac(cutVarFile, effPath, do_syst_frac=False, batch=False):
             hCovFDFD
         )
 
-    if do_syst_frac:
-        logger('Performing systematic fraction', level='INFO')
-        hCorrYieldPrompt, hCorrYieldFD, hCovPromptPrompt, hCovPromptFD, hCovFDFD = load_cutVar_histos(cutVarFile)
-        parentDirSyst = os.path.join(os.path.dirname(os.path.dirname(cutVarFile)), 'syst_frac') # ./cutvar_suffix/syst_frac
-        if os.path.exists(parentDirSyst):
-            for root, _, files in os.walk(parentDirSyst):
-                for f in files:
-                    if f.endswith('.root') and f.startswith('cutVar'):
-                        cutVarSystFile = os.path.join(root, f)
-                        logger(f'Loading cut variation file: {cutVarSystFile}', level='INFO')
-                        hCorrYieldPrompt, hCorrYieldFD, hCovPromptPrompt, hCovPromptFD, hCovFDFD = load_cutVar_histos(cutVarSystFile)
-                        dirNameSyst = os.path.dirname(cutVarSystFile).split('/')[-1].replace('cutVar', 'frac') # cutVar ==> frac
-                        outputDirSyst = os.path.join(os.path.dirname(root), dirNameSyst) # ./cutvar_suffix/syst_frac/sysOpt/frac
-                        logger(f'Output directory for systematic fraction: {outputDirSyst}', level='INFO')
-                        os.makedirs(os.path.dirname(outputDirSyst), exist_ok=True)
-                        for iFile in range(len(hEffPrompts)):
-                            data_driven_frac(
-                                outputDirSyst,
-                                iFile,
-                                hEffPrompts[iFile],
-                                hEffFDs[iFile],
-                                hPromptFracs[iFile],
-                                hFDFracs[iFile],
-                                hPromptFracCorrs[iFile],
-                                hFDFracCorrs[iFile],
-                                hCorrYieldPrompt,
-                                hCorrYieldFD,
-                                hCovPromptPrompt,
-                                hCovPromptFD,
-                                hCovFDFD
-                            )
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Arguments')
@@ -222,8 +139,6 @@ if __name__ == "__main__":
                         help="path to the cut variation file")
     parser.add_argument("effPath", metavar="text",
                         help="path to the efficiency file")
-    parser.add_argument("--syst_frac", action="store_true",
-                        help="perform systematic fraction")
     parser.add_argument("--batch", '-b', action='store_true',
                         help="run in batch mode")
     args = parser.parse_args()
@@ -231,6 +146,5 @@ if __name__ == "__main__":
     main_data_driven_frac(
         cutVarFile=args.cutVarFile,
         effPath=args.effPath,
-        do_syst_frac=args.syst_frac,
         batch=args.batch
     )
