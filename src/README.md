@@ -26,7 +26,7 @@
 
 - [proj_thn.py](https://github.com/flowHF/hf-vn/blob/dev/src/proj_thn.py)
   - output directory: `{outdir}/cutvar_{suffix}_{method}/proj_thn`
-  - output Name: `proj_thn_{iCut}.root`
+  - output Name: `proj_{iCut}.root`
 
 - [pre_process.py](https://github.com/flowHF/hf-vn/blob/dev/src/pre_process.py)
   - output directory: `{outdirPrep}/preprocess`
