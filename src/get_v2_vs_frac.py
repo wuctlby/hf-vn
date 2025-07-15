@@ -254,10 +254,10 @@ if __name__ == "__main__":
                         default="input", help="input path to the raw yields")
     parser.add_argument('infilePathFrac', metavar='text',
                         default="input", help="input path to the data driven fractions")
-    parser.add_argument('--correlated', '-corr', action='store_true',
-                        help="perform correlated analysis")
     parser.add_argument('--batch', '-b', action='store_true',
                         help="run in batch mode")
+    parser.add_argument('--correlated', '-corr', action='store_true',
+                        help="perform correlated analysis")
     args = parser.parse_args()
 
     main_v2_vs_frac(

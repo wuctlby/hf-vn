@@ -568,7 +568,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Arguments')
     parser.add_argument('fitConfigFileName', metavar='text', default='config_Ds_Fit.yml')
     parser.add_argument('inFileName', metavar='text', default='')
-    parser.add_argument('--batch', help='suppress video output', action='store_true')
+    parser.add_argument('--batch', '-b', help='suppress video output', action='store_true')
     parser.add_argument('--multitrial', help='suppress reduntant prints', action='store_true')
     args = parser.parse_args()
 

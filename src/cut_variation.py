@@ -41,14 +41,8 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
     for iRow, row in enumerate(hCovCorrYields):
         for iCol, hCov in enumerate(row):
             SetObjectStyle(hCov, linecolor=kBlack)
-            if iRow == 0:
-                rowName = '#it{N}_{prompt}'
-            else:
-                rowName = '#it{N}_{non-prompt}'
-            if iCol == 0:
-                colName = '#it{N}_{prompt}'
-            else:
-                colName = '#it{N}_{non-prompt}'
+            rowName = '#it{N}_{prompt}' if iRow == 0 else '#it{N}_{non-prompt}'
+            colName  = '#it{N}_{prompt}' if iCol == 0   else '#it{N}_{non-prompt}'
             hCov.SetTitle(f';#it{{p}}_{{T}} (GeV/#it{{c}}); #sigma({rowName}, {colName})')
 
     oCuts = []
