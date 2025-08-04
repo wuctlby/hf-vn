@@ -17,7 +17,7 @@ from alive_progress import alive_bar
 from scipy.interpolate import make_interp_spline
 sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/../utils")
 from sparse_dicts import get_pt_preprocessed_sparses
-from utils import reweight_histo_1D, reweight_histo_2D, reweight_histo_3D, get_vn_versus_mass, profile_mass_sp, make_dir_root_file
+from utils import reweight_histo_1D, reweight_histo_2D, reweight_histo_3D, get_vn_versus_mass, profile_mass_sp, make_dir_root_file, logger
 
 ROOT.TH1.AddDirectory(False)
 
@@ -27,7 +27,7 @@ from ROOT import TFile
 def proj_multitrial(config, multitrial_folder):
 
     pt_bin_label = Path(multitrial_folder).name
-    print(f"\n\n\nProcessing multitrial projections for pt bin {pt_bin_label} ...")
+    logger(f"Processing multitrial projections for pt bin {pt_bin_label} ...", level='INFO')
 
     # Load default cutsets
     default_cutsets = [f"{config['outdir']}/cutvar_{config['suffix']}_combined/cutsets/{f}" for f in os.listdir(f"{config['outdir']}/cutvar_{config['suffix']}_combined/cutsets") if f.endswith('.yml')]
@@ -49,7 +49,7 @@ def proj_multitrial(config, multitrial_folder):
             with open(f"{multitrial_dir}/config_trial_{trial_number}.yml", 'r') as ymlCutSetFile:
                 config_trial = yaml.safe_load(ymlCutSetFile)
         except Exception as e:
-            print(f"Error opening or reading config file for trial {trial_number}: {e}")
+            logger(f"Error opening or reading config file for trial {trial_number}: {e}", level='ERROR')
             return
         
         multitrial_cutsets = glob.glob(f"{multitrial_dir}/cutsets/*.yml")
@@ -220,9 +220,7 @@ def get_pt_weights(cfgProj):
     # and actually ptweights is used as a flag
         # compute info for pt weights
     if not cfgProj.get('PtWeightsFile'):
-        print('\033[91m WARNING: pt weights for D mesons will not be provided! \033[0m')
-        print('\033[91m WARNING: pt weights for B mesons will not be provided! \033[0m')
-        print('\033[91m WARNING: B species weights will not be provided! \033[0m')
+        logger('No pt weights for D and B mesons provided in the config file!', level='WARNING')
         return None, None, None
         
     ptWeightsFile = TFile.Open(cfgProj["PtWeightsFile"], 'r')
@@ -231,11 +229,9 @@ def get_pt_weights(cfgProj):
         hPtWeightsD = ptWeightsFile.Get('hPtWeightsFONLLtimesTAMUDcent')
         ptBinCentersD = [ (hPtWeightsD.GetBinLowEdge(i)+hPtWeightsD.GetBinLowEdge(i+1))/2 for i in range(1, hPtWeightsD.GetNbinsX()+1)]
         ptBinContentsD = [hPtWeightsD.GetBinContent(i) for i in range(1, hPtWeightsD.GetNbinsX()+1)]
-        print(f'ptBinCentersD: {ptBinCentersD}\n\n')
-        print(f'ptBinContentsD: {ptBinContentsD}\n\n')
         sPtWeights = make_interp_spline(ptBinCentersD, ptBinContentsD)
     else:
-        print('\033[91m WARNING: pt weights for D mesons will not be provided! \033[0m')
+        logger('pt weights for D mesons will not be provided!', level='WARNING')
         sPtWeights = None
 
     if cfgProj.get('ApplyPtWeightsB'):
@@ -244,13 +240,13 @@ def get_pt_weights(cfgProj):
         ptBinContentsB = [hPtWeightsB.GetBinContent(i) for i in range(1, hPtWeightsB.GetNbinsX()+1)]
         sPtWeightsB = make_interp_spline(ptBinCentersB, ptBinContentsB)
     else:
-        print('\033[91m WARNING: pt weights for B mesons will not be provided! \033[0m')
+        logger('pt weights for B mesons will not be provided!', level='WARNING')
         sPtWeightsB = None
 
     if cfgProj.get('ApplyBSpeciesWeights'):
         Bspeciesweights = config['Bspeciesweights']
     else:
-        print('\033[91m WARNING: B species weights will not be provided! \033[0m')
+        logger('B species weights will not be provided!', level='WARNING')
         Bspeciesweights = None
     
     return sPtWeights, sPtWeightsB, Bspeciesweights
@@ -262,10 +258,12 @@ if __name__ == "__main__":
     parser.add_argument('--cutsetConfig', "-cc", metavar='text', type=str, nargs='?',
                         const=None, default='cutsetConfig.yaml',
                         help='Optional cutset configuration file (default: cutsetConfig.yaml)')
-    parser.add_argument("--correlated", "-c", action="store_true",
-                        help="Produce projection files for correlated cuts")
     parser.add_argument("--multitrial_folder", "-multfolder", metavar="text",
                         default="", help="Produce projection files for multitrial systematics")
+    parser.add_argument("--mCutSets", metavar="int", type=int, default=-1,
+                        help="The maximum number of previous projection files allowed to keep. If -1, all previous projection files will be kept.")
+    parser.add_argument("--outputDir", "-o", metavar="text",
+                        default="", help="output directory, used only for directly running the script")
     args = parser.parse_args()
 
     with open(args.config, 'r') as ymlCfgFile:
@@ -273,33 +271,46 @@ if __name__ == "__main__":
     operations = config["operations"]
 
     if args.multitrial_folder != "":
-        print(f"\n\nRunning multitrial projections!")
-        print(f"args.config: {args.config}")
+        logger(f"Running multitrial projections with config: {args.config}", level='INFO')
         proj_multitrial(config, args.multitrial_folder)
         sys.exit(0)
 
     with open(args.cutsetConfig, 'r') as ymlCutSetFile:
         cutSetCfg = yaml.load(ymlCutSetFile, yaml.FullLoader)
         iCut = f"{int(cutSetCfg['icutset']):02d}"
+    
+    parentDir = os.path.dirname(os.path.dirname(args.cutsetConfig))
+    outDir = os.path.join(parentDir, 'proj') if args.outputDir == "" else args.outputDir
+    outfilePath = f"{outDir}/proj_{iCut}.root"
+    os.makedirs(outDir, exist_ok=True)
 
-    method = "correlated" if args.correlated else "combined"
-    outDir = config['outdir'] + f'/cutvar_{config["suffix"]}_{method}/proj/'
-    previousProjFiles = [f for f in os.listdir(outDir) if f.endswith('.root')]
-    if operations["proj_data"] and operations["proj_mc"]:
-        print(f"\n\nCreating new file and project data and mc!")
-        outfile = TFile(f"{outDir}/proj_{iCut}.root", 'RECREATE')
-    elif len(previousProjFiles) == 0:
-        print(f"\n\nNo existing previous projections, creating new file and project data ({operations["proj_data"]}) or mc ({operations["proj_mc"]})!")
-        outfile = TFile(f"{outDir}/proj_{iCut}.root", 'RECREATE')
+    if iCut == '00' and args.mCutSets != -1:
+        previousProjFiles = [f for f in os.listdir(outDir) if f.startswith('proj_') and f.endswith('.root')]
+        if len(previousProjFiles) > args.mCutSets:
+            logger(f"Found {len(previousProjFiles)} previous projection files, will keep only the last {args.mCutSets} files", level='INFO')
+            for file in previousProjFiles:
+                fileCut = int(file.split('_')[1].split('.')[0])
+                if fileCut > args.mCutSets:
+                    filePath = os.path.join(outDir, file)
+                    logger(f"\tRemoving previous projection file {filePath}", level='INFO')
+                    os.remove(filePath)
+
+    if operations["proj_data"] or operations["proj_mc"]:
+        if os.path.exists(outfilePath):
+            logger(f"Found previous projection file {outfilePath}, will update it", level='INFO')
+            outfile = TFile.Open(outfilePath, 'UPDATE')
+        else:
+            logger(f"No previous projection file found, will create a new one at {outfilePath}", level='INFO')
+            outfile = TFile(outfilePath, 'RECREATE')
     else:
-        print(f"\n\nFound previous projections, updating existing file!")
-        outfile = TFile.Open(f"{outDir}/proj_{iCut}.root", 'UPDATE')
+        sys.exit(0)
 
     write_opt_data = TObject.kOverwrite if operations["proj_data"] else 0 
     write_opt_mc = TObject.kOverwrite if operations["proj_mc"] else 0 
 
     # compute info for pt weights
-    sPtWeightsD, sPtWeightsB, Bspeciesweights = get_pt_weights(config["projections"]) if config['projections'].get('PtWeightsFile') else (None, None, None)
+    if operations["proj_mc"]:
+        sPtWeightsD, sPtWeightsB, Bspeciesweights = get_pt_weights(config["projections"]) if config['projections'].get('PtWeightsFile') else (None, None, None)
 
     with alive_bar(len(cutSetCfg['Pt']['min']), title='Processing pT bins') as bar:
         for iPt, (ptMin, ptMax, bkg_min, bkg_max, fd_min, fd_max) in enumerate(zip(cutSetCfg['Pt']['min'], cutSetCfg['Pt']['max'],

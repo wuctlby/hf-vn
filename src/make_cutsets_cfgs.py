@@ -58,9 +58,9 @@ def make_yaml(flow_config, outputdir, correlated):
     sig_cuts_upper = list(map(list, zip(*sig_cuts_upper)))
 
     if correlated:
-        bkg_cuts_upper = [cfg_cutvar['corr_bdt_cut']['bkg_max']] * maxCutSets
+        bkg_cuts_upper = [[cut for iCut, cut in enumerate(cfg_cutvar['corr_bdt_cut']['bkg_max']) if iCut < nPtBins]] * maxCutSets
     else:
-        bkg_cuts_upper = [pad_to_length(cuts, maxCutSets) for cuts in cfg_cutvar['uncorr_bdt_cut']['bkg_max']]
+        bkg_cuts_upper = [pad_to_length(cuts, maxCutSets) for iCut, cuts in enumerate(cfg_cutvar['uncorr_bdt_cut']['bkg_max']) if iCut < nPtBins]
         bkg_cuts_upper  = list(map(list, zip(*bkg_cuts_upper)))
 
     os.makedirs(f'{outputdir}/cutsets', exist_ok=True)

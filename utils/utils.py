@@ -3,7 +3,7 @@ import os
 import sys
 import ROOT
 import ctypes
-from ROOT import TH1, TH2, TH3
+from ROOT import TH1, TH2, TH3, TFile
 import numpy as np
 
 def check_dir(dir):
@@ -177,6 +177,11 @@ def get_vnfitter_results(vnFitter, secPeak, useRefl, useTempl):
             vnSecPeakUnc: uncertainty of vn secondary peak
             fMassRflFunc: mass reflection function
             fMassBkgRflFunc: mass background reflection function
+            fVnSecPeakFunct: vn secondary peak function
+            fVnCompsFuncts: dictionary with vn components functions
+            fMassTemplFuncts: dictionary with mass template functions
+            vnTemplates: list of vn templates
+            vnTemplatesUncs: list of vn templates uncertainties
     '''
     vn_results = {}
     vn_results['vn'] = vnFitter.GetVn()
@@ -357,7 +362,7 @@ def check_histo_exists(file, histo_name):
         histo_exists = True
     return histo_exists
 
-def get_refl_histo(reflFile, centMinMax, ptMins, ptMaxs):
+def get_refl_histo(reflFile, ptMins, ptMaxs):
     '''
     Method that loads MC histograms for the reflections of D0
 
@@ -381,27 +386,35 @@ def get_refl_histo(reflFile, centMinMax, ptMins, ptMaxs):
     '''
     hMCSgn, hMCRefl = [], []
     if not check_file_exists(reflFile):
-        print(f'Error: reflection file {reflFile} does not exist! Turning off reflections usage')
+        logger(f'Reflections file {reflFile} does not exist! Turning off reflections usage', level='ERROR')
         return False
     
-    reflFile = ROOT.TFile(reflFile, 'READ')
-
+    reflFile = TFile(reflFile, 'READ')
     for iPt, (ptMin, ptMax) in enumerate(zip(ptMins, ptMaxs)):
-        dirName = f'cent_bins{centMinMax[0]}_{centMinMax[1]}/pt_bins{ptMin}_{ptMax}'
+        ptMinSuf, ptMaxSuf = int(ptMin*10), int(ptMax*10)
+        dirName = f'pt_{ptMinSuf}_{ptMaxSuf}'
+        if not reflFile.GetDirectory(dirName):
+            logger(f'No directory {dirName} found! Turning off reflections usage', level='ERROR')
+            return False
+
         hMCSgn.append(reflFile.Get(f'{dirName}/hFDMass'))
         hMCSgn[iPt].Add(reflFile.Get(f'{dirName}/hPromptMass'), 1)
-        if hMCSgn[iPt] == None:
-            print(f'In directory {dirName}, hFDMass not found! Turning off reflections usage')
+        if not isinstance(hMCSgn[iPt], TH1) or hMCSgn[iPt] == None:
+            logger(f'In directory {dirName}, hFDMass/hPromptMass_{ptMinSuf}_{ptMaxSuf} not found! Turning off reflections usage', level='ERROR')
             return False
         hMCSgn[iPt].SetName(f'histSgn_{iPt}')
         hMCSgn[iPt].SetDirectory(0)
 
-        hMCRefl.append(reflFile.Get(f'{dirName}/hReflMass'))
-        if hMCRefl[iPt] == None:
-            print(f'In directory {dirName}, hReflMass_{ptMin}_{ptMax} not found! Turning off reflections usage')
+        hMCRefl.append(reflFile.Get(f'{dirName}/hRecoReflMass'))
+        if not isinstance(hMCRefl[iPt], TH1) or hMCRefl[iPt] == None:
+            logger(f'In directory {dirName}, hRecoReflMass not found! Turning off reflections usage', level='ERROR')
             return False
         hMCRefl[iPt].SetName(f'histRfl_{iPt}')
         hMCRefl[iPt].SetDirectory(0)
+
+        if hMCRefl[iPt].Integral() <= 0:
+            logger(f'Error: Empty reflection template for pt bin {ptMin}-{ptMax}! Turning off reflections usage', level='ERROR')
+            return False
 
     reflFile.Close()
 
