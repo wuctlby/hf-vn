@@ -138,10 +138,9 @@ def compute_eff(config, inputFile, batch=False):
 
     #_____________________________________________________________________________________
     # Save output
-    parentDir   = os.path.dirname(os.path.dirname(inputFile))
-    dirName     = os.path.dirname(inputFile).split('/')[-1].replace('proj', 'eff')
-    fileName    = os.path.basename(inputFile).replace('proj', 'eff')
-    outFileName = os.path.join(parentDir, dirName, fileName)
+    outFileName = os.path.join(os.path.dirname(os.path.dirname(inputFile)),
+                               'eff',
+                               os.path.basename(inputFile).replace('proj', 'eff'))
     os.makedirs(os.path.dirname(outFileName), exist_ok=True)
     outFile = TFile(outFileName, 'recreate')
     hEffPrompt.Write()

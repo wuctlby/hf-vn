@@ -6,9 +6,6 @@ operations:
     proj_mc: False
     efficiencies: False
     get_vn_vs_mass: False
-    ##########################
-    do_syst_frac: False
-    ##########################
     do_cut_variation: False
     data_driven_fraction: true
     get_v2_vs_frac: true
@@ -64,7 +61,6 @@ cut_variation:
                 [21,22,23,24,25,26], # pt 14
                 [5,9], # pt 15
             ]
-        syst_frac: [] # 'even', 'random', 'odd', 'minus3low', '1in3', '1in4', 'minus3high', 'minus3' # apply only when filled
     uncorr_bdt_cut:
         bkg_max: # max probability for bkg, one for each pt bin
             - [0.01, 0.02, 0.008, 0.002] # pt 1

@@ -27,7 +27,9 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
         config = yaml.load(ymlfitConfigFile, yaml.FullLoader)
 
     # Set outfile name
-    outFileName = inFileName.replace('proj', 'raw_yields').replace('.root', '') 
+    outFileName = os.path.join(os.path.dirname(os.path.dirname(inFileName)),
+                               'ry',
+                               os.path.basename(inFileName).replace('proj', 'raw_yields').replace('.root', ''))
 
     gROOT.SetBatch(batch)
     SetGlobalStyle(padleftmargin=0.14, padbottommargin=0.12, padtopmargin=0.12, opttitle=1)
@@ -566,7 +568,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Arguments')
     parser.add_argument('fitConfigFileName', metavar='text', default='config_Ds_Fit.yml')
     parser.add_argument('inFileName', metavar='text', default='')
-    parser.add_argument('--batch', help='suppress video output', action='store_true')
+    parser.add_argument('--batch', '-b', help='suppress video output', action='store_true')
     parser.add_argument('--multitrial', help='suppress reduntant prints', action='store_true')
     args = parser.parse_args()
 
