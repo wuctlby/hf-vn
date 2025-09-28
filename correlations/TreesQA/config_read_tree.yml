@@ -1,0 +1,14 @@
+InputFile: "/path/to/input/AO2D.root"
+OutputFile: "/path/to/output/AO2D.root"
+
+Trees:
+- Name: "O2hfcredflowcoll"
+  Query: "fCentrality < 10"
+- Name: "O2hfcredcharmhad"
+  Query: ""
+- Name: "O2hfcredcharmml"
+  Query: ""
+- Name: "O2hfcredtrkassoc"
+  Query: ""
+- Name: "O2hfcredtrksel"
+  Query: ""
