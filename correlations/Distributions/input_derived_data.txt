@@ -1,1 +1,1 @@
-/home/mdicosta/LocalTestsO2/CorrelationsOO/SeparateSameMixedTables/DerivedDataCreation/CharmHad/SameEvent/Tree.root
+/path/to/input/Tree.root
