@@ -1,0 +1,21 @@
+#!/bin/bash
+# workflow
+# 0 - 10
+hadd -f ExtractCorrelationsResults_010.root ~/cernbox/v2AnalysisOO/Macros/Output_CorrelationExtraction_010_posDeta_Root/ExtractCorrelationsResults.root ~/cernbox/v2AnalysisOO/Macros/Output_CorrelationExtraction_010_negDeta_Root/ExtractCorrelationsResults.root
+
+hadd -f ExtractCorrelationsResults_2D_010.root ~/cernbox/v2AnalysisOO/Macros/Output_CorrelationExtraction_010_posDeta_Root/ExtractCorrelationsResults_2D.root ~/cernbox/v2AnalysisOO/Macros/Output_CorrelationExtraction_010_negDeta_Root/ExtractCorrelationsResults_2D.root
+
+# 10 - 20
+hadd -f ExtractCorrelationsResults_1020.root ~/cernbox/v2AnalysisOO/Macros/Output_CorrelationExtraction_1020_posDeta_Root/ExtractCorrelationsResults.root ~/cernbox/v2AnalysisOO/Macros/Output_CorrelationExtraction_1020_negDeta_Root/ExtractCorrelationsResults.root
+
+hadd -f ExtractCorrelationsResults_2D_1020.root ~/cernbox/v2AnalysisOO/Macros/Output_CorrelationExtraction_1020_posDeta_Root/ExtractCorrelationsResults_2D.root ~/cernbox/v2AnalysisOO/Macros/Output_CorrelationExtraction_1020_negDeta_Root/ExtractCorrelationsResults_2D.root
+
+# 20 - 50
+hadd -f ExtractCorrelationsResults_2050.root ~/cernbox/v2AnalysisOO/Macros/Output_CorrelationExtraction_2050_posDeta_Root/ExtractCorrelationsResults.root ~/cernbox/v2AnalysisOO/Macros/Output_CorrelationExtraction_2050_negDeta_Root/ExtractCorrelationsResults.root
+
+hadd -f ExtractCorrelationsResults_2D_2050.root ~/cernbox/v2AnalysisOO/Macros/Output_CorrelationExtraction_2050_posDeta_Root/ExtractCorrelationsResults_2D.root ~/cernbox/v2AnalysisOO/Macros/Output_CorrelationExtraction_2050_negDeta_Root/ExtractCorrelationsResults_2D.root
+
+# 50 - 90
+hadd -f ExtractCorrelationsResults_5090.root ~/cernbox/v2AnalysisOO/Macros/Output_CorrelationExtraction_5090_posDeta_Root/ExtractCorrelationsResults.root ~/cernbox/v2AnalysisOO/Macros/Output_CorrelationExtraction_5090_negDeta_Root/ExtractCorrelationsResults.root
+
+hadd -f ExtractCorrelationsResults_2D_5090.root ~/cernbox/v2AnalysisOO/Macros/Output_CorrelationExtraction_5090_posDeta_Root/ExtractCorrelationsResults_2D.root ~/cernbox/v2AnalysisOO/Macros/Output_CorrelationExtraction_5090_negDeta_Root/ExtractCorrelationsResults_2D.root
