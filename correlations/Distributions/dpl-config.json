@@ -48,15 +48,49 @@
                 "50"
             ]
         },
-        "deltaEtaAbsMin": "0.8",
+        "deltaEtaAbsMin": "0.800000012",
         "deltaEtaAbsMax": "3",
         "dcaXYTrackMax": "1",
         "dcaZTrackMax": "1",
         "tpcCrossedRowsMin": "1",
         "itsNClsMin": "1",
-        "downSamplePairsME": "1",
-        "ptMaxForDownSampleME": "10",
-        "centMaxForDownSampleME": "10",
+        "downSamplePairs": "1",
+        "ptMaxForDownSample": "10",
+        "centMaxForDownSample": "10",
+        "zPoolBins": {
+            "values": [
+                "0",
+                "-10",
+                "-2.5",
+                "2.5",
+                "10"
+            ]
+        },
+        "multPoolBins": {
+            "values": [
+                "0",
+                "0",
+                "900",
+                "1800",
+                "6000"
+            ]
+        },
+        "centPoolBins": {
+            "values": [
+                "0",
+                "0",
+                "10",
+                "20",
+                "30",
+                "40",
+                "50",
+                "60",
+                "70",
+                "80",
+                "90",
+                "100"
+            ]
+        },
         "binsInvMass": {
             "values": [
                 "500",
@@ -111,13 +145,6 @@
                 "60",
                 "-3",
                 "3"
-            ]
-        },
-        "binsPoolBin": {
-            "values": [
-                "50",
-                "-2",
-                "48"
             ]
         },
         "binsMlOne": {

@@ -1,7 +1,7 @@
 import sys
 from alive_progress import alive_bar
 import os
-from ROOT import TFile # pyright: ignore # type: ignore
+from ROOT import TFile, THnSparse # pyright: ignore # type: ignore
 sys.path.append("./")
 from utils import logger
 
@@ -193,7 +193,14 @@ def get_sparses(config, get_data=True, get_mc=True, debug=False):
         for name, dataset in pre_cfg['data'].items():
             # Collect all files starting with AnalysisResults_ and ending with .root in the dataset['files'] string
             if isinstance(dataset["files"], str) and not dataset["files"].endswith(".root"):
-                list_of_files = [f for f in os.listdir(dataset["files"]) if f.endswith(".root")]
+                list_of_files = []
+                for root, dirs, files in os.walk(dataset["files"]):
+                    if "hy" in os.path.basename(root):
+                        for f in files:
+                            if f.endswith(".root"):
+                                list_of_files.append(os.path.join(root, f))
+                print(f"list_of_files: {list_of_files}")
+                input("Press Enter to continue...")
                 infileflow = [TFile(os.path.join(dataset["files"], file)) for file in list_of_files]
             elif isinstance(dataset["files"], list):
                 if len(dataset["files"]) == 1:
@@ -213,6 +220,9 @@ def get_sparses(config, get_data=True, get_mc=True, debug=False):
             with alive_bar(len(infileflow), title=f"[INFO]\t\t[Data] Loading data sparses for {name}") as bar:
                 for infile in infileflow:
                     sparsesFlow[f'Flow_{name}'].append(infile.Get('hf-task-flow-charm-hadrons/hSparseFlowCharm'))
+                    if not isinstance(sparsesFlow[f'Flow_{name}'][-1], THnSparse):
+                        logger(f"Sparse 'hf-task-flow-charm-hadrons/hSparseFlowCharm' not found in file {infile.GetName()}", level='WARNING')
+                        del sparsesFlow[f'Flow_{name}'][-1]
                     bar()
             [infile.Close() for infile in infileflow]
             resofile = TFile.Open(dataset["resolution"], 'r')
