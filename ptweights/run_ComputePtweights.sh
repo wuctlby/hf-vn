@@ -15,7 +15,7 @@ export fonllB="${ScriptPath}/models/fonll/fonll_pythia_beautyFFee_charmhadrons_5
 export applyRaa=True
 export Raa=$([ "$applyRaa" = "False" ] && echo "" || echo "--Raa")
 
-python ${ScriptPath}/ComputePtweights.py \
+python ${ScriptPath}/ComputePtWeights.py \
     ${config} \
     --Bspecie ${Bspecie} \
     --suffix ${suffix} \

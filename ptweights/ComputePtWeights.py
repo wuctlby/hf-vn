@@ -57,12 +57,12 @@ def computePtWeights(config):
     hPtGenD.Scale(1./hPtGenD.Integral())
 
     if Bspecie:
-        hPtGenB = sparseGenB.Projection(axes['GenFD']['pt_bmoth'])
+        hPtGenB = sparseGenB.Projection(axes['GenFD']['PtBMoth'])
         if Dspecie == 'Ds':
             sparseGenBPlusBZero = sparseGenB.Clone('sparseGenBPlusBZero')
-            sparseGenBPlusBZero.GetAxis(axes['GenFD']['origin']).SetRange(1, 2)
+            sparseGenBPlusBZero.GetAxis(axes['GenFD']['Origin']).SetRange(1, 2)
             sparseGenLambdaBZero = sparseGenB.Clone('sparseGenLambdaBZero')
-            sparseGenLambdaBZero.GetAxis(axes['GenFD']['origin']).SetRange(4, 4)
+            sparseGenLambdaBZero.GetAxis(axes['GenFD']['Origin']).SetRange(4, 4)
             hPtGenB = sparseGenLambdaBZero.Projection(axes['GenFD']['Pt'])
             hPtGenB.Add(sparseGenBPlusBZero.Projection(axes['GenFD']['Pt']))
         
@@ -74,8 +74,8 @@ def computePtWeights(config):
         hPtGenB.Scale(1./hPtGenB.Integral())
     
     if Bspecie == 'BsBmix':
-        sparseGenB.GetAxis(axes['GenFD']['origin']).SetRange(3, 3)
-        hPtGenBs = sparseGenB.Projection(axes['GenFD']['pt_bmoth'])
+        sparseGenB.GetAxis(axes['GenFD']['Origin']).SetRange(3, 3)
+        hPtGenBs = sparseGenB.Projection(axes['GenFD']['PtBMoth'])
         hPtGenBs.SetDirectory(0)
         hPtGenBs.SetName('hPtGenBs')
         hPtGenBs.Rebin(rebin)

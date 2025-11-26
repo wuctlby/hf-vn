@@ -30,7 +30,6 @@ def convert_fit_funcs(func_list):
             converted_funcs.append("gaussian")
         elif func == "kLin":
             converted_funcs.append("chebpol1")
-    print(f"Converted fit functions: {converted_funcs}")
     return converted_funcs
 
 def fit_control_var(df, i_bin, cfg_fit, output_dir, part_name=""):
@@ -130,10 +129,6 @@ def load_input_df(input_aod_cfg):
         logger("Invalid input_aod configuration.", "ERROR")
         return
     input_aods = sorted(input_aods, key=lambda x: int(__import__('re').search(r'AO2D_(\d+)', x).group(1)))
-    # max_files = None  # set to None to process all files, or integer to limit
-
-    # # Retrieve input files and parallel launch
-    # files_to_process = input_aods if max_files is None else input_aods[:max_files]
     with Pool(processes=8) as pool:
         dfs = pool.starmap(load_aod_file, enumerate(input_aods))
 
@@ -148,17 +143,13 @@ def eval_pt_center(cfg_file_name):
     with open(cfg_file_name, 'r') as cfg_file:
         cfg = yaml.safe_load(cfg_file)
 
-    print(f"cfg: {cfg}\n\n\n")
-    
     # Retrieve cutsets configs
     cutsets_dir = os.path.join(cfg['outdir'], f"cutvar_{cfg['suffix']}_combined/cutsets")
     cutset_files = [os.path.join(cutsets_dir, f) for f in os.listdir(cutsets_dir) if f.endswith('.yml')]
     cutset_files.sort(key=lambda x: int(re.search(r'(\d+)', os.path.basename(x)).group(1)))
-    print(f"Found {len(cutset_files)} cutset files in {cutsets_dir}")
-    print(f"cutset_files: {cutset_files}")
+    print(f"Found {cutset_files} cutset files in {cutsets_dir}")
 
     df = load_input_df(cfg["pt_centering"]["input_aod"])
-
     infer_vars = df.columns.tolist()
     infer_vars.remove('fM')
     infer_vars.remove('fMlScore0')

@@ -19,8 +19,8 @@ from StyleFormatter import SetGlobalStyle # pylint: disable=import-error,no-name
 TH1.AddDirectory(False)
 
 def data_driven_frac(outputDir, iFile, hEffPrompt, hEffFD, \
-                        hPromptFrac, hFDFrac, hPromptFracCorr, hFDFracCorr, \
-                        hCorrYieldPrompt, hCorrYieldFD, hCovPromptPrompt, hCovPromptFD, hCovFDFD):
+                     hPromptFrac, hFDFrac, hPromptFracCorr, hFDFracCorr, \
+                     hCorrYieldPrompt, hCorrYieldFD, hCovPromptPrompt, hCovPromptFD, hCovFDFD):
     for iPt in range(hEffPrompt.GetNbinsX()):
         ptMin = hEffPrompt.GetBinLowEdge(iPt+1)
         ptMax = ptMin+hEffPrompt.GetBinWidth(iPt+1)
@@ -37,10 +37,10 @@ def data_driven_frac(outputDir, iFile, hEffPrompt, hEffFD, \
         covFDFD = hCovFDFD.GetBinContent(iPt+1)
 
         fracPromptFD, uncFracPromptFD = GetPromptFDFractionCutSet(effAccPrompt, effAccFD, corrYieldPrompt, corrYieldFD,
-                                                              covPromptPrompt, covFDFD, covPromptFD)
+                                                                  covPromptPrompt, covFDFD, covPromptFD)
 
         fracPromptFDcorr, uncFracPromptFDcorr = GetPromptFDFractionCutSet(1., 1., corrYieldPrompt, corrYieldFD,
-                                                                      covPromptPrompt, covFDFD, covPromptFD)
+                                                                          covPromptPrompt, covFDFD, covPromptFD)
 
         hPromptFrac.SetBinContent(iPt+1, fracPromptFD[0])
         hPromptFrac.SetBinError(iPt+1, uncFracPromptFD[0])

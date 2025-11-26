@@ -72,7 +72,7 @@ def process_pt_bin_data(config, ptmin, ptmax, centmin, centmax, bkg_max_cut, deb
         with alive_bar(len(dataset_sparses), title=f'[INFO] \t\t[Data] Processing {key}', bar='smooth') as bar:
             for iSparse, sparse in enumerate(dataset_sparses):
                 sparse.GetAxis(sparse_axes['Pt']).SetRangeUser(ptmin, ptmax)
-                sparse.GetAxis(sparse_axes['score_bkg']).SetRangeUser(0, bkg_max_cut)
+                sparse.GetAxis(sparse_axes['ScoreBkg']).SetRangeUser(0, bkg_max_cut)
                 proj_axes = [sparse_axes[axtokeep] for axtokeep in axes_data]
                 proj_sparse = sparse.Projection(len(proj_axes), array.array('i', proj_axes), 'O')
                 proj_sparse.SetName(sparse.GetName())
@@ -128,7 +128,7 @@ def process_pt_bin_mc(config, ptmin, ptmax, centmin, centmax, bkg_max_cut, debug
     make_dir_root_file('MC/Reco/', outFile)
     for key, sparse_type in reco_sparses.items():
         [sparse.GetAxis(sparse_axes[key]['Pt']).SetRangeUser(ptmin, ptmax) for sparse in sparse_type] 
-        [sparse.GetAxis(sparse_axes[key]['score_bkg']).SetRangeUser(0, bkg_max_cut) for sparse in sparse_type]
+        [sparse.GetAxis(sparse_axes[key]['ScoreBkg']).SetRangeUser(0, bkg_max_cut) for sparse in sparse_type]
     for key, sparse_type in reco_sparses.items():
         for iSparse, sparse in enumerate(sparse_type):
             cloned_sparse = sparse.Clone()
@@ -204,8 +204,8 @@ def pre_process_data_mc(config):
         ### Centrally cut on centrality and max of bkg scores
         for key, dataset_sparses in data_sparses.items():
             for sparse in dataset_sparses:
-                sparse.GetAxis(sparse_axes['Flow']['cent']).SetRangeUser(centmin, centmax)
-                sparse.GetAxis(sparse_axes['Flow']['score_bkg']).SetRangeUser(0, max(bkg_maxs))
+                sparse.GetAxis(sparse_axes['Flow']['Cent']).SetRangeUser(centmin, centmax)
+                sparse.GetAxis(sparse_axes['Flow']['ScoreBkg']).SetRangeUser(0, max(bkg_maxs))
         with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
             tasks_data = [executor.submit(process_pt_bin_data, config, ptmin, ptmax, centmin, centmax, bkg_maxs[iPt], 
                                                                debugPreprocessFile, outputDir, data_sparses, sparse_axes['Flow']) for iPt, (ptmin, ptmax) in enumerate(zip(ptmins, ptmaxs))]
@@ -218,10 +218,10 @@ def pre_process_data_mc(config):
         logger("##### Skimming Monte Carlo #####")
         ### Centrally cut on centrality and max of bkg scores
         for key, sparse_type in reco_sparses.items():
-            [sparse.GetAxis(sparse_axes[key]['cent']).SetRangeUser(centmin, centmax) for sparse in sparse_type]
-            [sparse.GetAxis(sparse_axes[key]['score_bkg']).SetRangeUser(0, max(bkg_maxs)) for sparse in sparse_type]
+            [sparse.GetAxis(sparse_axes[key]['Cent']).SetRangeUser(centmin, centmax) for sparse in sparse_type]
+            [sparse.GetAxis(sparse_axes[key]['ScoreBkg']).SetRangeUser(0, max(bkg_maxs)) for sparse in sparse_type]
         for key, sparse_type in gen_sparses.items():
-            [sparse.GetAxis(sparse_axes[key]['cent']).SetRangeUser(centmin, centmax) for sparse in sparse_type]
+            [sparse.GetAxis(sparse_axes[key]['Cent']).SetRangeUser(centmin, centmax) for sparse in sparse_type]
         with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
             tasks_mc = [executor.submit(process_pt_bin_mc, config, ptmin, ptmax, centmin, centmax, bkg_maxs[iPt], 
                                                            debugPreprocessFile, outputDir, reco_sparses, gen_sparses, sparse_axes) for iPt, (ptmin, ptmax) in enumerate(zip(ptmins, ptmaxs))]

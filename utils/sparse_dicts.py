@@ -12,27 +12,27 @@ def get_sparses_dicts(config):
     axes_dict['Flow'] = {
         'Mass': 0,
         'Pt': 1,
-        'cent': 2,
-        'sp': 3,
-        'score_bkg': 4,
-        'score_FD': 5,
-        'occ': 6
+        'Cent': 2,
+        'Sp': 3,
+        'ScoreBkg': 4,
+        'ScoreFD': 5,
+        'Occ': 6
     }
     ### MC sparse dictionary
     if config['Dmeson'] == 'Dzero':
         axes_dict['RecoPrompt'] = {
-            'score_bkg': 0,
+            'ScoreBkg': 0,
             'score_prompt': 1,
-            'score_FD': 2,
+            'ScoreFD': 2,
             'Mass': 3,
             'Pt': 4,
-            'y': 5,
-            'cand_type': 6,
-            'pt_bmoth': 7,
-            'origin': 8,
-            'npvcontr': 9,
-            'cent': 10,
-            'occ': 11,
+            'Y': 5,
+            'CandType': 6,
+            'PtBMoth': 7,
+            'Origin': 8,
+            'NPvContr': 9,
+            'Cent': 10,
+            'Occ': 11,
         }
         axes_dict['RecoFD'] = axes_dict['RecoPrompt']
         axes_dict['RecoRefl'] = axes_dict['RecoPrompt']
@@ -40,93 +40,93 @@ def get_sparses_dicts(config):
         axes_dict['RecoReflFD'] = axes_dict['RecoPrompt']
         axes_dict['GenPrompt'] = {
             'Pt': 0,
-            'pt_bmoth': 1,
-            'y': 2,
-            'origin': 3,
-            'npvcontr': 4,
-            'cent': 5,
-            'occ': 6
+            'PtBMoth': 1,
+            'Y': 2,
+            'Origin': 3,
+            'NPvContr': 4,
+            'Cent': 5,
+            'Occ': 6
         }
         axes_dict['GenFD'] = {
             'Pt': 0,
-            'pt_bmoth': 1,
-            'y': 2,
-            'origin': 3,
-            'npvcontr': 4,
-            'cent': 5,
-            'occ': 6
+            'PtBMoth': 1,
+            'Y': 2,
+            'Origin': 3,
+            'NPvContr': 4,
+            'Cent': 5,
+            'Occ': 6
         }
     elif config['Dmeson'] == 'Dplus':
         axes_dict['RecoPrompt'] = {
             'Mass': 0,
             'Pt': 1,
-            'score_bkg': 2,
+            'ScoreBkg': 2,
             'score_prompt': 3,
-            'score_FD': 4,
-            'cent': 5,
-            'occ': 6,
+            'ScoreFD': 4,
+            'Cent': 5,
+            'Occ': 6,
         }
         axes_dict['RecoFD'] = {
             'Mass': 0,
             'Pt': 1,
-            'score_bkg': 2,
+            'ScoreBkg': 2,
             'score_prompt': 3,
-            'score_FD': 4,
-            'cent': 5,
-            'occ': 6,
-            'pt_bmoth': 7,
-            'flag_bhad': 8,
+            'ScoreFD': 4,
+            'Cent': 5,
+            'Occ': 6,
+            'PtBMoth': 7,
+            'FlagBHad': 8,
         }
         axes_dict['GenPrompt'] = {
             'Pt': 0,
-            'y': 1,
-            'cent': 2,
-            'occ': 3
+            'Y': 1,
+            'Cent': 2,
+            'Occ': 3
         }
         axes_dict['GenFD'] = {
             'Pt': 0,
-            'y': 1,
-            'cent': 2,
-            'pt_bmoth': 3,
-            'flag_bhad': 4,
+            'Y': 1,
+            'Cent': 2,
+            'PtBMoth': 3,
+            'FlagBHad': 4,
         }
 
     elif config['Dmeson'] == 'Ds':
         axes_dict['RecoPrompt'] = {
             'Mass': 0,
             'Pt': 1,
-            'cent': 3,  # Check number 2
-            'npvcontr': 4,
-            'score_bkg': 5,
+            'Cent': 3,  # Check number 2
+            'NPvContr': 4,
+            'ScoreBkg': 5,
             'score_prompt': 6,
-            'score_FD': 7,
-            'occ': 8,
+            'ScoreFD': 7,
+            'Occ': 8,
         }
         axes_dict['RecoFD'] = {
             'Mass': 0,
             'Pt': 1,
-            'cent': 2,
-            'score_bkg': 3,
+            'Cent': 2,
+            'ScoreBkg': 3,
             'score_prompt': 4,
-            'score_FD': 5,
-            'pt_bmoth': 6,
-            'flag_bhad': 7,
-            'occ': 8
+            'ScoreFD': 5,
+            'PtBMoth': 6,
+            'FlagBHad': 7,
+            'Occ': 8
         }
         axes_dict['GenPrompt'] = {
             'Pt': 0,
-            'y': 1,
-            'npvcontr': 2,
-            'cent': 3,
-            'occ': 4
+            'Y': 1,
+            'NPvContr': 2,
+            'Cent': 3,
+            'Occ': 4
         }
         axes_dict['GenFD'] = {
             'Pt': 0,
-            'y': 1,
-            'cent': 2,
-            'pt_bmoth': 3,
-            'flag_bhad': 4,
-            'occ': 5
+            'Y': 1,
+            'Cent': 2,
+            'PtBMoth': 3,
+            'FlagBHad': 4,
+            'Occ': 5
         }
 
     return axes_dict
@@ -231,36 +231,36 @@ def get_sparses(config, get_data=True, get_mc=True, debug=False):
             sparseD0Path = 'hf-task-d0/hBdtScoreVsMassVsPtVsPtBVsYVsOriginVsD0Type'
             sparsesReco['RecoPrompt'] = [file.Get(sparseD0Path) for file in infiletask]
             for ifile in range(len(sparsesReco['RecoPrompt'])):
-                sparsesReco['RecoPrompt'][ifile].GetAxis(axes_dict['RecoPrompt']['origin']).SetRange(2, 2)    # make sure it is prompt
-                sparsesReco['RecoPrompt'][ifile].GetAxis(axes_dict['RecoPrompt']['cand_type']).SetRange(1, 2) # make sure it is signal
+                sparsesReco['RecoPrompt'][ifile].GetAxis(axes_dict['RecoPrompt']['Origin']).SetRange(2, 2)    # make sure it is prompt
+                sparsesReco['RecoPrompt'][ifile].GetAxis(axes_dict['RecoPrompt']['CandType']).SetRange(1, 2) # make sure it is signal
 
             sparsesReco['RecoFD'] = [file.Get(sparseD0Path) for file in infiletask]
             for ifile in range(len(sparsesReco['RecoFD'])):
-                sparsesReco['RecoFD'][ifile].GetAxis(axes_dict['RecoPrompt']['origin']).SetRange(3, 3)       # make sure it is non-prompt
-                sparsesReco['RecoFD'][ifile].GetAxis(axes_dict['RecoPrompt']['cand_type']).SetRange(1, 2)    # make sure it is signal
+                sparsesReco['RecoFD'][ifile].GetAxis(axes_dict['RecoPrompt']['Origin']).SetRange(3, 3)       # make sure it is non-prompt
+                sparsesReco['RecoFD'][ifile].GetAxis(axes_dict['RecoPrompt']['CandType']).SetRange(1, 2)    # make sure it is signal
 
             sparsesReco['RecoRefl'] = [file.Get(sparseD0Path) for file in infiletask]
             for ifile in range(len(sparsesReco['RecoRefl'])):
-                sparsesReco['RecoRefl'][ifile].GetAxis(axes_dict['RecoPrompt']['cand_type']).SetRange(3, 4)  # make sure it is reflection
+                sparsesReco['RecoRefl'][ifile].GetAxis(axes_dict['RecoPrompt']['CandType']).SetRange(3, 4)  # make sure it is reflection
 
             sparsesReco['RecoReflPrompt'] = [file.Get(sparseD0Path) for file in infiletask]
             for ifile in range(len(sparsesReco['RecoReflPrompt'])):
-                sparsesReco['RecoReflPrompt'][ifile].GetAxis(axes_dict['RecoPrompt']['cand_type']).SetRange(3, 4)  # make sure it is reflection
-                sparsesReco['RecoReflPrompt'][ifile].GetAxis(axes_dict['RecoPrompt']['origin']).SetRange(2, 2)       # make sure it is prompt   
+                sparsesReco['RecoReflPrompt'][ifile].GetAxis(axes_dict['RecoPrompt']['CandType']).SetRange(3, 4)  # make sure it is reflection
+                sparsesReco['RecoReflPrompt'][ifile].GetAxis(axes_dict['RecoPrompt']['Origin']).SetRange(2, 2)       # make sure it is prompt   
 
             sparsesReco['RecoReflFD'] = [file.Get(sparseD0Path) for file in infiletask]
             for ifile in range(len(sparsesReco['RecoReflFD'])):
-                sparsesReco['RecoReflFD'][ifile].GetAxis(axes_dict['RecoPrompt']['cand_type']).SetRange(3, 4)    # make sure it is reflection
-                sparsesReco['RecoReflFD'][ifile].GetAxis(axes_dict['RecoPrompt']['origin']).SetRange(3, 3)       # make sure it is FD
+                sparsesReco['RecoReflFD'][ifile].GetAxis(axes_dict['RecoPrompt']['CandType']).SetRange(3, 4)    # make sure it is reflection
+                sparsesReco['RecoReflFD'][ifile].GetAxis(axes_dict['RecoPrompt']['Origin']).SetRange(3, 3)       # make sure it is FD
             #TODO: safety checks for Dmeson reflecton and secondary peak
 
             sparsesGen['GenPrompt'] = [file.Get('hf-task-d0/hSparseAcc') for file in infiletask]
             for ifile in range(len(sparsesGen['GenPrompt'])):
-                sparsesGen['GenPrompt'][ifile].GetAxis(axes_dict['GenPrompt']['origin']).SetRange(2, 2)  # make sure it is prompt
+                sparsesGen['GenPrompt'][ifile].GetAxis(axes_dict['GenPrompt']['Origin']).SetRange(2, 2)  # make sure it is prompt
 
             sparsesGen['GenFD'] = [file.Get('hf-task-d0/hSparseAcc') for file in infiletask]
             for ifile in range(len(sparsesGen['GenFD'])):
-                sparsesGen['GenFD'][ifile].GetAxis(axes_dict['GenFD']['origin']).SetRange(3, 3)  # make sure it is non-prompt
+                sparsesGen['GenFD'][ifile].GetAxis(axes_dict['GenFD']['Origin']).SetRange(3, 3)  # make sure it is non-prompt
         elif config['Dmeson'] == 'Dplus':
             sparsesReco['RecoFD']     = [file.Get('hf-task-dplus/hSparseMassFD') for file in infiletask]
             sparsesReco['RecoPrompt'] = [file.Get('hf-task-dplus/hSparseMassPrompt') for file in infiletask]

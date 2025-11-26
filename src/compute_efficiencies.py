@@ -139,7 +139,7 @@ def compute_eff(config, inputFile, batch=False):
     #_____________________________________________________________________________________
     # Save output
     outFileName = os.path.join(os.path.dirname(os.path.dirname(inputFile)),
-                               'eff',
+                               'effs',
                                os.path.basename(inputFile).replace('proj', 'eff'))
     os.makedirs(os.path.dirname(outFileName), exist_ok=True)
     outFile = TFile(outFileName, 'recreate')

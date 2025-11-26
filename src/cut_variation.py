@@ -36,7 +36,7 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
     SetObjectStyle(hCorrYieldFD, color=kAzure+4, fillcolor=kAzure+4, markerstyle=kFullSquare)
 
     hCovCorrYields = [[hRawYields[0].Clone('hCovPromptPrompt'), hRawYields[0].Clone('hCovPromptFD')],
-                    [hRawYields[0].Clone('hCovFDPrompt'), hRawYields[0].Clone('hCovFDFD')]]
+                      [hRawYields[0].Clone('hCovFDPrompt'), hRawYields[0].Clone('hCovFDFD')]]
 
     for iRow, row in enumerate(hCovCorrYields):
         for iCol, hCov in enumerate(row):

@@ -446,6 +446,8 @@ def get_centrality_bins(centrality):
         return '15_20', [15, 20]
     if centrality == 'k1020':
         return '10_20', [10, 20]
+    if centrality == 'k1030':
+        return '10_30', [10, 30]
     if centrality == 'k020':
         return '0_20', [0, 20]
     if centrality == 'k2030':
