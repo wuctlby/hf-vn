@@ -30,6 +30,10 @@ def convert_fit_funcs(func_list):
             converted_funcs.append("gaussian")
         elif func == "kLin":
             converted_funcs.append("chebpol1")
+        elif func == "kPol2":
+            converted_funcs.append("chebpol2")
+        elif func == "kExpo":
+            converted_funcs.append("expo")
     return converted_funcs
 
 def fit_control_var(df, i_bin, cfg_fit, output_dir, part_name=""):
@@ -42,6 +46,10 @@ def fit_control_var(df, i_bin, cfg_fit, output_dir, part_name=""):
     fitter = F2MassFitter(data_handler, convert_fit_funcs(sgn_func), convert_fit_funcs(bkg_func), verbosity=5, name=output_dir)
     if part_name == "Dplus":
         fitter.set_signal_initpar(0, "mean", 1.86965)
+    elif part_name == "Dzero":
+        fitter.set_signal_initpar(0, "mean", 1.86483)
+    elif part_name == "Ds":
+        fitter.set_signal_initpar(0, "mean", 1.96834)
     else:
         logger(f"Unknown particle {part_name}, mean not initialized!", "WARNING")
     fitter.set_signal_initpar(0, "sigma", 0.01)
@@ -66,8 +74,12 @@ def fit_control_var(df, i_bin, cfg_fit, output_dir, part_name=""):
     loc = ["lower left", "upper left"]
     if part_name == "Dplus":
         ax_title = r"$M(K\mathrm{\pi\pi})$ GeV$/c^2$"
+    elif part_name == "Dzero":
+        ax_title = r"$M(K\mathrm{\pi})$ GeV$/c^2$"
+    elif part_name == "Ds":
+        ax_title = r"$M(K\mathrm{K\pi})$ GeV$/c^2$"
     else:
-        ax_title = "Unknown mass variable"
+        ax_title = "Unknown particle specie!"
 
     fig, _ = fitter.plot_mass_fit(
         style="ATLAS",
