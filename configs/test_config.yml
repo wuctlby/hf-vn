@@ -1,17 +1,17 @@
 operations:
-    preprocess_data: False
-    preprocess_mc: False
-    make_yaml: False
-    proj_data: False
-    proj_mc: False
-    efficiencies: False
-    get_vn_vs_mass: False
-    do_cut_variation: False
-    data_driven_fraction: true
-    get_v2_vs_frac: true
+    preprocess_data: false
+    preprocess_mc: false
+    make_yaml: false
+    proj_data: false
+    proj_mc: false
+    efficiencies: false
+    get_vn_vs_mass: false
+    do_cut_variation: false
+    data_driven_fraction: false
+    get_v2_vs_frac: false
 
 outdir: '/home/mdicosta/alice/hf-vn/test_output'
-outdirPrep: '/home/wuct/ALICE/local/dev/d0_v2' 
+outdirPrep: '/home/wuct/ALICE/local/dev/d0_v2'
 suffix: 'test'
 centrality: 'k3050'
 Dmeson: 'Dplus'
@@ -35,6 +35,11 @@ ptbins: [
            16.0,
            24.0
        ]
+
+pt_centering:
+    input_aod: ["path/to/AO2D_001.root", "path/to/AO2D_002.root", ...] # list of AO2D files
+    input_aod: "path/to/AO2D.root"  # single AO2D file
+    input_aod: "path/to/folder/" # all AO2D_*.root files in the folder will be used
 
 # cut variation
 cut_variation:
@@ -95,7 +100,7 @@ cut_variation:
 
 
 projections:
-    PtWeightsFile: '/home/mdicosta/alice/hf-vn/ptweights/weights/Dplus/k3050/pTweight_Dplus_k3050_test_Dplus.root'
+    # PtWeightsFile: '/home/mdicosta/alice/hf-vn/ptweights/weights/Dplus/k3050/pTweight_Dplus_k3050_test_Dplus.root'
     ApplyPtWeightsD: False
     ApplyPtWeightsB: False
     ApplyBSpeciesWeights: False
@@ -121,17 +126,17 @@ preprocess:
     data:
         '2023':
             files: [
-                  /data/mdicosta/DplusFlow/3050/MERGED_0.root,
-                  /data/mdicosta/DplusFlow/3050/MERGED_1.root,
-                  /data/mdicosta/DplusFlow/3050/MERGED_2.root,
-                  /data/mdicosta/DplusFlow/3050/MERGED_3.root,
-                  /data/mdicosta/DplusFlow/3050/MERGED_4.root,
-                  /data/mdicosta/DplusFlow/3050/MERGED_5.root,
-                  /data/mdicosta/DplusFlow/3050/MERGED_6.root,
-                  /data/mdicosta/DplusFlow/3050/MERGED_7.root,
-                  /data/mdicosta/DplusFlow/3050/MERGED_8.root,
-                  /data/mdicosta/DplusFlow/3050/MERGED_9.root,
-                  /data/mdicosta/DplusFlow/3050/MERGED_10.root,
+                #   /data/mdicosta/DplusFlow/3050/MERGED_0.root,
+                #   /data/mdicosta/DplusFlow/3050/MERGED_1.root,
+                #   /data/mdicosta/DplusFlow/3050/MERGED_2.root,
+                #   /data/mdicosta/DplusFlow/3050/MERGED_3.root,
+                #   /data/mdicosta/DplusFlow/3050/MERGED_4.root,
+                #   /data/mdicosta/DplusFlow/3050/MERGED_5.root,
+                #   /data/mdicosta/DplusFlow/3050/MERGED_6.root,
+                #   /data/mdicosta/DplusFlow/3050/MERGED_7.root,
+                  /data/mdicosta/DplusFlow/3050/Train337930/MERGED_8.root,
+                #   /data/mdicosta/DplusFlow/3050/MERGED_9.root,
+                #   /data/mdicosta/DplusFlow/3050/MERGED_10.root,
                 # /home/mdicosta/alice/hf-vn/datasets/Data_Dplus_3050.root
             ]
             resolution: '/home/mdicosta/alice/hf-vn/datasets/resosp3050l_PASS4_full_PbPb_Reso.root'
@@ -143,15 +148,15 @@ preprocess:
         #     resolution: '/home/mdicosta/alice/hf-vn/datasets/resosp3050l_PASS4_full_PbPb_Reso.root'
     mc: '/home/mdicosta/alice/hf-vn/datasets/MC_Dplus_3050_vsphi_ptsmear20.root'
     axes_data: {
-        axis_names: ['Mass', 'sp', 'score_bkg', 'score_FD'],
+        axis_names: ['Mass', 'Sp', 'ScoreBkg', 'ScoreFD'],
         rebin_factors: [1, 1, 1, 1]
     }
     axes_reco: {
-        axis_names: ['Mass', 'Pt', 'score_bkg', 'score_FD'],
+        axis_names: ['Mass', 'Pt', 'ScoreBkg', 'ScoreFD'],
         rebin_factors: [1, 1, 1, 1]
     }
     axes_gen: {
-        axis_names: ['Pt', 'cent'],
+        axis_names: ['Pt', 'Cent'],
         rebin_factors: [1, 1]
     }
     workers: 1

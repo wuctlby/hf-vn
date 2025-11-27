@@ -28,7 +28,7 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
 
     # Set outfile name
     outFileName = os.path.join(os.path.dirname(os.path.dirname(inFileName)),
-                               'ry',
+                               'raw_yields',
                                os.path.basename(inFileName).replace('proj', 'raw_yields').replace('.root', ''))
 
     gROOT.SetBatch(batch)

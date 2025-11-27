@@ -75,8 +75,8 @@ def make_yaml(flow_config, outputdir, correlated):
         combinations = {
             'icutset': iCut,
             'Pt': {'min': ptmins, 'max': ptmaxs},
-            'score_bkg': {'min': [0.0] * len(ptmins), 'max': bkg_max},
-            'score_FD': {'min': fd_min, 'max': fd_max},
+            'ScoreBkg': {'min': [0.0] * len(ptmins), 'max': bkg_max},
+            'ScoreFD': {'min': fd_min, 'max': fd_max},
         }
 
         with open(f'{outputdir}/cutsets/cutset_{iCut:02}.yml', 'w') as file:
