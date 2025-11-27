@@ -45,13 +45,14 @@ def fit_control_var(df, i_bin, cfg_fit, output_dir, part_name=""):
     sgn_func = cfg_fit["SgnFunc"][i_bin] if isinstance(cfg_fit["SgnFunc"], list) else [cfg_fit["SgnFunc"]]
     fitter = F2MassFitter(data_handler, convert_fit_funcs(sgn_func), convert_fit_funcs(bkg_func), verbosity=5, name=output_dir)
     if part_name == "Dplus":
-        fitter.set_signal_initpar(0, "mean", 1.86965)
+        fitter.set_signal_initpar(0, "mu", 1.86965)
     elif part_name == "Dzero":
-        fitter.set_signal_initpar(0, "mean", 1.86483)
+        fitter.set_signal_initpar(0, "mu", 1.86483)
     elif part_name == "Ds":
-        fitter.set_signal_initpar(0, "mean", 1.96834)
+        fitter.set_signal_initpar(0, "mu", 1.96834) # Ds peak
+        fitter.set_signal_initpar(1, "mu", 1.86965) # Dplus peak
     else:
-        logger(f"Unknown particle {part_name}, mean not initialized!", "WARNING")
+        logger(f"Unknown particle {part_name}, mu not initialized!", "WARNING")
     fitter.set_signal_initpar(0, "sigma", 0.01)
     fitter.set_background_initpar(0, "c0", 0.4)
     fitter.set_background_initpar(0, "c1", -0.2)
