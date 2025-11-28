@@ -287,6 +287,7 @@ def run_combined_cut_variation(flow_config, operations, nworkers, outdir):
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Arguments')
 	parser.add_argument('flow_config', metavar='text', default='config_flow_d0.yml', help='configuration file')
+	parser.add_argument("--workers", "-w", type=int, default=1, help="number of workers")
 	parser.add_argument("--correlated", "-corr", action="store_true", help="perform correlated analysis")
 	parser.add_argument("--combined", "-comb", action="store_true", help="perform combined analysis")
 	args = parser.parse_args()
@@ -298,7 +299,7 @@ if __name__ == "__main__":
 		config = yaml.safe_load(cfgFlow)
 
 	operations = config['operations']
-	nworkers = config['nworkers']
+	nworkers = args.workers
 	if args.correlated:
 		outdir = f"{config['outdir']}/cutvar_{config['suffix']}" + "_correlated"
 	else:
@@ -312,7 +313,7 @@ if __name__ == "__main__":
 		nfile = nfile + 1
 	os.system(f'cp {args.flow_config} {outdir}/config_flow/{os.path.splitext(os.path.basename(args.flow_config))[0]}_{config["suffix"]}_{nfile}.yml')
 
-	if operations.get('preprocess_data') or operations.get('preprocess_mc'):
+	if operations.get('preprocess'):
 		print("\033[32mINFO: Preprocess will be performed\033[0m")
 		os.system(f"python3 {paths['Preprocess']} {args.flow_config}")
 	else:

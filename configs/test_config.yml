@@ -1,21 +1,19 @@
 operations:
-    preprocess_data: false
-    preprocess_mc: false
-    make_yaml: false
-    proj_data: false
-    proj_mc: false
-    efficiencies: false
-    get_vn_vs_mass: false
+    preprocess: true
+    make_yaml: true
+    proj_data: true
+    proj_mc: true
+    efficiencies: true
+    get_vn_vs_mass: true
     do_cut_variation: false
     data_driven_fraction: false
     get_v2_vs_frac: false
 
 outdir: '/home/mdicosta/alice/hf-vn/test_output'
-outdirPrep: '/home/wuct/ALICE/local/dev/d0_v2'
+# outdirPrep: '/home/wuct/ALICE/local/dev/d0_v2'
 suffix: 'test'
 centrality: 'k3050'
 Dmeson: 'Dplus'
-nworkers: 1
 
 # pt bins
 ptbins: [
@@ -104,6 +102,7 @@ projections:
     ApplyPtWeightsD: False
     ApplyPtWeightsB: False
     ApplyBSpeciesWeights: False
+    Resolution: '/home/mdicosta/alice/hf-vn/datasets/resosp3050l_PASS4_full_PbPb_Reso.root'
     storeML: False
     inv_mass_bins: [
                     [1.70,1.72,1.73,1.74,1.75,1.78,1.81,1.83,1.85,1.87,1.89,1.92,1.95,1.96,1.97,1.98,1.99,2.00,2.01,2.02,2.03,2.04,2.05],
@@ -123,44 +122,79 @@ projections:
                     ]
 
 preprocess:
-    data:
-        '2023':
-            files: [
-                #   /data/mdicosta/DplusFlow/3050/MERGED_0.root,
-                #   /data/mdicosta/DplusFlow/3050/MERGED_1.root,
-                #   /data/mdicosta/DplusFlow/3050/MERGED_2.root,
-                #   /data/mdicosta/DplusFlow/3050/MERGED_3.root,
-                #   /data/mdicosta/DplusFlow/3050/MERGED_4.root,
-                #   /data/mdicosta/DplusFlow/3050/MERGED_5.root,
-                #   /data/mdicosta/DplusFlow/3050/MERGED_6.root,
-                #   /data/mdicosta/DplusFlow/3050/MERGED_7.root,
-                  /data/mdicosta/DplusFlow/3050/Train337930/MERGED_8.root,
-                #   /data/mdicosta/DplusFlow/3050/MERGED_9.root,
-                #   /data/mdicosta/DplusFlow/3050/MERGED_10.root,
-                # /home/mdicosta/alice/hf-vn/datasets/Data_Dplus_3050.root
-            ]
-            resolution: '/home/mdicosta/alice/hf-vn/datasets/resosp3050l_PASS4_full_PbPb_Reso.root'
-        # Possibility to add more datasets, each with its resolution
-        # '2024':
-        #     files: [
-        #         /home/mdicosta/alice/hf-vn/datasets/Data_Dplus_3050.root
-        #     ]
-        #     resolution: '/home/mdicosta/alice/hf-vn/datasets/resosp3050l_PASS4_full_PbPb_Reso.root'
-    mc: '/home/mdicosta/alice/hf-vn/datasets/MC_Dplus_3050_vsphi_ptsmear20.root'
-    axes_data: {
-        axis_names: ['Mass', 'Sp', 'ScoreBkg', 'ScoreFD'],
-        rebin_factors: [1, 1, 1, 1]
-    }
-    axes_reco: {
-        axis_names: ['Mass', 'Pt', 'ScoreBkg', 'ScoreFD'],
-        rebin_factors: [1, 1, 1, 1]
-    }
-    axes_gen: {
-        axis_names: ['Pt', 'Cent'],
-        rebin_factors: [1, 1]
-    }
     workers: 1
-    bkg_cuts: [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
+    bkg_cuts: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    inputs:
+    -   files: [
+          "/data/mdicosta/DplusFlow/3050/Train558625/merged_runs/AnalysisResults/AnalysisResults_544028.root",
+        ]
+        outdir: 'FlowSP'
+        sparses:
+        -   name: 'FlowSP'
+            path: 'hf-task-flow-charm-hadrons/hSparseFlowCharm'
+            axes: {
+              names: ['Mass', 'Pt', 'Cent', 'Sp', 'ScoreBkg', 'ScoreFD'],
+              rebin: [1, 1, 1, 1, 1, 1]
+            }
+    -   files: [
+          "/data/mdicosta/DplusFlow/eff/MC/Train559859/AnalysisResults_LHC25a5_allruns.root",
+        ]
+        outdir: 'MC'
+        sparses:
+        -   name: 'RecoPrompt'
+            path: 'hf-task-dplus/hSparseMassPrompt'
+            axes: {
+              names: ['Mass', 'Pt', 'Cent', 'ScoreBkg', 'ScoreFD'],
+              rebin: [1, 1, 1, 1, 1]
+            }
+        -   name: 'RecoFD'
+            path: 'hf-task-dplus/hSparseMassFD'
+            axes: {
+              names: ['Mass', 'Pt', 'Cent', 'ScoreBkg', 'ScoreFD'],
+              rebin: [1, 1, 1, 1, 1]
+            }
+        -   name: 'GenPrompt'
+            path: 'hf-task-dplus/hSparseMassGenPrompt'
+            axes: {
+              names: ['Pt', 'Cent'],
+              rebin: [1, 1]
+            }
+        -   name: 'GenFD'
+            path: 'hf-task-dplus/hSparseMassGenFD'
+            axes: {
+              names: ['Pt', 'Cent'],
+              rebin: [1, 1]
+            }
+    -   files: [
+            /home/mdicosta/DFlowOO/Correlations/020_SE/oldalljobs/001/AnalysisResults_001.root,
+            # /path/to/anres/for/SE/AnalysisResults.root,
+        ]
+        outdir: 'DataSE'
+        sparses:
+        -   name: 'CorrelMaps'
+            path: 'hf-correlator-flow-charm-hadrons-reduced/hSparseCorrelationsSECharmHad'
+            axes: {
+                names: ['PoolBin', 'PtTrig', 'PtAssoc', 'DeltaEta', 'DeltaPhi', 'Mass'],
+                rebin: [1, 1, 1, 1, 1, 1]
+            }
+        -   name: 'CorrelTrig'
+            path: 'hf-correlator-flow-charm-hadrons-reduced/hSparseTrigCandsCharm'
+            axes: {
+                names: ['Mass', 'PtTrig', 'ScoreBkg', 'ScoreFD'],
+                rebin: [1, 1, 1, 1]
+            }
+    -   files: [
+            /home/mdicosta/DFlowOO/Correlations/1920_ME/AnalysisResults.root
+            # /path/to/anres/for/ME/AnalysisResults.root,
+        ]
+        outdir: 'DataME'
+        sparses:
+        -   name: 'CorrelMaps'
+            path: 'hf-correlator-flow-charm-hadrons-reduced/hSparseCorrelationsMECharmHad'
+            axes: {
+                names: ['PoolBin', 'PtTrig', 'PtAssoc', 'DeltaEta', 'DeltaPhi', 'Mass', 'ScoreBkg', 'ScoreFD'],
+                rebin: [1, 1, 1, 1, 1, 1, 1, 1]
+            }
 
 simfit:
     Sigma: [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]
