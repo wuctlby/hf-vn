@@ -1,0 +1,26 @@
+centrality: 'k0100'
+input_file: "/path/to/input/AO2D.root"
+table_names: ["O2hfcanddplite", "O2hfcanddpml"]
+table_cols_to_keep: [['fM', 'fPt', 'fCentrality', 'fFlagMcMatchRec', 'fOriginMcRec'], ['fMlScore0', 'fMlScore1']]
+sgn_fin_state: "DplusToPiKPi"
+pt_bins: [
+  [0.0, 1.0],
+  [1.0, 2.0],
+  [2.0, 3.0],
+  [3.0, 4.0],
+  [4.0, 5.0],
+  [5.0, 6.0],
+  [6.0, 7.0],
+  [7.0, 8.0],
+  [8.0, 10.0],
+  [10.0, 12.0],
+  [12.0, 16.0],
+  [16.0, 24.0]
+]
+coll_system: "pbpb"
+outfile: "/path/to/outfolder/"
+min_entries: 10
+n_smooth_points: 500000     # point sampled for the smoothing procedure
+n_points_for_kde: 100000    # points used to compute the kde
+shift_mass: "/path/to/shift_mass_file.root" # or numerical value flat in pT
+smear_mass: "/path/to/smear_mass_file.root" # or numerical value flat in pT
