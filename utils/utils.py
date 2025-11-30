@@ -42,9 +42,12 @@ def logger(message, level='INFO'):
 	else:
 		print(f"\033[37m{message}\033[0m")  # Default to white for unknown levels
 
-def make_dir_root_file(dir, file):
-    if not file.GetDirectory(dir):
-        file.mkdir(dir)
+def make_dir_root_file(directory, file):
+    if not file.GetDirectory(directory):
+        file.mkdir(directory)
+        logger(f"Created directory {directory} in file {file.GetName()}", level='WARNING')
+    else:
+        logger(f"Directory {directory} already exists in file {file.GetName()}", level='WARNING')
 
 def profile_mass_sp(hist_mass_sp, inv_mass_bins, resolution):
     '''
@@ -72,13 +75,13 @@ def profile_mass_sp(hist_mass_sp, inv_mass_bins, resolution):
         hist_vn_vs_mass.SetBinError(i+1, mean_sp_err / resolution)
     return hist_vn_vs_mass
 
-def get_vn_versus_mass(thnSparses, resolutions, inv_mass_bins, mass_axis, vn_axis, sampling=-1, debug=False):
+def get_vn_versus_mass(sparse, inv_mass_bins, mass_axis, vn_axis, debug=False):
     '''
     Project vn versus mass
 
     Input:
-        - thnSparse:
-            THnSparse, input THnSparse obeject (already projected in centrality and pt)
+        - sparse:
+            THnSparse, input THnSparse object (already projected in centrality and pt)
         - inv_mass_bins:
             list of floats, bin edges for the mass axis
         - mass_axis:
@@ -92,34 +95,31 @@ def get_vn_versus_mass(thnSparses, resolutions, inv_mass_bins, mass_axis, vn_axi
         - hist_mass_proj:
             TH1D, histogram with vn as a function of mass
     '''
+    hist_mass_sp_proj = sparse.Projection(vn_axis, mass_axis)
+    hist_mass_sp_proj.SetName('hist_mass_sp_proj')
+    hist_mass_sp_proj.SetDirectory(0)
 
-    invmass_bins = np.array(inv_mass_bins)
+    hist_mass_proj = sparse.Projection(mass_axis)
+    hist_mass_proj.Reset()
+    vn_vs_mass_bins = np.array(inv_mass_bins)
+    hist_mass_proj = ROOT.TH1D('hist_mass_proj', 'hist_mass_proj', len(vn_vs_mass_bins)-1, vn_vs_mass_bins)
 
-    if sampling != -1:
-        print('Sampling vn versus mass to be implemented!')
-    else:
-        for iThn, ((_, sparse), (_, reso)) in enumerate(zip(thnSparses.items(), resolutions.items())):
-            resolution = reso.GetBinContent(1)
-            hist_vn_proj_temp = sparse.Projection(vn_axis, mass_axis)
-            hist_vn_proj_temp.SetName(f'hist_vn_proj_{iThn}')
-            hist_vn_proj_temp.SetDirectory(0)
-            
-            if iThn == 0:
-                hist_vn_proj = hist_vn_proj_temp.Clone('hist_vn_proj')
-                hist_vn_proj.SetDirectory(0)
-                hist_vn_proj.Reset()
-
-            hist_vn_proj.Add(hist_vn_proj_temp)
-
-        hist_vn_vs_mass = profile_mass_sp(hist_vn_proj, invmass_bins, resolution)
+    for i in range(hist_mass_proj.GetNbinsX()):
+        bin_low = hist_mass_sp_proj.GetXaxis().FindBin(vn_vs_mass_bins[i])
+        bin_high = hist_mass_sp_proj.GetXaxis().FindBin(vn_vs_mass_bins[i+1])
+        profile = hist_mass_sp_proj.ProfileY(f'profile_{bin_low}_{bin_high}', bin_low, bin_high)
+        mean_sp = profile.GetMean()
+        mean_sp_err = profile.GetMeanError()
+        hist_mass_proj.SetBinContent(i+1, mean_sp)
+        hist_mass_proj.SetBinError(i+1, mean_sp_err)
 
     if debug:
         outfile = ROOT.TFile('debug.root', 'RECREATE')
-        hist_vn_proj.Write()
-        hist_vn_vs_mass.Write()
+        hist_mass_sp_proj.Write()
+        hist_mass_proj.Write()
         outfile.Close()
 
-    return hist_vn_vs_mass
+    return hist_mass_proj
 
 def get_vnfitter_results(vnFitter, secPeak, useRefl, useTempl):
     '''
@@ -199,18 +199,14 @@ def get_vnfitter_results(vnFitter, secPeak, useRefl, useTempl):
     vn_results['fBkgFuncMass'] = vnFitter.GetMassBkgFitFunc()
     vn_results['fBkgFuncVn'] = vnFitter.GetVnVsMassBkgFitFunc()
     vn_results['fSgnFuncMass'] = vnFitter.GetMassSignalFitFunc()
-    
+
     vn_results['fVnCompsFuncts'] = {}
-    vnComps = vnFitter.GetVnCompsFuncts()
-    vn_results['fVnCompsFuncts']['vnSgn'] = vnComps[0]
-    vn_results['fVnCompsFuncts']['vnBkg'] = vnComps[1]
+    vn_comps = vnFitter.GetVnCompsFuncts()
+    vn_results['fVnCompsFuncts']['vnSgn'] = vn_comps[0]
+    vn_results['fVnCompsFuncts']['vnBkg'] = vn_comps[1]
     if secPeak:
-        vn_results['fVnCompsFuncts']['vnSecPeak'] = vnComps[2]
-    vn_results['fMassTemplFuncts'] = vnFitter.GetMassTemplFuncts()
-    if useTempl:
-        for iTempl in range(len(vn_results['fMassTemplFuncts'])):
-            vn_results['fVnCompsFuncts'][f'vnTempl{iTempl}'] = vnComps[2+secPeak+iTempl]
-    
+        vn_results['fVnCompsFuncts']['vnSecPeak'] = vn_comps[2]
+
     bkg, bkgUnc = ctypes.c_double(), ctypes.c_double()
     vnFitter.Background(3, bkg, bkgUnc)
     vn_results['bkg'] = bkg.value
@@ -228,8 +224,7 @@ def get_vnfitter_results(vnFitter, secPeak, useRefl, useTempl):
     massBkgPars = vnFitter.GetNMassBkgPars()
     massSecPeakPars = vnFitter.GetNMassSecPeakPars()
     massReflPars = vnFitter.GetNMassReflPars()
-    massTemplPars = len(vn_results['fMassTemplFuncts'])
-    totMassPars = massSgnPars + massBkgPars + massSecPeakPars +  massReflPars + massTemplPars
+    totMassPars = massSgnPars + massBkgPars + massSecPeakPars +  massReflPars
     vnSgnPars = vnFitter.GetNVnSgnPars()
     vnBkgPars = vnFitter.GetNVnBkgPars()
 
@@ -450,6 +445,8 @@ def get_centrality_bins(centrality):
         return '10_30', [10, 30]
     if centrality == 'k020':
         return '0_20', [0, 20]
+    if centrality == 'k1030':
+        return '10_30', [10, 30]
     if centrality == 'k2030':
         return '20_30', [20, 30]
     elif centrality == 'k3040':
