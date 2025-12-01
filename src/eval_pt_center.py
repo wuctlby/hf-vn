@@ -10,8 +10,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from concurrent.futures import ProcessPoolExecutor
 import itertools
-from flarefly.data_handler import DataHandler
-from flarefly.fitter import F2MassFitter
+sys.path.append("./flareflyfitter/")
+from raw_yield_fitter import RawYieldFitter
 import yaml
 import ROOT
 from ROOT import TFile
@@ -23,72 +23,37 @@ import uproot
 from multiprocessing import Pool, cpu_count
 ROOT.gROOT.SetBatch(True)
 
-def convert_fit_funcs(func_list):
-    converted_funcs = []
-    for func in func_list:
-        if func == "kGaus":
-            converted_funcs.append("gaussian")
-        elif func == "kLin":
-            converted_funcs.append("chebpol1")
-        elif func == "kPol2":
-            converted_funcs.append("chebpol2")
-        elif func == "kExpo":
-            converted_funcs.append("expo")
-    return converted_funcs
-
 def fit_control_var(df, i_bin, cfg_fit, output_dir, part_name=""):
     print("\n\n")
+    fitter = RawYieldFitter(part_name, output_dir, True)
+    fitter.set_rebin(cfg_fit.get('rebin', 1))
+    fitter.set_fit_range(cfg_fit['MassFitRanges'][i_bin][0], cfg_fit['MassFitRanges'][i_bin][1])
+    fitter.set_data_to_fit_df(df)
 
-    # Create the data handler
-    data_handler = DataHandler(df, "fM", limits=cfg_fit["MassFitRanges"][i_bin])
-    bkg_func = cfg_fit["BkgFunc"][i_bin] if isinstance(cfg_fit["BkgFunc"], list) else [cfg_fit["BkgFunc"]]
-    sgn_func = cfg_fit["SgnFunc"][i_bin] if isinstance(cfg_fit["SgnFunc"], list) else [cfg_fit["SgnFunc"]]
-    fitter = F2MassFitter(data_handler, convert_fit_funcs(sgn_func), convert_fit_funcs(bkg_func), verbosity=5, name=output_dir)
-    if part_name == "Dplus":
-        fitter.set_signal_initpar(0, "mu", 1.86965)
-    elif part_name == "Dzero":
-        fitter.set_signal_initpar(0, "mu", 1.86483)
-    elif part_name == "Ds":
-        fitter.set_signal_initpar(0, "mu", 1.96834) # Ds peak
-        fitter.set_signal_initpar(1, "mu", 1.86965) # Dplus peak
-    else:
-        logger(f"Unknown particle {part_name}, mu not initialized!", "WARNING")
-    fitter.set_signal_initpar(0, "sigma", 0.01)
-    fitter.set_background_initpar(0, "c0", 0.4)
-    fitter.set_background_initpar(0, "c1", -0.2)
-    fitter.set_background_initpar(0, "c2", -0.01)
-    fitter.set_background_initpar(0, "c3", 0.01)
+    bkg_funcs = cfg_fit['BkgFunc'][i_bin] if isinstance(cfg_fit['BkgFunc'], list) else [cfg_fit['BkgFunc']]
+    for bkg_func in bkg_funcs:
+        fitter.add_bkg_func(bkg_func, "Comb. bkg")
 
-    fit_res = fitter.mass_zfit()
-    sgn_sweights = fitter.get_sweights()['signal']
+    sgn_funcs = cfg_fit['SgnFunc'][i_bin] if isinstance(cfg_fit['SgnFunc'], list) else [cfg_fit['SgnFunc']]
+    for i_sgn, sgn_func in enumerate(sgn_funcs):
+        fitter.add_sgn_func(sgn_func, f"signal_{i_sgn}")
+
+    fitter.setup()
+    fit_res = fitter.fit()
+
+    sgn_sweights = fitter.get_sweights_sgn(len(sgn_funcs)-1)
 
     os.makedirs(output_dir, exist_ok=True)
-    with open(f"{output_dir}/../fits_status.txt", "w") as f:
+    with open(f"{output_dir}/../fits_status.txt", "a") as f:
         computed_sweights = True if sgn_sweights is not None else False
         f.write(
                 f"{output_dir}: fit_res.valid -> {fit_res.valid}, "
                 f"fit_res.status -> {fit_res.status}, "
                 f"fit_res.converged -> {fit_res.converged}, "
                 f"sweights computed -> {computed_sweights} \n"
-               )
+                )
 
-    loc = ["lower left", "upper left"]
-    if part_name == "Dplus":
-        ax_title = r"$M(K\mathrm{\pi\pi})$ GeV$/c^2$"
-    elif part_name == "Dzero":
-        ax_title = r"$M(K\mathrm{\pi})$ GeV$/c^2$"
-    elif part_name == "Ds":
-        ax_title = r"$M(K\mathrm{K\pi})$ GeV$/c^2$"
-    else:
-        ax_title = "Unknown particle specie!"
-
-    fig, _ = fitter.plot_mass_fit(
-        style="ATLAS",
-        show_extra_info = True,
-        figsize=(8, 8), extra_info_loc=loc,
-        axis_title=ax_title,
-    )
-
+    fig, _ = fitter.plot_fit(False, True, loc=["lower left", "upper left"]) # (log, show_extra_info)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     fig.savefig(
@@ -126,7 +91,7 @@ def load_aod_file(i_file, aod_file):
         logger(f"Failed to load {aod_file}: {e}", "ERROR")
         return pd.DataFrame()  # return empty DataFrame on failure
 
-def load_input_df(input_aod_cfg):
+def load_input_df(input_aod_cfg, workers):
 
     # Input files
     if isinstance(input_aod_cfg, str) and input_aod_cfg.endswith('.root'):
@@ -140,9 +105,10 @@ def load_input_df(input_aod_cfg):
         input_aods = [os.path.join(input_aod_cfg, f) for f in os.listdir(input_aod_cfg) if f.endswith('.root') and 'AO2D' in f]
     else:
         logger("Invalid input_aod configuration.", "ERROR")
-        return
+        sys.exit(1)
     input_aods = sorted(input_aods, key=lambda x: int(__import__('re').search(r'AO2D_(\d+)', x).group(1)))
-    with Pool(processes=8) as pool:
+    print(f"Total AOD files to load: {len(input_aods)}")
+    with Pool(processes=workers) as pool:
         dfs = pool.starmap(load_aod_file, enumerate(input_aods))
 
     # Concatenate
@@ -150,8 +116,7 @@ def load_input_df(input_aod_cfg):
     logger(f"Total entries: {len(df)}", "INFO")
     return df
 
-
-def eval_pt_center(cfg_file_name):
+def eval_pt_center(cfg_file_name, workers=1):
     # Read the configuration file
     with open(cfg_file_name, 'r') as cfg_file:
         cfg = yaml.safe_load(cfg_file)
@@ -162,7 +127,7 @@ def eval_pt_center(cfg_file_name):
     cutset_files.sort(key=lambda x: int(re.search(r'(\d+)', os.path.basename(x)).group(1)))
     print(f"Found {cutset_files} cutset files in {cutsets_dir}")
 
-    df = load_input_df(cfg["pt_centering"]["input_aod"])
+    df = load_input_df(cfg["pt_centering"]["input_aod"], workers=workers)
     infer_vars = df.columns.tolist()
     infer_vars.remove('fM')
     infer_vars.remove('fMlScore0')
@@ -170,7 +135,7 @@ def eval_pt_center(cfg_file_name):
 
     # Loop over cutset configs
     s_weights = {}
-    cfg_fit = cfg["simfit"]
+    cfg_fit = cfg["v2extraction"]
     for cutset_file in cutset_files:
         with open(cutset_file, 'r') as cs_file:
             cutset_cfg = yaml.safe_load(cs_file)
@@ -189,8 +154,8 @@ def eval_pt_center(cfg_file_name):
                           cutset_cfg["ScoreBkg"]["min"], cutset_cfg["ScoreBkg"]["max"],
                           cutset_cfg["ScoreFD"]["min"], cutset_cfg["ScoreFD"]["max"])):
 
-            logger(f"Processing pt bin: {pt_min} - {pt_max} of cutset file: {cutset_file}", level="INFO")
-            out_dir_pt = f"{out_file_path.replace('.root', '')}/pt_{int(pt_min)*10}_{int(pt_max)*10}"
+            out_dir_pt = f"{out_file_path.replace('.root', '')}/pt_{int(pt_min*10)}_{int(pt_max*10)}"
+            logger(f"Processing pt bin: {pt_min} - {pt_max} of cutset file: {cutset_file}, output directory: {out_dir_pt}", level="INFO")
 
             os.makedirs(out_dir_pt, exist_ok=True)
             os.makedirs(out_dir_pt + "/fits", exist_ok=True)
@@ -260,8 +225,9 @@ def eval_pt_center(cfg_file_name):
         out_file.Close()
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Evaluate Pt Centering with sPlot and FlareFly')
+    parser = argparse.ArgumentParser(description='Evaluate pt-centering with sPlot and FlareFly')
     parser.add_argument('config_file', help='Path to the input configuration file')
+    parser.add_argument("--workers", "-w", type=int, default=1, help="number of workers")
     args = parser.parse_args()
 
-    eval_pt_center(args.config_file)
+    eval_pt_center(args.config_file, args.workers)

@@ -283,7 +283,7 @@ if __name__ == "__main__":
         resolution = reso_hist.GetBinContent(1)
 
     with alive_bar(len(cutSetCfg['Pt']['min']), title='Processing pT bins') as bar:
-        for iPt, (pt_min, pt_max, bkg_min, bkg_max, fd_min, fd_max) in enumerate(zip(cutSetCfg['Pt']['min'], cutSetCfg['Pt']['max'],
+        for i_pt, (pt_min, pt_max, bkg_min, bkg_max, fd_min, fd_max) in enumerate(zip(cutSetCfg['Pt']['min'], cutSetCfg['Pt']['max'],
                                                                                    cutSetCfg['ScoreBkg']['min'], cutSetCfg['ScoreBkg']['max'],
                                                                                    cutSetCfg['ScoreFD']['min'], cutSetCfg['ScoreFD']['max'])):
 
@@ -296,7 +296,7 @@ if __name__ == "__main__":
             if operations["proj_data"]:
                 sparse_flow["FlowSP"].GetAxis(axes['FlowSP']['ScoreFD']).SetRangeUser(fd_min, fd_max)
                 sparse_flow["FlowSP"].GetAxis(axes['FlowSP']['ScoreBkg']).SetRangeUser(bkg_min, bkg_max)
-                proj_data(iPt, sparse_flow["FlowSP"], axes, resolution, config["projections"], write_opt_data)
+                proj_data(i_pt, sparse_flow["FlowSP"], axes, resolution, config["projections"], write_opt_data)
                 print(f"Projected data!")
 
             if operations.get("proj_mc"):

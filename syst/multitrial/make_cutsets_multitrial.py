@@ -29,7 +29,7 @@ def get_reference_config_pt_bin(config_flow, iPtBin):
     pt_bin_config["cut_variation"]["uncorr_bdt_cut"]["bkg_max"] = [pt_bin_config["cut_variation"]["uncorr_bdt_cut"]["bkg_max"][iPtBin]]
     pt_bin_config["cut_variation"]["uncorr_bdt_cut"]["sig"] = [pt_bin_config["cut_variation"]["uncorr_bdt_cut"]["sig"][iPtBin]]
 
-    pt_bin_config['simfit']['Sigma'] = [pt_bin_config['simfit']['Sigma'][iPtBin]]
+    pt_bin_config['v2extraction']['Sigma'] = [pt_bin_config['v2extraction']['Sigma'][iPtBin]]
 
     return pt_bin_config
 
@@ -97,10 +97,10 @@ def modify_yaml_bdt(config_flow, config_mod, output_dir):
                     else:
                         cfg_variant[varied_var] = variant[varied_var]
 
-            cfg_variant["simfit"]["MassFitRanges"] = [[variant["MassMin"], variant["MassMax"]]]
-            cfg_variant["simfit"]["BkgFunc"] = [variant["BkgFunc"]]
-            cfg_variant["simfit"]["SgnFunc"] = [variant["SgnFunc"]]
-            cfg_variant["simfit"]["BkgFuncVn"] = [variant["BkgFuncVn"]]
+            cfg_variant["v2extraction"]["MassFitRanges"] = [[variant["MassMin"], variant["MassMax"]]]
+            cfg_variant["v2extraction"]["BkgFunc"] = [variant["BkgFunc"]]
+            cfg_variant["v2extraction"]["SgnFunc"] = [variant["SgnFunc"]]
+            cfg_variant["v2extraction"]["BkgFuncVn"] = [variant["BkgFuncVn"]]
             cfg_variant["projections"]["inv_mass_bins"] = [np.arange(variant['MassMin'], variant['MassMax'] + variant['inv_mass_bins_steps'], variant['inv_mass_bins_steps']).tolist()]
             if cfg_flow['Dmeson'] == 'Dplus' and (variant["MassMin"] > 1.75 or variant["MassMax"] < 1.95):
                 # else the region used for the prefit of the bkg function would be empty, leading to a crash
