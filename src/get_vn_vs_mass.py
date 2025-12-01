@@ -47,7 +47,7 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
     harmonic = config.get('harmonic', 2) # default is v2
     
     # Read fit configuration
-    configfit = config['simfit']
+    configfit = config['v2extraction']
     fixSigma = configfit.get('FixSigma', 0)
     fixSigmaFromFile = configfit.get('FixSigmaFromFile', '')
     fixMean = configfit.get('FixMean', 0)

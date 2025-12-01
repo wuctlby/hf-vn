@@ -16,6 +16,7 @@ paths = {
 	"Projections": os.path.join(work_dir, "./src/proj_thn.py"),
 	"Efficiencies": os.path.join(work_dir, "./src/compute_efficiencies.py"),
 	"GetVnVsMass": os.path.join(work_dir, "./src/get_vn_vs_mass.py"),
+	"GetVnByYieldExtraction": os.path.join(work_dir, "./src/get_vn_by_yield_extraction.py"),
 	"CutVariation": os.path.join(work_dir, "./src/cut_variation.py"),
 	"DataDrivenFraction": os.path.join(work_dir, "./src/data_driven_fraction.py"),
 	"GetV2VsFrac": os.path.join(work_dir, "./src/get_v2_vs_frac.py"),
@@ -71,9 +72,11 @@ def efficiencies(flow_config, outdir, nworkers, mCutSets):
 	with concurrent.futures.ThreadPoolExecutor(max_workers=nworkers) as executor:
 		results_eff = list(executor.map(run_efficiency, range(mCutSets)))
 
-def get_vn_vs_mass(flow_config, outdir, nworkers, mCutSets):
+def get_vn(flow_config, outdir, nworkers, mCutSets, extraction_type):
 	logger("Fit v2 vs mass will be performed", level="INFO")
 	check_dir(f"{outdir}/raw_yields")
+
+	script_path = paths['GetVnVsMass'] if extraction_type == 'simfit' else paths['GetVnByYieldExtraction']
 
 	def run_fit(i):
 		"""Run simultaneous fit for a given cutset index."""
@@ -84,7 +87,7 @@ def get_vn_vs_mass(flow_config, outdir, nworkers, mCutSets):
 
 		proj_cutset = f"{outdir}/projs/proj_{iCutSets}.root"
 		cmd = (
-			f"python3 {paths['GetVnVsMass']} {flow_config} {proj_cutset} -b"
+			f"python3 {script_path} {flow_config} {proj_cutset} -b"
 		)
 		logger(f"{cmd}", level="COMMAND")
 		os.system(cmd)
@@ -125,7 +128,7 @@ def cut_variation(flow_config, outdir, correlated, combined=False, operations=No
 			import copy
 			operationsCorr = copy.deepcopy(operations)
 			for key in operationsCorr:
-				if key in ['do_cut_variation', 'make_yaml', 'proj_mc', 'proj_data', 'efficiencies', 'get_vn_vs_mass']:
+				if key in ['do_cut_variation', 'make_yaml', 'proj_mc', 'proj_data', 'efficiencies', 'get_vn_vs_mass', 'get_vn_yield_extraction']:
 					operationsCorr[key] = True
 				else:
 					operationsCorr[key] = False
@@ -205,9 +208,11 @@ def run_correlated_cut_variation(flow_config, operations, nworkers, outdir):
 	#___________________________________________________________________________________________________________________________
 	# Simultaneous fit
 	if operations.get('get_vn_vs_mass', False):
-		get_vn_vs_mass(flow_config, outdir, nworkers, mCutSets)
+		get_vn(flow_config, outdir, nworkers, mCutSets, 'simfit')
+	elif operations.get('get_vn_yield_extraction', False):
+		get_vn(flow_config, outdir, nworkers, mCutSets, 'yield_extraction')
 	else:
-		logger("Fit v2 vs mass will not be performed", level="WARNING")
+		logger("v2 signal will not be extracted", level="WARNING")
 
 	#___________________________________________________________________________________________________________________________
 	# Cut variation
@@ -259,9 +264,11 @@ def run_combined_cut_variation(flow_config, operations, nworkers, outdir):
 	#___________________________________________________________________________________________________________________________
 	# Simultaneous fit
 	if operations.get('get_vn_vs_mass', False):
-		get_vn_vs_mass(flow_config, outdir, nworkers, mCutSets)
+		get_vn(flow_config, outdir, nworkers, mCutSets, 'simfit')
+	elif operations.get('get_vn_yield_extraction', False):
+		get_vn(flow_config, outdir, nworkers, mCutSets, 'yield_extraction')
 	else:
-		logger("Fit v2 vs mass will not be performed", level="WARNING")
+		logger("v2 signal will not be extracted", level="WARNING")
 
 	#___________________________________________________________________________________________________________________________
 	# Cut variation
