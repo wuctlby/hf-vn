@@ -200,7 +200,7 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
     hProbSimFit = TH1D('hProbSimFit', f';{ptTit};prob', nPtBins, ptBinsArr)
     hRedChi2SBVnPrefit = TH1D('hRedChi2SBVnPrefit', f';{ptTit};#chi^{{2}}/#it{{ndf}}', nPtBins, ptBinsArr)
     hProbSBVnPrefit = TH1D('hProbSBVnPrefit', f';{ptTit};prob', nPtBins, ptBinsArr)
-    hvnSimFit = TH1D('hvnSimFit',f';{ptTit};V2 (SP)', nPtBins, ptBinsArr)
+    hVnSimFit = TH1D('hVnSimFit',f';{ptTit};V2 (SP)', nPtBins, ptBinsArr)
 
     SetObjectStyle(hSigmaSimFit, color=kBlack, markerstyle=kFullCircle)
     SetObjectStyle(hMeanSimFit, color=kBlack, markerstyle=kFullCircle)
@@ -217,21 +217,21 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
     SetObjectStyle(hProbSimFit, color=kBlack, markerstyle=kFullCircle)
     SetObjectStyle(hRedChi2SBVnPrefit, color=kRed, markerstyle=kFullSquare)
     SetObjectStyle(hProbSBVnPrefit, color=kRed, markerstyle=kFullSquare)
-    SetObjectStyle(hvnSimFit, color=kBlack, markerstyle=kFullCircle)
+    SetObjectStyle(hVnSimFit, color=kBlack, markerstyle=kFullCircle)
 
-    gvnSimFit = TGraphAsymmErrors(1)
-    gvnSimFit.SetName('gvnSimFit')
-    gvnSimFitSecPeak = TGraphAsymmErrors(1)
-    gvnSimFitSecPeak.SetName('gvnSimFitSecPeak')
-    gvnUnc = TGraphAsymmErrors(1)
-    gvnUnc.SetName('gvnUnc')
-    gvnUncSecPeak = TGraphAsymmErrors(1)
-    gvnUncSecPeak.SetName('gvnUncSecPeak')
+    gVnSimFit = TGraphAsymmErrors(1)
+    gVnSimFit.SetName('gVnSimFit')
+    gVnSimFitSecPeak = TGraphAsymmErrors(1)
+    gVnSimFitSecPeak.SetName('gVnSimFitSecPeak')
+    gVnUnc = TGraphAsymmErrors(1)
+    gVnUnc.SetName('gVnUnc')
+    gVnUncSecPeak = TGraphAsymmErrors(1)
+    gVnUncSecPeak.SetName('gVnUncSecPeak')
 
-    SetObjectStyle(gvnSimFit, color=kBlack, markerstyle=kFullCircle)
-    SetObjectStyle(gvnSimFitSecPeak, color=kRed, markerstyle=kOpenCircle)
-    SetObjectStyle(gvnUnc, color=kBlack, markerstyle=kFullCircle)
-    SetObjectStyle(gvnUncSecPeak, color=kRed, markerstyle=kOpenCircle)
+    SetObjectStyle(gVnSimFit, color=kBlack, markerstyle=kFullCircle)
+    SetObjectStyle(gVnSimFitSecPeak, color=kRed, markerstyle=kOpenCircle)
+    SetObjectStyle(gVnUnc, color=kBlack, markerstyle=kFullCircle)
+    SetObjectStyle(gVnUncSecPeak, color=kRed, markerstyle=kOpenCircle)
 
     # Create canvases
     cSimFit = []
@@ -347,12 +347,12 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
             hRawYieldsTrueSimFit.SetBinError(iPt+1, vnResults['ryTrueUnc'])
             hRawYieldsSignificanceSimFit.SetBinContent(iPt+1, vnResults['signif'])
             hRawYieldsSignificanceSimFit.SetBinError(iPt+1, vnResults['signifUnc'])
-            hvnSimFit.SetBinContent(iPt+1, vnResults['vn'])
-            hvnSimFit.SetBinError(iPt+1, vnResults['vnUnc'])
-            gvnSimFit.SetPoint(iPt, (ptMin+ptMax)/2, vnResults['vn'])
-            gvnSimFit.SetPointError(iPt, (ptMax-ptMin)/2, (ptMax-ptMin)/2, vnResults['vnUnc'], vnResults['vnUnc'])
-            gvnUnc.SetPoint(iPt, (ptMin+ptMax)/2, vnResults['vnUnc'])
-            gvnUnc.SetPointError(iPt, (ptMax-ptMin)/2, (ptMax-ptMin)/2, 1.e-20, 1.e-20)
+            hVnSimFit.SetBinContent(iPt+1, vnResults['vn'])
+            hVnSimFit.SetBinError(iPt+1, vnResults['vnUnc'])
+            gVnSimFit.SetPoint(iPt, (ptMin+ptMax)/2, vnResults['vn'])
+            gVnSimFit.SetPointError(iPt, (ptMax-ptMin)/2, (ptMax-ptMin)/2, vnResults['vnUnc'], vnResults['vnUnc'])
+            gVnUnc.SetPoint(iPt, (ptMin+ptMax)/2, vnResults['vnUnc'])
+            gVnUnc.SetPointError(iPt, (ptMax-ptMin)/2, (ptMax-ptMin)/2, 1.e-20, 1.e-20)
 
             fTotFuncMass.append(vnResults['fTotFuncMass'])
             fTotFuncVn.append(vnResults['fTotFuncVn'])
@@ -375,12 +375,12 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
                 hMeanSecPeakFitVn.SetBinError(iPt+1, vnResults['secPeakMeanVnUnc'])
                 hSigmaSecPeakFitVn.SetBinContent(iPt+1, vnResults['secPeakSigmaVn'])
                 hSigmaSecPeakFitVn.SetBinError(iPt+1, vnResults['secPeakSigmaVnUnc'])
-                gvnSimFitSecPeak.SetPoint(iPt, (ptMin+ptMax)/2, vnResults['vnSecPeak'])
-                gvnSimFitSecPeak.SetPointError(iPt, (ptMax-ptMin)/2, (ptMax-ptMin)/2,
+                gVnSimFitSecPeak.SetPoint(iPt, (ptMin+ptMax)/2, vnResults['vnSecPeak'])
+                gVnSimFitSecPeak.SetPointError(iPt, (ptMax-ptMin)/2, (ptMax-ptMin)/2,
                                                vnResults['vnSecPeakUnc'],
                                                vnResults['vnSecPeakUnc'])
-                gvnUncSecPeak.SetPoint(iPt, (ptMin+ptMax)/2, vnResults['vnSecPeakUnc'])
-                gvnUncSecPeak.SetPointError(iPt, (ptMax-ptMin)/2, (ptMax-ptMin)/2, 1.e-20, 1.e-20)
+                gVnUncSecPeak.SetPoint(iPt, (ptMin+ptMax)/2, vnResults['vnSecPeakUnc'])
+                gVnUncSecPeak.SetPointError(iPt, (ptMax-ptMin)/2, (ptMax-ptMin)/2, 1.e-20, 1.e-20)
                 
                 fMassSecPeakFunc.append(vnResults['fMassSecPeakFunc'])
                 fVnSecPeakFunc.append(vnResults['fVnSecPeakFunct'])
@@ -481,24 +481,24 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
             logger(f'Fit failed for pt bin {ptMin} - {ptMax} GeV/c. Skipping.', level='WARNING')
 
     canvVn.cd().SetLogx()
-    hframe = canvVn.DrawFrame(0.5, -0.5, gvnSimFit.GetXaxis().GetXmax()+0.5, 0.5,
+    hframe = canvVn.DrawFrame(0.5, -0.5, gVnSimFit.GetXaxis().GetXmax()+0.5, 0.5,
                               f';#it{{p}}_{{T}} (GeV/c); v_{{{harmonic}}} (SP)')
     hframe.GetYaxis().SetDecimals()
     hframe.GetXaxis().SetNdivisions(504)
     hframe.GetXaxis().SetMoreLogLabels()
     gPad.SetGridy()
-    gvnSimFit.Draw('same pez')
+    gVnSimFit.Draw('same pez')
     if secPeak:
-        gvnSimFitSecPeak.Draw('pez same')
+        gVnSimFitSecPeak.Draw('pez same')
     latex.DrawLatexNDC(0.20, 0.80, 'This work')
     latex.DrawLatexNDC(0.20, 0.75, f'Pb#minusPb #sqrt{{#it{{s}}_{{NN}}}} = 5.36 TeV ({centMinMax[0]}#minus{centMinMax[1]}%)')
     latex.DrawLatexNDC(0.20, 0.70, decay)
     canvVn.Modified()
     canvVn.Update()
     canvVnUnc.cd()
-    gvnUnc.Draw('apez same')
+    gVnUnc.Draw('apez same')
     if secPeak:
-        gvnUncSecPeak.Draw('pez same')
+        gVnUncSecPeak.Draw('pez same')
     canvVnUnc.Modified()
     canvVnUnc.Update()
     if not batch:
@@ -551,13 +551,13 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
     hProbSimFit.Write()
     hRedChi2SBVnPrefit.Write()
     hProbSBVnPrefit.Write()
-    hvnSimFit.Write()
+    hVnSimFit.Write()
 
-    gvnSimFit.Write()
-    gvnUnc.Write()
+    gVnSimFit.Write()
+    gVnUnc.Write()
     if secPeak:
-        gvnSimFitSecPeak.Write()
-        gvnUncSecPeak.Write()
+        gVnSimFitSecPeak.Write()
+        gVnUncSecPeak.Write()
 
     outFile.Close()
 

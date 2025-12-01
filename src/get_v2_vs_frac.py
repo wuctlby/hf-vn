@@ -51,8 +51,8 @@ def v2_vs_frac(Dmeson, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, output
 
     for fracFile, v2File in zip(fracFiles, rawYieldFiles):
         inV2File = TFile.Open(v2File)
-        hV2.append(inV2File.Get('hvnSimFit'))
-        gV2.append(inV2File.Get('gvnSimFit'))
+        hV2.append(inV2File.Get('hVnSimFit'))
+        gV2.append(inV2File.Get('gVnSimFit'))
 
         inFracFile = TFile.Open(fracFile)
         hFracFD.append(inFracFile.Get('hFDFrac'))

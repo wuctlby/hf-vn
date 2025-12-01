@@ -81,8 +81,6 @@ def get_vn(flow_config, outdir, nworkers, mCutSets, extraction_type):
 	def run_fit(i):
 		"""Run simultaneous fit for a given cutset index."""
 		iCutSets = f"{i:02d}"
-		if iCutSets != "00":
-			return
 		print(f"\033[32mProcessing cutset {iCutSets}...\033[0m")
 
 		proj_cutset = f"{outdir}/projs/proj_{iCutSets}.root"
