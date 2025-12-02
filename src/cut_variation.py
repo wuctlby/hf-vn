@@ -52,7 +52,7 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
 
         for iCut, (hRaw, hEffP, hEffF) in enumerate(zip(hRawYields, hEffPrompt, hEffFD)):
             # if skip_cuts is defined check if the cut number is present for that pt
-            if 'skip_cuts' in config['minimisation']:
+            if config.get('minimisation') and config['minimisation'].get('skip_cuts'):
                 if iCut in config['minimisation']['skip_cuts'][iPt]:
                     logger(f'Skipping cut set {iCut} for pt {ptMin:.1f}-{ptMax:.1f}', level='WARNING')
                     continue
