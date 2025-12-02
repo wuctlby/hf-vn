@@ -242,3 +242,15 @@ v2extraction:
     # if `enableRef` is set to `true`,  and `ReflFile` is empty, then `ReflFile` will be aotumatically filled.
     # if `ReflFile` is filled, then it will use the filled one
     #__________________________________________________________________________________________________________________________
+
+# minmissation settings
+minimisation:
+    #skip_cuts: [    # index of the specific cuts to skip for each pt bin in case of broken cuts
+    #            [], # pt 1
+    #            [], # pt 2
+    #            [], # pt 3
+    #            [], # pt 4
+    #            [], # pt 5
+    #            [], # pt 6
+    #]
+    #systematics: ['even', 'random', 'odd', 'minus3low', '1in3', '1in4', 'minus3high', 'minus3']

@@ -19,7 +19,7 @@ from StyleFormatter import SetGlobalStyle, SetObjectStyle
 
 TH1.AddDirectory(False)
 
-def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputPath):
+def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputPath, systematics):
 
     hRawYieldsVsCut, hRawYieldsVsCutReSum, hRawYieldPromptVsCut, hRawYieldFDVsCut = [], [], [], []
     hEffPromptVsCut, hEffFDVsCut = [], []
@@ -51,11 +51,10 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
         listEffPromptUnc, listEffFD, listEffFDUnc = ([] for i in range(6))
 
         for iCut, (hRaw, hEffP, hEffF) in enumerate(zip(hRawYields, hEffPrompt, hEffFD)):
-            #! due to there is filter on the file before, using skip_cuts to skip the duplicated cut sets
             # if skip_cuts is defined check if the cut number is present for that pt
-            if 'skip_cuts' in config['cut_variation']['corr_bdt_cut']['skip_cuts']:
-                if iCut in config['cut_variation']['corr_bdt_cut']['skip_cuts'][iPt]:
-                    print(f'Skipping cut set {iCut} for pt {ptMin:.1f}-{ptMax:.1f}')
+            if 'skip_cuts' in config['minimisation']:
+                if iCut in config['minimisation']['skip_cuts'][iPt]:
+                    logger(f'Skipping cut set {iCut} for pt {ptMin:.1f}-{ptMax:.1f}', level='WARNING')
                     continue
             listRawYield.append(hRaw.GetBinContent(iPt+1))
             listRawYieldUnc.append(hRaw.GetBinError(iPt+1))
@@ -65,10 +64,70 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
             listEffFDUnc.append(hEffF.GetBinError(iPt+1))
             oCuts.append(iCut)
 
+        if systematics:
+            logger(f'Applying systematics: {systematics}', level='WARNING')
+            # Remove the loosest 3 cuts if 'minus3low' or 'minus' is in systematics
+            if systematics == 'minus3low' or systematics == 'minus3':
+                listRawYield     = listRawYield[2:]
+                listRawYieldUnc  = listRawYieldUnc[2:]
+                listEffPrompt    = listEffPrompt[2:]
+                listEffPromptUnc = listEffPromptUnc[2:]
+                listEffFD        = listEffFD[2:]
+                listEffFDUnc     = listEffFDUnc[2:]
+            # Remove the tightest 3 cuts if 'minus3high' or 'minus' is in systematics
+            if systematics == 'minus3high' or systematics == 'minus3':
+                listRawYield     = listRawYield[:-3]
+                listRawYieldUnc  = listRawYieldUnc[:-3]
+                listEffPrompt    = listEffPrompt[:-3]
+                listEffPromptUnc = listEffPromptUnc[:-3]
+                listEffFD        = listEffFD[:-3]
+                listEffFDUnc     = listEffFDUnc[:-3]
+            # Remove even-indexed elements if 'even' is in systematics
+            if 'even' in systematics:
+                listRawYield     = [x for i, x in enumerate(listRawYield) if i % 2 != 0]
+                listRawYieldUnc  = [x for i, x in enumerate(listRawYieldUnc) if i % 2 != 0]
+                listEffPrompt    = [x for i, x in enumerate(listEffPrompt) if i % 2 != 0]
+                listEffPromptUnc = [x for i, x in enumerate(listEffPromptUnc) if i % 2 != 0]
+                listEffFD        = [x for i, x in enumerate(listEffFD) if i % 2 != 0]
+                listEffFDUnc     = [x for i, x in enumerate(listEffFDUnc) if i % 2 != 0]
+            # Remove odd-indexed elements if 'odd' is in systematics
+            if 'odd' in systematics:
+                listRawYield     = [x for i, x in enumerate(listRawYield) if i % 2 == 0]
+                listRawYieldUnc  = [x for i, x in enumerate(listRawYieldUnc) if i % 2 == 0]
+                listEffPrompt    = [x for i, x in enumerate(listEffPrompt) if i % 2 == 0]
+                listEffPromptUnc = [x for i, x in enumerate(listEffPromptUnc) if i % 2 == 0]
+                listEffFD        = [x for i, x in enumerate(listEffFD) if i % 2 == 0]
+                listEffFDUnc     = [x for i, x in enumerate(listEffFDUnc) if i % 2 == 0]
+            # Remove elements randomly if 'random' is in systematics
+            if 'random' in systematics:
+                random_bools = [gRandom.Uniform() > 0.5 for _ in range(len(listRawYield))]
+                listRawYield     = [x for x, b in zip(listRawYield, random_bools) if b]
+                listRawYieldUnc  = [x for x, b in zip(listRawYieldUnc, random_bools) if b]
+                listEffPrompt    = [x for x, b in zip(listEffPrompt, random_bools) if b]
+                listEffPromptUnc = [x for x, b in zip(listEffPromptUnc, random_bools) if b]
+                listEffFD        = [x for x, b in zip(listEffFD, random_bools) if b]
+                listEffFDUnc     = [x for x, b in zip(listEffFDUnc, random_bools) if b]
+            # Remove 1 element every 3 '1in3' is in systematics
+            if '1in3' in systematics:
+                listRawYield     = [x for i, x in enumerate(listRawYield) if i % 3 == 0]
+                listRawYieldUnc  = [x for i, x in enumerate(listRawYieldUnc) if i % 3 == 0]
+                listEffPrompt    = [x for i, x in enumerate(listEffPrompt) if i % 3 == 0]
+                listEffPromptUnc = [x for i, x in enumerate(listEffPromptUnc) if i % 3 == 0]
+                listEffFD        = [x for i, x in enumerate(listEffFD) if i % 3 == 0]
+                listEffFDUnc     = [x for i, x in enumerate(listEffFDUnc) if i % 3 == 0]
+            # Remove 1 element every 4 '1in4' is in systematics
+            if '1in4' in systematics:
+                listRawYield     = [x for i, x in enumerate(listRawYield) if i % 4 == 0]
+                listRawYieldUnc  = [x for i, x in enumerate(listRawYieldUnc) if i % 4 == 0]
+                listEffPrompt    = [x for i, x in enumerate(listEffPrompt) if i % 4 == 0]
+                listEffPromptUnc = [x for i, x in enumerate(listEffPromptUnc) if i % 4 == 0]
+                listEffFD        = [x for i, x in enumerate(listEffFD) if i % 4 == 0]
+                listEffFDUnc     = [x for i, x in enumerate(listEffFDUnc) if i % 4 == 0]
+
         nSets = len(listRawYield)
-        print(f'Pt: {ptMin:.1f}-{ptMax:.1f}, iPt: {iPt+1}')
+        logger(f'Pt: {ptMin:.1f}-{ptMax:.1f}, iPt: {iPt+1}', level='INFO')
         for i in range(len(listEffPrompt)):
-            print(f'({oCuts[i]}) Eff Prompt: {listEffPrompt[i]:.6f}    Eff FD: {listEffFD[i]:.6f}    Raw Yield: {listRawYield[i]:.2f}')
+            logger(f'({oCuts[i]}) Eff Prompt: {listEffPrompt[i]:.6f}    Eff FD: {listEffFD[i]:.6f}    Raw Yield: {listRawYield[i]:.2f}', level='INFO')
 
         corrYields, covMatrixCorrYields, chiSquare, matrices = \
             GetMinimisation(listEffPrompt, listEffFD, listRawYield, listEffPromptUnc, listEffFDUnc, listRawYieldUnc)
@@ -218,7 +277,8 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
     hCorrYieldFD.Draw('same')
     legEff.Draw()
 
-    outDir = os.path.join(os.path.dirname(inputPath), 'cutVar')
+    outDir = os.path.join(os.path.dirname(inputPath), 'cutVar') if not systematics else \
+             os.path.join(os.path.dirname(inputPath), f'cutVar_{systematics}')
     os.makedirs(outDir, exist_ok=True)
     outFileName = os.path.join(outDir, 'cutVar.root')
     outFile = TFile(outFileName, 'recreate')
@@ -313,7 +373,12 @@ def compute_frac_cut_var(config_flow, inputPathRy, inputPathEff, batch=False):
     latInfo.SetTextFont(42)
     latInfo.SetTextColor(1)
 
-    minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputPathEff)
+    minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD,  inputPathEff, None)
+    if 'systematics' in config['minimisation']:
+        logger('Starting systematics variations', level='WARNING')
+        for syst in config['minimisation']['systematics']:
+            logger(f'Running systematics: {syst}', level='WARNING')
+            minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD,  inputPathEff, syst)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Arguments')
