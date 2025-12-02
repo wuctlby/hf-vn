@@ -151,6 +151,7 @@ def process_sparse(i_file, infile, full_cfg, sparse_cfg, prep_out_dir, input_out
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Arguments")
     parser.add_argument('config', metavar='text', default='config.yml', help='configuration file')
+    parser.add_argument("--workers", "-w", type=int, default=1, help="number of workers")
     args = parser.parse_args()
 
     with open(args.config, 'r') as cfg_pre:
@@ -162,7 +163,7 @@ if __name__ == "__main__":
         files = [TFile.Open(fp, 'r') for fp in input_cfg['files']]
         for sparse_cfg in input_cfg['sparses']:
             logger(f"##### Skimming {sparse_cfg['name']} #####", "WARNING")
-            with concurrent.futures.ThreadPoolExecutor(full_cfg['preprocess']['workers']) as executor:
+            with concurrent.futures.ThreadPoolExecutor(args.workers) as executor:
                 tasks_data = [executor.submit(process_sparse, i_file, file, full_cfg, sparse_cfg, output_dir, f"{input_cfg['outdir']}/jobs") for i_file, file in enumerate(files)]
         [TFile.Close(file) for file in files]
 

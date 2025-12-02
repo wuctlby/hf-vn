@@ -30,7 +30,8 @@ def proj_multitrial(config, multitrial_folder):
     logger(f"Processing multitrial projections for pt bin {pt_bin_label} ...", level='INFO')
 
     # Load default cutsets
-    default_cutsets = [f"{config['outdir']}/cutvar_{config['suffix']}_combined/cutsets/{f}" for f in os.listdir(f"{config['outdir']}/cutvar_{config['suffix']}_combined/cutsets") if f.endswith('.yml')]
+    cutset_dir = f"{config['outdir']}/cutvar_{config['suffix']}_combined/cutsets"
+    default_cutsets = [f"{cutset_dir}/{f}" for f in os.listdir(cutset_dir) if f.endswith('.yml')]
     # Load Mass and MassSp histos from the default cases
     default_histos = {}
     for default_cutset in default_cutsets:
@@ -49,7 +50,7 @@ def proj_multitrial(config, multitrial_folder):
         except Exception as e:
             logger(f"Error opening or reading config file for trial {trial_number}: {e}", level='ERROR')
             return
-        
+
         multitrial_cutsets = glob.glob(f"{multitrial_dir}/cutsets/*.yml")
         for multitrial_cutset in multitrial_cutsets:
             suffix = os.path.basename(multitrial_cutset).replace(".yml", "").replace("cutset_", "")
@@ -63,6 +64,7 @@ def proj_multitrial(config, multitrial_folder):
             hist_vn_vs_mass = profile_mass_sp(default_histos[suffix]['MassSp'], config_trial['projections']['inv_mass_bins'][0], 0.746)
             hist_vn_vs_mass.Write("hVnVsMassData")
             output_file.Close()
+        print(f"[{trial_number}] Completed projections!")
 
     # Parallel execution
     multitrial_dirs = [f for f in glob.glob(f"{multitrial_folder}/trial_*/")]

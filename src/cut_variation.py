@@ -136,6 +136,7 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
         hCorrYieldPrompt.SetBinError(iPt+1, np.sqrt(covMatrixCorrYields.item(0, 0)))
         hCorrYieldFD.SetBinContent(iPt+1, corrYields.item(1))
         hCorrYieldFD.SetBinError(iPt+1, np.sqrt(covMatrixCorrYields.item(1, 1)))
+
         for covElem in product(range(2), range(2)):
             hCovCorrYields[covElem[0]][covElem[1]].SetBinContent(iPt+1, covMatrixCorrYields.item(covElem))
             hCovCorrYields[covElem[0]][covElem[1]].SetBinError(iPt+1, 0.)

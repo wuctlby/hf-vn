@@ -2,23 +2,28 @@
 Script for extracting v_n vs invariant mass for D mesons
 run: python get_vn_vs_mass.py fitConfigFileName.yml inFileName.root [--batch]
 '''
-
 import argparse
 import numpy as np
 import yaml
 import os
 import itertools
+import ctypes
 from ROOT import TLatex, TFile, TCanvas, TLegend, TH1D, TH1F, TGraphAsymmErrors # pylint: disable=import-error,no-name-in-module
 from ROOT import gROOT, gPad, gInterpreter, kBlack, kRed, kAzure, kOrange, kGreen, kFullCircle, kFullSquare, kOpenCircle # pylint: disable=import-error,no-name-in-module
 script_dir = os.path.dirname(os.path.realpath(__file__))
-gInterpreter.ProcessLine(f'#include "{script_dir}/../invmassfitter/InvMassFitter.cxx"')
-gInterpreter.ProcessLine(f'#include "{script_dir}/../invmassfitter/VnVsMassFitter.cxx"')
+import ROOT
+ROOT.gErrorIgnoreLevel = ROOT.kError  # Only show errors and above
+# Only load if not already loaded
+from ROOT import gSystem
+if not hasattr(gSystem, "_vnfitter_loaded"):
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    gSystem.Load(f"{script_dir}/../invmassfitter/libvnfitter.so")
+    gSystem._vnfitter_loaded = True
 from ROOT import InvMassFitter, VnVsMassFitter
 os.sys.path.append(os.path.join(script_dir, '..', 'utils'))
 from StyleFormatter import SetGlobalStyle, SetObjectStyle
 from fit_utils import RebinHisto
 from utils import logger, get_centrality_bins, get_vnfitter_results, get_refl_histo, get_particle_info
-#from utils.kde_producer import kde_producer # TODO: add correlated backgrounds
 
 def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
     #______________________________________________________
@@ -142,7 +147,6 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
         
         hMass[iPt].SetDirectory(0)
         hVn[iPt].SetDirectory(0)
-        
         SetObjectStyle(hMass[iPt], color=kBlack, markerstyle=kFullCircle)
         SetObjectStyle(hVn[iPt], color=kBlack, markerstyle=kFullCircle)   
     infile.Close()
@@ -170,16 +174,10 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
         infileSigma2.Close()
 
     # Check reflections
-    if useRefl:
-        if particleName != 'Dzero':
-            logger('Reflections are only supported for Dzero. Set useRefl to False.', level='WARNING')
-            useRefl = False
-        else:
-            if reflFile == '':
-                reflFile = inFileName
-                useRefl, hMCSgn, hMCRefl = get_refl_histo(reflFile, ptmins, ptmaxs)
-            else:
-                useRefl, hMCSgn, hMCRefl = get_refl_histo(reflFile, ptmins, ptmaxs)
+    if particleName == 'Dzero' and useRefl:
+        if reflFile == '':
+            reflFile = inFileName
+        useRefl, hMCSgn, hMCRefl = get_refl_histo(reflFile, ptmins, ptmaxs)
 
     # Create histos for fit results
     hSigmaSimFit = TH1D('hSigmaSimFit', f';{ptTit};#sigma', nPtBins, ptBinsArr)
@@ -254,7 +252,7 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
         iCanv = iPt
         hMassForFit.append(TH1F())
         hVnForFit.append(TH1F())
-        RebinHisto(hM, reb).Copy(hMassForFit[iPt]) #to cast TH1D to TH1F
+        RebinHisto(hM, reb, not isMultitrial).Copy(hMassForFit[iPt]) #to cast TH1D to TH1F
         hMassForFit[iPt].SetDirectory(0)
         xbins = np.asarray(hV.GetXaxis().GetXbins())
         hDummy = TH1F('hDummy', '', len(xbins)-1, xbins)
@@ -272,9 +270,10 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
         SetObjectStyle(hMassForFit[iPt], color=kBlack, markerstyle=kFullCircle, markersize=1)
         SetObjectStyle(hVnForFit[iPt], color=kBlack, markerstyle=kFullCircle, markersize=0.8)
 
-        logger(f'Processing pt {ptMin} - {ptMax} GeV/c', level='INFO')
+        if not isMultitrial:
+            logger(f'Processing pt {ptMin} - {ptMax} GeV/c', level='INFO')
         vnFitter.append(VnVsMassFitter(hMassForFit[iPt], hVnForFit[iPt],
-                                            massMin, massMax, bkgEnum, sgnEnum, bkgVnEnum))
+                                       massMin, massMax, bkgEnum, sgnEnum, bkgVnEnum))
         vnFitter[iPt].SetHarmonic(harmonic)
         vnFitter[iPt].SetSuppressOutput(isMultitrial)
 
@@ -323,13 +322,32 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
 
         # Collect fit results
         isfitGood = vnFitter[iPt].SimultaneousFit(False)
-        
+
         # Try recovering fit if it failed for disappearing second peak
         if not isfitGood and secPeak:
             logger(f'Fit failed in pt bin {iPt+1}/{nPtBins}: {ptMin} - {ptMax} GeV/c. Try recovering by disabling second peak fit.', level='WARNING')
             vnFitter[iPt].ExcludeSecondGausPeak()
             isfitGood = vnFitter[iPt].SimultaneousFit(False)
             secPeak = False
+
+        # Quality selection for systematics multitrial
+        if isMultitrial:
+            try:
+                if vnFitter[iPt].GetReducedChiSquare() > config.get('MaxChi2PerNDF', 1.e20):
+                    print(f'[{inFileName}] Rejecting trial due to Chi2/NDF = {vnFitter[iPt].GetReducedChiSquare()} > {config.get("MaxChi2PerNDF", 1.e20)}')
+                    return
+            except Exception as e:
+                print(f'[{inFileName}] Exception {e} caught during chi2 calculation. Rejecting trial.')
+                return
+            try:
+                signif, signifUnc = ctypes.c_double(), ctypes.c_double()
+                vnFitter[iPt].Significance(3, signif, signifUnc)
+                if signif.value < config.get('MinSignificance', 0) or signif.value > config.get('MaxSignificance', 1.e20):
+                    print(f'[{inFileName}] Rejecting trial due to significance = {signif.value}, (min = {config.get("MinSignificance", 0)}, max = {config.get("MaxSignificance", 1.e20)})')
+                    return
+            except Exception as e:
+                print(f'[{inFileName}] Exception {e} caught during significance calculation. Rejecting trial.')
+                return
 
         if isfitGood:
             vnResults = get_vnfitter_results(vnFitter[iPt], secPeak, useRefl, False)
@@ -505,7 +523,8 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
         logger('Press Enter to continue...', level='PAUSE')
 
     # Save output histos
-    logger('Saving output histos', level='INFO')
+    if not isMultitrial:
+        logger('Saving output histos', level='INFO')
     os.makedirs(os.path.dirname(outFileName), exist_ok=True)
     for iPt, (ptMin, ptMax) in enumerate(zip(ptmins, ptmaxs)):
         if iPt == 0:
@@ -535,7 +554,7 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
             fBkgFuncVn[ipt].Write(f'fBkgFuncVn_pt{ptmin*10:.0f}_{ptmax*10:.0f}')
         except:
             logger(f'Fit function for pt {ptmin*10:.0f}-{ptmax*10:.0f} not available. Skipping.', level='WARNING')
-                    
+
     hSigmaSimFit.Write()
     hMeanSimFit.Write()
     hMeanSecPeakFitMass.Write()
@@ -569,7 +588,7 @@ if __name__ == "__main__":
     parser.add_argument('fitConfigFileName', metavar='text', default='config_Ds_Fit.yml')
     parser.add_argument('inFileName', metavar='text', default='')
     parser.add_argument('--batch', '-b', help='suppress video output', action='store_true')
-    parser.add_argument('--multitrial', help='suppress reduntant prints', action='store_true')
+    parser.add_argument('--multitrial', help='suppress redundant prints', action='store_true')
     args = parser.parse_args()
 
     get_vn_vs_mass(

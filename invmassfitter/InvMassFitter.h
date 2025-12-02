@@ -2,9 +2,9 @@
 #define INVMASSFITTER_H
 
 #include <TNamed.h>
-
-class TF1;
-class TH1F;
+#include "TF1.h"
+#include <TH1.h>
+#include <TH1F.h>
 
 class InvMassFitter : public TNamed {
  public:
@@ -108,7 +108,10 @@ class InvMassFitter : public TNamed {
     fTemplates=kTRUE;
   }
   void SetSuppressOutput(Bool_t suppress){
-    if (suppress) fFitOption+="Q";
+    if (suppress) {
+      fFitOption+=",Q";
+      fSuppressOutput = kTRUE;
+    }
   }
 
   void IncludeSecondGausPeak(Double_t mass, Bool_t fixm, Double_t width, Bool_t fixw){
