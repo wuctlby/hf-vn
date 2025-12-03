@@ -23,9 +23,10 @@ import uproot
 from multiprocessing import Pool, cpu_count
 ROOT.gROOT.SetBatch(True)
 
-def fit_control_var(df, i_bin, cfg_fit, output_dir, part_name=""):
+def fit_control_var(df, i_bin, pt_min, pt_max, cfg_full, cfg_fit, output_dir, sel_string):
     print("\n\n")
-    fitter = RawYieldFitter(part_name, output_dir, True)
+    part_name = cfg_full['Dmeson']
+    fitter = RawYieldFitter(part_name, os.path.basename(output_dir), True)
     fitter.set_rebin(cfg_fit.get('rebin', 1))
     fitter.set_fit_range(cfg_fit['MassFitRanges'][i_bin][0], cfg_fit['MassFitRanges'][i_bin][1])
     fitter.set_data_to_fit_df(df)
@@ -37,6 +38,10 @@ def fit_control_var(df, i_bin, cfg_fit, output_dir, part_name=""):
     sgn_funcs = cfg_fit['SgnFunc'][i_bin] if isinstance(cfg_fit['SgnFunc'], list) else [cfg_fit['SgnFunc']]
     for i_sgn, sgn_func in enumerate(sgn_funcs):
         fitter.add_sgn_func(sgn_func, f"signal_{i_sgn}")
+
+    # Add correlated background if specified
+    if cfg_full.get('corr_bkgs'):
+        fitter.add_corr_bkgs(cfg_full['corr_bkgs'], sel_string, pt_min, pt_max)
 
     fitter.setup()
     fit_res = fitter.fit()
@@ -163,11 +168,16 @@ def eval_pt_center(cfg_file_name, workers=1):
 
             # Query the dataframe
             mass_min, mass_max = cfg_fit["MassFitRanges"][i_bin]
-            sel_df = df.query(f"{pt_min} <= fPt < {pt_max} and "
-                              f"{score_bkg_min} <= fMlScore0 < {score_bkg_max} and "
-                              f"{score_fd_min} <= fMlScore1 < {score_fd_max} and "
-                              f"{mass_min} <= fM <= {mass_max}").reset_index(drop=True)
-
+            sel_string = f"{pt_min} <= fPt < {pt_max} and " \
+                         f"{score_bkg_min} <= fMlScore0 < {score_bkg_max} and " \
+                         f"{score_fd_min} <= fMlScore1 < {score_fd_max} and " \
+                         f"{mass_min} <= fM <= {mass_max}"
+            sel_string_corr_bkgs = f"fMlScore0 < {score_bkg_max} && " \
+                                   f"fMlScore0 >= {score_bkg_min} && " \
+                                   f"fMlScore1 < {score_fd_max} && " \
+                                   f"fMlScore1 >= {score_fd_min} && " \
+                                   f"fM >= {mass_min} && fM < {mass_max}"
+            sel_df = df.query(sel_string).reset_index(drop=True)
             fig, ax = plt.subplots(1, 1, figsize=(12, 10))
             sel_df['fM'].hist(bins=100, alpha=0.5, range=(mass_min, mass_max))
             ax.set_xlabel('fM')
@@ -182,7 +192,7 @@ def eval_pt_center(cfg_file_name, workers=1):
                 dpi=300, bbox_inches="tight"
             )
 
-            s_weights = fit_control_var(sel_df, i_bin, cfg_fit, out_dir_pt, cfg["Dmeson"])
+            s_weights = fit_control_var(sel_df, i_bin, pt_min, pt_max, cfg, cfg_fit, out_dir_pt, sel_string_corr_bkgs)
             for var in infer_vars:
                 print(f"    Drawing {var}")
 
