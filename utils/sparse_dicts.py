@@ -195,12 +195,11 @@ def get_sparses(config, get_data=True, get_mc=True, debug=False):
             if isinstance(dataset["files"], str) and not dataset["files"].endswith(".root"):
                 list_of_files = []
                 for root, dirs, files in os.walk(dataset["files"]):
-                    if "hy" in os.path.basename(root):
-                        for f in files:
-                            if f.endswith(".root"):
-                                list_of_files.append(os.path.join(root, f))
+                    for f in files:
+                        if f.endswith(".root"):
+                            list_of_files.append(os.path.join(root, f))
                 print(f"list_of_files: {list_of_files}")
-                input("Press Enter to continue...")
+                # input("Press Enter to continue...")
                 infileflow = [TFile(os.path.join(dataset["files"], file)) for file in list_of_files]
             elif isinstance(dataset["files"], list):
                 if len(dataset["files"]) == 1:

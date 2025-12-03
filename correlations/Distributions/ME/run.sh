@@ -1,11 +1,10 @@
 OPTION="-b --configuration json://cfg.json"
-# MEMORY="--aod-memory-rate-limit 4000000000 --shm-segment-size 24000000000 --resources-monitoring 2"
+MEMORY="--aod-memory-rate-limit 2000000000 --shm-segment-size 16000000000"
 # CPU="--pipeline hf-correlator-charm-hadrons-reduced:1"
-# export OMP_NUM_THREADS=8
+# export OMP_NUM_THREADS=4
 LOGFILE="log.txt"
 
 o2-analysis-hf-correlator-flow-charm-hadrons-reduced $OPTION --aod-writer-json OutputDir.json --aod-file @input_derived_data.txt 1 > $LOGFILE 2>&1
-
 # report status
 rc=$?
 if [ $rc -eq 0 ]; then

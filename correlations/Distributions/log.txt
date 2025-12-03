@@ -1,0 +1,601 @@
+[INFO] Loading metadata from file /home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0011/AO2D.root in PID 519636
+[INFO] No metadata found in file "/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0011/AO2D.root" and parent level 0 prevents further lookup.
+[INFO] Initialising O2 Data Processing Layer. Driver PID: 519636.
+[INFO] Driver listening on port: 17716
+[INFO] Rate limiting set up at 500 MB and 1 timeframes distributed over 1 readers
+[INFO] O2 Data Processing Layer initialised. We brake for nobody.
+[INFO] Optimised build. O2DEBUG / LOG(debug) / LOGF(debug) / assert statement will not be shown.
+[INFO] Redeployment of configuration asked.
+[INFO] Starting internal-dpl-clock on pid 519645
+[INFO] Starting internal-dpl-aod-reader on pid 519646
+[INFO] Starting hf-correlator-flow-charm-hadrons-reduced on pid 519647
+[INFO] Starting internal-dpl-aod-global-analysis-file-sink on pid 519648
+[INFO] Starting internal-dpl-injected-dummy-sink on pid 519649
+[INFO] Redeployment of configuration done.
+[519645:internal-dpl-clock]: [INFO] Instrumenting crash signals
+[519649:internal-dpl-injected-dummy-sink]: [INFO] Instrumenting crash signals
+[519648:internal-dpl-aod-global-analysis-file-sink]: [INFO] Instrumenting crash signals
+[519646:internal-dpl-aod-reader]: [INFO] Instrumenting crash signals
+[519645:internal-dpl-clock]: [INFO] Spawning new device internal-dpl-clock in process with pid 519645
+[519649:internal-dpl-injected-dummy-sink]: [INFO] Spawning new device internal-dpl-injected-dummy-sink in process with pid 519649
+[519648:internal-dpl-aod-global-analysis-file-sink]: [INFO] Spawning new device internal-dpl-aod-global-analysis-file-sink in process with pid 519648
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [INFO] Instrumenting crash signals
+[519646:internal-dpl-aod-reader]: [INFO] Spawning new device internal-dpl-aod-reader in process with pid 519646
+[519645:internal-dpl-clock]: [15:19:04][INFO] 
+[519645:internal-dpl-clock]:       ______      _    _______  _________ 
+[519645:internal-dpl-clock]:      / ____/___ _(_)_______   |/  /_  __ \    version 1.10.0
+[519645:internal-dpl-clock]:     / /_  / __ `/ / ___/__  /|_/ /_  / / /    build RELWITHDEBINFO
+[519645:internal-dpl-clock]:    / __/ / /_/ / / /    _  /  / / / /_/ /     https://github.com/FairRootGroup/FairMQ
+[519645:internal-dpl-clock]:   /_/    \__,_/_/_/     /_/  /_/  \___\_\     LGPL-3.0  © 2012-2025 GSI
+[519645:internal-dpl-clock]: 
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:19:04][INFO] 
+[519648:internal-dpl-aod-global-analysis-file-sink]:       ______      _    _______  _________ 
+[519648:internal-dpl-aod-global-analysis-file-sink]:      / ____/___ _(_)_______   |/  /_  __ \    version 1.10.0
+[519648:internal-dpl-aod-global-analysis-file-sink]:     / /_  / __ `/ / ___/__  /|_/ /_  / / /    build RELWITHDEBINFO
+[519648:internal-dpl-aod-global-analysis-file-sink]:    / __/ / /_/ / / /    _  /  / / / /_/ /     https://github.com/FairRootGroup/FairMQ
+[519648:internal-dpl-aod-global-analysis-file-sink]:   /_/    \__,_/_/_/     /_/  /_/  \___\_\     LGPL-3.0  © 2012-2025 GSI
+[519648:internal-dpl-aod-global-analysis-file-sink]: 
+[519649:internal-dpl-injected-dummy-sink]: [15:19:04][INFO] 
+[519649:internal-dpl-injected-dummy-sink]:       ______      _    _______  _________ 
+[519649:internal-dpl-injected-dummy-sink]:      / ____/___ _(_)_______   |/  /_  __ \    version 1.10.0
+[519649:internal-dpl-injected-dummy-sink]:     / /_  / __ `/ / ___/__  /|_/ /_  / / /    build RELWITHDEBINFO
+[519649:internal-dpl-injected-dummy-sink]:    / __/ / /_/ / / /    _  /  / / / /_/ /     https://github.com/FairRootGroup/FairMQ
+[519649:internal-dpl-injected-dummy-sink]:   /_/    \__,_/_/_/     /_/  /_/  \___\_\     LGPL-3.0  © 2012-2025 GSI
+[519649:internal-dpl-injected-dummy-sink]: 
+[519646:internal-dpl-aod-reader]: [15:19:04][INFO] 
+[519646:internal-dpl-aod-reader]:       ______      _    _______  _________ 
+[519646:internal-dpl-aod-reader]:      / ____/___ _(_)_______   |/  /_  __ \    version 1.10.0
+[519646:internal-dpl-aod-reader]:     / /_  / __ `/ / ___/__  /|_/ /_  / / /    build RELWITHDEBINFO
+[519646:internal-dpl-aod-reader]:    / __/ / /_/ / / /    _  /  / / / /_/ /     https://github.com/FairRootGroup/FairMQ
+[519646:internal-dpl-aod-reader]:   /_/    \__,_/_/_/     /_/  /_/  \___\_\     LGPL-3.0  © 2012-2025 GSI
+[519646:internal-dpl-aod-reader]: 
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:19:04][STATE] Starting FairMQ state machine --> IDLE
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [INFO] Spawning new device hf-correlator-flow-charm-hadrons-reduced in process with pid 519647
+[519649:internal-dpl-injected-dummy-sink]: [15:19:04][STATE] Starting FairMQ state machine --> IDLE
+[519645:internal-dpl-clock]: [15:19:04][STATE] Starting FairMQ state machine --> IDLE
+[519646:internal-dpl-aod-reader]: [15:19:04][STATE] Starting FairMQ state machine --> IDLE
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:19:04][INFO] 
+[519647:hf-correlator-flow-charm-hadrons-reduced]:       ______      _    _______  _________ 
+[519647:hf-correlator-flow-charm-hadrons-reduced]:      / ____/___ _(_)_______   |/  /_  __ \    version 1.10.0
+[519647:hf-correlator-flow-charm-hadrons-reduced]:     / /_  / __ `/ / ___/__  /|_/ /_  / / /    build RELWITHDEBINFO
+[519647:hf-correlator-flow-charm-hadrons-reduced]:    / __/ / /_/ / / /    _  /  / / / /_/ /     https://github.com/FairRootGroup/FairMQ
+[519647:hf-correlator-flow-charm-hadrons-reduced]:   /_/    \__,_/_/_/     /_/  /_/  \___\_\     LGPL-3.0  © 2012-2025 GSI
+[519647:hf-correlator-flow-charm-hadrons-reduced]: 
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:19:04][STATE] Starting FairMQ state machine --> IDLE
+[519646:internal-dpl-aod-reader]: [15:19:04][STATE] IDLE ---> INITIALIZING DEVICE
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:19:04][STATE] IDLE ---> INITIALIZING DEVICE
+[519649:internal-dpl-injected-dummy-sink]: [15:19:04][STATE] IDLE ---> INITIALIZING DEVICE
+[519645:internal-dpl-clock]: [15:19:04][STATE] IDLE ---> INITIALIZING DEVICE
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:19:04][STATE] IDLE ---> INITIALIZING DEVICE
+[519649:internal-dpl-injected-dummy-sink]: [15:19:04][STATE] INITIALIZING DEVICE ---> INITIALIZED
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:19:04][STATE] INITIALIZING DEVICE ---> INITIALIZED
+[519645:internal-dpl-clock]: [15:19:04][STATE] INITIALIZING DEVICE ---> INITIALIZED
+[519645:internal-dpl-clock]: [15:19:04][STATE] INITIALIZED ---> BINDING
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:19:04][STATE] INITIALIZED ---> BINDING
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:19:04][STATE] BINDING ---> BOUND
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:19:04][STATE] BOUND ---> CONNECTING
+[519649:internal-dpl-injected-dummy-sink]: [15:19:04][STATE] INITIALIZED ---> BINDING
+[519649:internal-dpl-injected-dummy-sink]: [15:19:04][STATE] BINDING ---> BOUND
+[519645:internal-dpl-clock]: [15:19:04][STATE] BINDING ---> BOUND
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:19:04][STATE] CONNECTING ---> DEVICE READY
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:19:04][STATE] DEVICE READY ---> INITIALIZING TASK
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:19:04][STATE] INITIALIZING TASK ---> READY
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:19:04][STATE] READY ---> RUNNING
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:19:04][INFO] fair::mq::Device running...
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:19:04][INFO] LHCPeriod is not available, using current month NOV
+[519645:internal-dpl-clock]: [15:19:04][STATE] BOUND ---> CONNECTING
+[519645:internal-dpl-clock]: [15:19:04][STATE] CONNECTING ---> DEVICE READY
+[519645:internal-dpl-clock]: [15:19:04][STATE] DEVICE READY ---> INITIALIZING TASK
+[519649:internal-dpl-injected-dummy-sink]: [15:19:04][STATE] BOUND ---> CONNECTING
+[INFO] Controller for internal-dpl-aod-reader not yet available.
+[519645:internal-dpl-clock]: [15:19:04][STATE] INITIALIZING TASK ---> READY
+[519645:internal-dpl-clock]: [15:19:04][STATE] READY ---> RUNNING
+[519645:internal-dpl-clock]: [15:19:04][INFO] fair::mq::Device running...
+[519645:internal-dpl-clock]: [15:19:04][INFO] LHCPeriod is not available, using current month NOV
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:19:04][INFO] Correctly handshaken websocket connection.
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:19:04][STATE] INITIALIZING DEVICE ---> INITIALIZED
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:19:04][STATE] INITIALIZED ---> BINDING
+[519649:internal-dpl-injected-dummy-sink]: [15:19:04][STATE] CONNECTING ---> DEVICE READY
+[519649:internal-dpl-injected-dummy-sink]: [15:19:04][STATE] DEVICE READY ---> INITIALIZING TASK
+[519649:internal-dpl-injected-dummy-sink]: [15:19:04][STATE] INITIALIZING TASK ---> READY
+[519649:internal-dpl-injected-dummy-sink]: [15:19:04][STATE] READY ---> RUNNING
+[519645:internal-dpl-clock]: [15:19:04][INFO] Correctly handshaken websocket connection.
+[519649:internal-dpl-injected-dummy-sink]: [15:19:04][INFO] fair::mq::Device running...
+[519649:internal-dpl-injected-dummy-sink]: [15:19:04][INFO] LHCPeriod is not available, using current month NOV
+[519649:internal-dpl-injected-dummy-sink]: [15:19:04][INFO] Correctly handshaken websocket connection.
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:19:04][STATE] BINDING ---> BOUND
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:19:04][STATE] BOUND ---> CONNECTING
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:19:04][STATE] CONNECTING ---> DEVICE READY
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:19:04][STATE] DEVICE READY ---> INITIALIZING TASK
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:19:04][STATE] INITIALIZING TASK ---> READY
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:19:04][STATE] READY ---> RUNNING
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:19:04][INFO] fair::mq::Device running...
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:19:04][INFO] LHCPeriod is not available, using current month NOV
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:19:04][INFO] Correctly handshaken websocket connection.
+[519646:internal-dpl-aod-reader]: [15:19:04][STATE] INITIALIZING DEVICE ---> INITIALIZED
+[519646:internal-dpl-aod-reader]: [15:19:04][STATE] INITIALIZED ---> BINDING
+[519646:internal-dpl-aod-reader]: [15:19:04][STATE] BINDING ---> BOUND
+[519646:internal-dpl-aod-reader]: [15:19:04][STATE] BOUND ---> CONNECTING
+[519646:internal-dpl-aod-reader]: [15:19:04][STATE] CONNECTING ---> DEVICE READY
+[519646:internal-dpl-aod-reader]: [15:19:04][STATE] DEVICE READY ---> INITIALIZING TASK
+[519646:internal-dpl-aod-reader]: [15:19:04][STATE] INITIALIZING TASK ---> READY
+[519646:internal-dpl-aod-reader]: [15:19:04][STATE] READY ---> RUNNING
+[519646:internal-dpl-aod-reader]: [15:19:04][INFO] fair::mq::Device running...
+[519646:internal-dpl-aod-reader]: [15:19:04][INFO] LHCPeriod is not available, using current month NOV
+[INFO] Controller for internal-dpl-aod-reader now available.
+[519646:internal-dpl-aod-reader]: [15:19:04][WARN] Not enough resources to schedule computation. 0 skipped so far. Last scheduled at 0.
+[519646:internal-dpl-aod-reader]: [15:19:04][INFO] Correctly handshaken websocket connection.
+[519646:internal-dpl-aod-reader]: [15:19:04][WARN] Not enough resources to schedule computation. 1 skipped so far. Last scheduled at 0.
+[519646:internal-dpl-aod-reader]: [15:19:04][WARN] Not enough resources to schedule computation. 2 skipped so far. Last scheduled at 0.
+[519646:internal-dpl-aod-reader]: [15:19:04][WARN] Not enough resources to schedule computation. 3 skipped so far. Last scheduled at 0.
+[519646:internal-dpl-aod-reader]: [15:19:05][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0011/AO2D.root,size=369456747
+[519647:hf-correlator-flow-charm-hadrons-reduced]: /local/workspace/DailyBuilds/DailyO2-ubuntu2404/daily-tags.nmiMM4M8Ni/BUILD/2617d78355d7b492f9226fc434d14d7dfcf80cc3/arrow/src_tmp/cpp/src/gandiva/cache.cc:58: Creating gandiva cache with capacity of 5000
+[519647:hf-correlator-flow-charm-hadrons-reduced]: /local/workspace/DailyBuilds/DailyO2-ubuntu2404/daily-tags.nmiMM4M8Ni/BUILD/2617d78355d7b492f9226fc434d14d7dfcf80cc3/arrow/src_tmp/cpp/src/gandiva/engine.cc:282: Detected CPU Name : arrowlake-s
+[519647:hf-correlator-flow-charm-hadrons-reduced]: /local/workspace/DailyBuilds/DailyO2-ubuntu2404/daily-tags.nmiMM4M8Ni/BUILD/2617d78355d7b492f9226fc434d14d7dfcf80cc3/arrow/src_tmp/cpp/src/gandiva/engine.cc:283: Detected CPU Features: [ +prfchw -cldemote +avx +aes +sahf +pclmul -xop +crc32 -amx-fp8 +xsaves -avx512fp16 -usermsr +sm4 -egpr +sse4.1 -avx512ifma +xsave +sse4.2 -tsxldtrk +sm3 -ptwrite -widekl -movrs +invpcid +64bit +xsavec -avx10.1-512 -avx512vpopcntdq +cmov -avx512vp2intersect -avx512cd +movbe +avxvnniint8 -ccmp -amx-int8 -kl -avx10.1-256 +sha512 +avxvnni -rtm +adx +avx2 -hreset +movdiri +serialize +vpclmulqdq -avx512vl -uintr -cf +clflushopt -raoint +cmpccxadd +bmi -amx-tile +sse -avx10.2-256 +gfni +avxvnniint16 -amx-fp16 -zu -ndd +xsaveopt +rdrnd -avx512f -amx-bf16 -avx512bf16 -avx512vnni -push2pop2 +cx8 -avx512bw +sse3 -pku -nf -amx-tf32 -amx-avx512 +fsgsbase -clzero -mwaitx -lwp +lzcnt +sha +movdir64b -ppx -wbnoinvd -enqcmd -amx-transpose -avx10.2-512 +avxneconvert -tbm -pconfig -amx-complex +ssse3 +cx16 +bmi2 +fma +popcnt +avxifma +f16c -avx512bitalg -rdpru +clwb +mmx +sse2 +rdseed -avx512vbmi2 -prefetchi -amx-movrs +rdpid -fma4 -avx512vbmi +shstk +vaes +waitpkg -sgx +fxsr -avx512dq -sse4a]
+[519646:internal-dpl-aod-reader]: [15:19:08][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0011/AO2D.root,size=369456747,total_df=9,read_df=9,read_bytes=369457992,read_calls=103,io_time=1.7,wait_time=2.0,level=0
+[519646:internal-dpl-aod-reader]: [15:19:08][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0018/AO2D.root,size=383301671
+[519646:internal-dpl-aod-reader]: [15:19:12][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0018/AO2D.root,size=383301671,total_df=10,read_df=10,read_bytes=383303053,read_calls=114,io_time=1.5,wait_time=2.7,level=0
+[519646:internal-dpl-aod-reader]: [15:19:12][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0007/AO2D.root,size=383485635
+[519646:internal-dpl-aod-reader]: [15:19:16][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0007/AO2D.root,size=383485635,total_df=10,read_df=10,read_bytes=383487017,read_calls=114,io_time=1.5,wait_time=2.5,level=0
+[519646:internal-dpl-aod-reader]: [15:19:16][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0010/AO2D.root,size=378081697
+[519646:internal-dpl-aod-reader]: [15:19:22][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0010/AO2D.root,size=378081697,total_df=9,read_df=9,read_bytes=378082942,read_calls=103,io_time=1.6,wait_time=4.0,level=0
+[519646:internal-dpl-aod-reader]: [15:19:22][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0024/AO2D.root,size=355307258
+[519646:internal-dpl-aod-reader]: [15:19:26][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0024/AO2D.root,size=355307258,total_df=9,read_df=9,read_bytes=355308503,read_calls=103,io_time=1.4,wait_time=2.9,level=0
+[519646:internal-dpl-aod-reader]: [15:19:26][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0012/AO2D.root,size=382080379
+[519646:internal-dpl-aod-reader]: [15:19:32][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0012/AO2D.root,size=382080379,total_df=10,read_df=10,read_bytes=382081761,read_calls=114,io_time=1.6,wait_time=4.0,level=0
+[519646:internal-dpl-aod-reader]: [15:19:32][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0008/AO2D.root,size=384320148
+[519646:internal-dpl-aod-reader]: [15:19:36][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0008/AO2D.root,size=384320148,total_df=10,read_df=10,read_bytes=384321530,read_calls=114,io_time=1.5,wait_time=2.1,level=0
+[519646:internal-dpl-aod-reader]: [15:19:36][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0022/AO2D.root,size=343128443
+[519646:internal-dpl-aod-reader]: [15:19:41][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0022/AO2D.root,size=343128443,total_df=9,read_df=9,read_bytes=343129688,read_calls=103,io_time=1.3,wait_time=3.6,level=0
+[519646:internal-dpl-aod-reader]: [15:19:41][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0004/AO2D.root,size=382973052
+[519646:internal-dpl-aod-reader]: [15:19:46][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0004/AO2D.root,size=382973052,total_df=10,read_df=10,read_bytes=382974434,read_calls=114,io_time=1.4,wait_time=3.7,level=0
+[519646:internal-dpl-aod-reader]: [15:19:46][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0027/AO2D.root,size=358244131
+[519646:internal-dpl-aod-reader]: [15:19:49][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0027/AO2D.root,size=358244131,total_df=9,read_df=9,read_bytes=358245376,read_calls=103,io_time=1.3,wait_time=2.1,level=0
+[519646:internal-dpl-aod-reader]: [15:19:49][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0019/AO2D.root,size=386590657
+[519646:internal-dpl-aod-reader]: [15:19:55][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0019/AO2D.root,size=386590657,total_df=10,read_df=10,read_bytes=386592039,read_calls=114,io_time=1.5,wait_time=4.0,level=0
+[519646:internal-dpl-aod-reader]: [15:19:55][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0014/AO2D.root,size=388883046
+[519646:internal-dpl-aod-reader]: [15:20:00][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0014/AO2D.root,size=388883046,total_df=10,read_df=10,read_bytes=388884428,read_calls=114,io_time=1.5,wait_time=3.6,level=0
+[519646:internal-dpl-aod-reader]: [15:20:00][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0001/AO2D.root,size=365577299
+[519646:internal-dpl-aod-reader]: [15:20:04][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0001/AO2D.root,size=365577299,total_df=9,read_df=9,read_bytes=365578544,read_calls=103,io_time=1.4,wait_time=3.0,level=0
+[519646:internal-dpl-aod-reader]: [15:20:04][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0009/AO2D.root,size=372804508
+[519646:internal-dpl-aod-reader]: [15:20:09][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0009/AO2D.root,size=372804508,total_df=9,read_df=9,read_bytes=372805753,read_calls=103,io_time=1.4,wait_time=3.1,level=0
+[519646:internal-dpl-aod-reader]: [15:20:09][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0021/AO2D.root,size=345586079
+[519646:internal-dpl-aod-reader]: [15:20:14][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0021/AO2D.root,size=345586079,total_df=9,read_df=9,read_bytes=345587324,read_calls=103,io_time=1.3,wait_time=3.8,level=0
+[519646:internal-dpl-aod-reader]: [15:20:14][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0002/AO2D.root,size=388621818
+[519646:internal-dpl-aod-reader]: [15:20:18][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0002/AO2D.root,size=388621818,total_df=10,read_df=10,read_bytes=388623200,read_calls=114,io_time=1.5,wait_time=2.6,level=0
+[519646:internal-dpl-aod-reader]: [15:20:18][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0028/AO2D.root,size=15159541
+[519646:internal-dpl-aod-reader]: [15:20:18][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0028/AO2D.root,size=15159541,total_df=1,read_df=1,read_bytes=15159690,read_calls=15,io_time=0.1,wait_time=0.0,level=0
+[519646:internal-dpl-aod-reader]: [15:20:18][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0003/AO2D.root,size=356117202
+[519646:internal-dpl-aod-reader]: [15:20:24][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0003/AO2D.root,size=356117202,total_df=9,read_df=9,read_bytes=356118447,read_calls=103,io_time=1.3,wait_time=4.3,level=0
+[519646:internal-dpl-aod-reader]: [15:20:24][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0023/AO2D.root,size=343512979
+[519646:internal-dpl-aod-reader]: [15:20:27][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0023/AO2D.root,size=343512979,total_df=9,read_df=9,read_bytes=343514224,read_calls=103,io_time=1.3,wait_time=2.4,level=0
+[519646:internal-dpl-aod-reader]: [15:20:27][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0005/AO2D.root,size=380231859
+[519646:internal-dpl-aod-reader]: [15:20:33][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0005/AO2D.root,size=380231859,total_df=9,read_df=9,read_bytes=380233104,read_calls=103,io_time=1.4,wait_time=4.8,level=0
+[519646:internal-dpl-aod-reader]: [15:20:33][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0015/AO2D.root,size=405273359
+[519646:internal-dpl-aod-reader]: [15:20:39][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0015/AO2D.root,size=405273359,total_df=10,read_df=10,read_bytes=405274741,read_calls=114,io_time=1.5,wait_time=3.5,level=0
+[519646:internal-dpl-aod-reader]: [15:20:39][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0025/AO2D.root,size=348463946
+[519646:internal-dpl-aod-reader]: [15:20:44][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0025/AO2D.root,size=348463946,total_df=9,read_df=9,read_bytes=348465191,read_calls=103,io_time=1.3,wait_time=4.1,level=0
+[519646:internal-dpl-aod-reader]: [15:20:44][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0017/AO2D.root,size=351424012
+[519646:internal-dpl-aod-reader]: [15:20:48][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0017/AO2D.root,size=351424012,total_df=9,read_df=9,read_bytes=351425257,read_calls=103,io_time=1.4,wait_time=2.5,level=0
+[519646:internal-dpl-aod-reader]: [15:20:48][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0020/AO2D.root,size=345195682
+[519646:internal-dpl-aod-reader]: [15:20:53][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0020/AO2D.root,size=345195682,total_df=9,read_df=9,read_bytes=345196927,read_calls=103,io_time=1.3,wait_time=4.1,level=0
+[519646:internal-dpl-aod-reader]: [15:20:53][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0013/AO2D.root,size=386997816
+[519646:internal-dpl-aod-reader]: [15:20:58][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0013/AO2D.root,size=386997816,total_df=10,read_df=10,read_bytes=386999198,read_calls=114,io_time=1.5,wait_time=3.7,level=0
+[519646:internal-dpl-aod-reader]: [15:20:58][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0016/AO2D.root,size=387107588
+[519646:internal-dpl-aod-reader]: [15:21:04][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0016/AO2D.root,size=387107588,total_df=10,read_df=10,read_bytes=387108970,read_calls=114,io_time=1.5,wait_time=3.6,level=0
+[519646:internal-dpl-aod-reader]: [15:21:04][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0006/AO2D.root,size=398472629
+[519646:internal-dpl-aod-reader]: [15:21:09][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0006/AO2D.root,size=398472629,total_df=10,read_df=10,read_bytes=398474011,read_calls=114,io_time=1.5,wait_time=3.6,level=0
+[519646:internal-dpl-aod-reader]: [15:21:09][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0026/AO2D.root,size=355101284
+[519646:internal-dpl-aod-reader]: [15:21:13][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355423/0026/AO2D.root,size=355101284,total_df=9,read_df=9,read_bytes=355102529,read_calls=103,io_time=1.4,wait_time=2.9,level=0
+[519646:internal-dpl-aod-reader]: [15:21:13][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0011/AO2D.root,size=394522110
+[519646:internal-dpl-aod-reader]: [15:21:19][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0011/AO2D.root,size=394522110,total_df=10,read_df=10,read_bytes=394523492,read_calls=114,io_time=1.5,wait_time=4.4,level=0
+[519646:internal-dpl-aod-reader]: [15:21:19][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0018/AO2D.root,size=72527671
+[519646:internal-dpl-aod-reader]: [15:21:20][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0018/AO2D.root,size=72527671,total_df=2,read_df=2,read_bytes=72527957,read_calls=26,io_time=0.3,wait_time=0.5,level=0
+[519646:internal-dpl-aod-reader]: [15:21:20][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0007/AO2D.root,size=372550098
+[519646:internal-dpl-aod-reader]: [15:21:24][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0007/AO2D.root,size=372550098,total_df=9,read_df=9,read_bytes=372551343,read_calls=103,io_time=1.4,wait_time=3.4,level=0
+[519646:internal-dpl-aod-reader]: [15:21:24][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0010/AO2D.root,size=392191418
+[519646:internal-dpl-aod-reader]: [15:21:29][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0010/AO2D.root,size=392191418,total_df=10,read_df=10,read_bytes=392192800,read_calls=114,io_time=1.5,wait_time=2.9,level=0
+[519646:internal-dpl-aod-reader]: [15:21:29][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0012/AO2D.root,size=378840295
+[519646:internal-dpl-aod-reader]: [15:21:35][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0012/AO2D.root,size=378840295,total_df=9,read_df=9,read_bytes=378841540,read_calls=103,io_time=1.5,wait_time=4.2,level=0
+[519646:internal-dpl-aod-reader]: [15:21:35][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0008/AO2D.root,size=396346383
+[519646:internal-dpl-aod-reader]: [15:21:40][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0008/AO2D.root,size=396346383,total_df=10,read_df=10,read_bytes=396347765,read_calls=114,io_time=1.5,wait_time=4.0,level=0
+[519646:internal-dpl-aod-reader]: [15:21:40][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0004/AO2D.root,size=323418195
+[519646:internal-dpl-aod-reader]: [15:21:44][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0004/AO2D.root,size=323418195,total_df=8,read_df=8,read_bytes=323419303,read_calls=92,io_time=1.2,wait_time=2.3,level=0
+[519646:internal-dpl-aod-reader]: [15:21:44][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0014/AO2D.root,size=382397957
+[519646:internal-dpl-aod-reader]: [15:21:49][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0014/AO2D.root,size=382397957,total_df=10,read_df=10,read_bytes=382399339,read_calls=114,io_time=1.5,wait_time=3.9,level=0
+[519646:internal-dpl-aod-reader]: [15:21:49][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0001/AO2D.root,size=301269946
+[519646:internal-dpl-aod-reader]: [15:21:54][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0001/AO2D.root,size=301269946,total_df=8,read_df=8,read_bytes=301271054,read_calls=92,io_time=1.2,wait_time=3.5,level=0
+[519646:internal-dpl-aod-reader]: [15:21:54][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0009/AO2D.root,size=390744160
+[519646:internal-dpl-aod-reader]: [15:21:59][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0009/AO2D.root,size=390744160,total_df=10,read_df=10,read_bytes=390745542,read_calls=114,io_time=1.5,wait_time=3.9,level=0
+[519646:internal-dpl-aod-reader]: [15:21:59][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0002/AO2D.root,size=326373317
+[519646:internal-dpl-aod-reader]: [15:22:03][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0002/AO2D.root,size=326373317,total_df=8,read_df=8,read_bytes=326374425,read_calls=92,io_time=1.2,wait_time=3.0,level=0
+[519646:internal-dpl-aod-reader]: [15:22:03][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0003/AO2D.root,size=344760916
+[519646:internal-dpl-aod-reader]: [15:22:08][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0003/AO2D.root,size=344760916,total_df=9,read_df=9,read_bytes=344762161,read_calls=103,io_time=1.3,wait_time=3.2,level=0
+[519646:internal-dpl-aod-reader]: [15:22:08][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0005/AO2D.root,size=318201663
+[519646:internal-dpl-aod-reader]: [15:22:13][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0005/AO2D.root,size=318201663,total_df=8,read_df=8,read_bytes=318202771,read_calls=92,io_time=1.2,wait_time=3.5,level=0
+[519646:internal-dpl-aod-reader]: [15:22:13][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0015/AO2D.root,size=274978728
+[519646:internal-dpl-aod-reader]: [15:22:16][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0015/AO2D.root,size=274978728,total_df=7,read_df=7,read_bytes=274979699,read_calls=81,io_time=1.1,wait_time=2.7,level=0
+[519646:internal-dpl-aod-reader]: [15:22:16][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0017/AO2D.root,size=286917529
+[519646:internal-dpl-aod-reader]: [15:22:20][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0017/AO2D.root,size=286917529,total_df=7,read_df=7,read_bytes=286918500,read_calls=81,io_time=1.1,wait_time=2.1,level=0
+[519646:internal-dpl-aod-reader]: [15:22:20][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0013/AO2D.root,size=388951843
+[519646:internal-dpl-aod-reader]: [15:22:25][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0013/AO2D.root,size=388951843,total_df=10,read_df=10,read_bytes=388953225,read_calls=114,io_time=1.5,wait_time=3.6,level=0
+[519646:internal-dpl-aod-reader]: [15:22:25][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0016/AO2D.root,size=301485675
+[519646:internal-dpl-aod-reader]: [15:22:29][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0016/AO2D.root,size=301485675,total_df=8,read_df=8,read_bytes=301486783,read_calls=92,io_time=1.1,wait_time=2.8,level=0
+[519646:internal-dpl-aod-reader]: [15:22:29][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0006/AO2D.root,size=358350423
+[519646:internal-dpl-aod-reader]: [15:22:34][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355444/0006/AO2D.root,size=358350423,total_df=9,read_df=9,read_bytes=358351668,read_calls=103,io_time=1.4,wait_time=4.2,level=0
+[519646:internal-dpl-aod-reader]: [15:22:34][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0011/AO2D.root,size=377401831
+[519646:internal-dpl-aod-reader]: [15:22:39][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0011/AO2D.root,size=377401831,total_df=9,read_df=9,read_bytes=377403076,read_calls=103,io_time=1.4,wait_time=3.4,level=0
+[519646:internal-dpl-aod-reader]: [15:22:39][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0007/AO2D.root,size=360366706
+[519646:internal-dpl-aod-reader]: [15:22:44][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0007/AO2D.root,size=360366706,total_df=9,read_df=9,read_bytes=360367951,read_calls=103,io_time=1.4,wait_time=3.1,level=0
+[519646:internal-dpl-aod-reader]: [15:22:44][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0010/AO2D.root,size=367687230
+[519646:internal-dpl-aod-reader]: [15:22:49][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0010/AO2D.root,size=367687230,total_df=9,read_df=9,read_bytes=367688475,read_calls=103,io_time=1.4,wait_time=3.7,level=0
+[519646:internal-dpl-aod-reader]: [15:22:49][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0012/AO2D.root,size=311915496
+[519646:internal-dpl-aod-reader]: [15:22:53][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0012/AO2D.root,size=311915496,total_df=8,read_df=8,read_bytes=311916604,read_calls=92,io_time=1.2,wait_time=3.0,level=0
+[519646:internal-dpl-aod-reader]: [15:22:53][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0008/AO2D.root,size=376864158
+[519646:internal-dpl-aod-reader]: [15:22:58][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0008/AO2D.root,size=376864158,total_df=9,read_df=9,read_bytes=376865403,read_calls=103,io_time=1.4,wait_time=3.6,level=0
+[519646:internal-dpl-aod-reader]: [15:22:58][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0004/AO2D.root,size=378271353
+[519646:internal-dpl-aod-reader]: [15:23:03][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0004/AO2D.root,size=378271353,total_df=9,read_df=9,read_bytes=378272598,read_calls=103,io_time=1.5,wait_time=3.5,level=0
+[519646:internal-dpl-aod-reader]: [15:23:03][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0014/AO2D.root,size=321705688
+[519646:internal-dpl-aod-reader]: [15:23:08][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0014/AO2D.root,size=321705688,total_df=8,read_df=8,read_bytes=321706796,read_calls=92,io_time=1.2,wait_time=3.5,level=0
+[519646:internal-dpl-aod-reader]: [15:23:08][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0001/AO2D.root,size=353038599
+[519646:internal-dpl-aod-reader]: [15:23:13][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0001/AO2D.root,size=353038599,total_df=9,read_df=9,read_bytes=353039844,read_calls=103,io_time=1.3,wait_time=3.6,level=0
+[519646:internal-dpl-aod-reader]: [15:23:13][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0009/AO2D.root,size=375873591
+[519646:internal-dpl-aod-reader]: [15:23:18][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0009/AO2D.root,size=375873591,total_df=9,read_df=9,read_bytes=375874836,read_calls=103,io_time=1.4,wait_time=3.6,level=0
+[519646:internal-dpl-aod-reader]: [15:23:18][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0002/AO2D.root,size=358326852
+[519646:internal-dpl-aod-reader]: [15:23:22][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0002/AO2D.root,size=358326852,total_df=9,read_df=9,read_bytes=358328097,read_calls=103,io_time=1.4,wait_time=3.1,level=0
+[519646:internal-dpl-aod-reader]: [15:23:22][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0003/AO2D.root,size=361078252
+[519646:internal-dpl-aod-reader]: [15:23:27][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0003/AO2D.root,size=361078252,total_df=9,read_df=9,read_bytes=361079497,read_calls=103,io_time=1.4,wait_time=3.7,level=0
+[519646:internal-dpl-aod-reader]: [15:23:27][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0005/AO2D.root,size=370975325
+[519646:internal-dpl-aod-reader]: [15:23:32][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0005/AO2D.root,size=370975325,total_df=9,read_df=9,read_bytes=370976570,read_calls=103,io_time=1.4,wait_time=3.3,level=0
+[519646:internal-dpl-aod-reader]: [15:23:32][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0015/AO2D.root,size=295949005
+[519646:internal-dpl-aod-reader]: [15:23:35][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0015/AO2D.root,size=295949005,total_df=7,read_df=7,read_bytes=295949976,read_calls=81,io_time=1.1,wait_time=1.9,level=0
+[519646:internal-dpl-aod-reader]: [15:23:35][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0013/AO2D.root,size=303379880
+[519646:internal-dpl-aod-reader]: [15:23:40][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0013/AO2D.root,size=303379880,total_df=8,read_df=8,read_bytes=303380988,read_calls=92,io_time=1.1,wait_time=4.0,level=0
+[519646:internal-dpl-aod-reader]: [15:23:40][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0016/AO2D.root,size=108772769
+[519646:internal-dpl-aod-reader]: [15:23:41][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0016/AO2D.root,size=108772769,total_df=3,read_df=3,read_bytes=108773192,read_calls=37,io_time=0.4,wait_time=0.5,level=0
+[519646:internal-dpl-aod-reader]: [15:23:41][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0006/AO2D.root,size=344660370
+[519646:internal-dpl-aod-reader]: [15:23:45][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355442/0006/AO2D.root,size=344660370,total_df=9,read_df=9,read_bytes=344661615,read_calls=103,io_time=1.3,wait_time=2.7,level=0
+[519646:internal-dpl-aod-reader]: [15:23:45][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355419/0007/AO2D.root,size=217825372
+[519646:internal-dpl-aod-reader]: [15:23:48][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355419/0007/AO2D.root,size=217825372,total_df=6,read_df=6,read_bytes=217826206,read_calls=70,io_time=0.8,wait_time=2.2,level=0
+[519646:internal-dpl-aod-reader]: [15:23:48][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355419/0004/AO2D.root,size=306564489
+[519646:internal-dpl-aod-reader]: [15:23:53][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355419/0004/AO2D.root,size=306564489,total_df=8,read_df=8,read_bytes=306565597,read_calls=92,io_time=1.1,wait_time=3.5,level=0
+[519646:internal-dpl-aod-reader]: [15:23:53][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355419/0001/AO2D.root,size=240106633
+[519646:internal-dpl-aod-reader]: [15:23:56][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355419/0001/AO2D.root,size=240106633,total_df=6,read_df=6,read_bytes=240107467,read_calls=70,io_time=0.9,wait_time=2.2,level=0
+[519646:internal-dpl-aod-reader]: [15:23:56][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355419/0002/AO2D.root,size=213483389
+[519646:internal-dpl-aod-reader]: [15:24:01][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355419/0002/AO2D.root,size=213483389,total_df=6,read_df=6,read_bytes=213484223,read_calls=70,io_time=0.8,wait_time=4.0,level=0
+[519646:internal-dpl-aod-reader]: [15:24:01][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355419/0003/AO2D.root,size=252341975
+[519646:internal-dpl-aod-reader]: [15:24:04][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355419/0003/AO2D.root,size=252341975,total_df=6,read_df=6,read_bytes=252342809,read_calls=70,io_time=1.0,wait_time=1.9,level=0
+[519646:internal-dpl-aod-reader]: [15:24:04][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355419/0005/AO2D.root,size=317023608
+[519646:internal-dpl-aod-reader]: [15:24:08][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355419/0005/AO2D.root,size=317023608,total_df=8,read_df=8,read_bytes=317024716,read_calls=92,io_time=1.2,wait_time=3.3,level=0
+[519646:internal-dpl-aod-reader]: [15:24:08][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355419/0006/AO2D.root,size=293138430
+[519646:internal-dpl-aod-reader]: [15:24:11][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355419/0006/AO2D.root,size=293138430,total_df=7,read_df=7,read_bytes=293139401,read_calls=81,io_time=1.1,wait_time=2.0,level=0
+[519646:internal-dpl-aod-reader]: [15:24:11][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0011/AO2D.root,size=362261908
+[519646:internal-dpl-aod-reader]: [15:24:17][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0011/AO2D.root,size=362261908,total_df=9,read_df=9,read_bytes=362263153,read_calls=103,io_time=1.4,wait_time=4.1,level=0
+[519646:internal-dpl-aod-reader]: [15:24:17][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0018/AO2D.root,size=15829588
+[519646:internal-dpl-aod-reader]: [15:24:17][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0018/AO2D.root,size=15829588,total_df=1,read_df=1,read_bytes=15829737,read_calls=15,io_time=0.1,wait_time=0.0,level=0
+[519646:internal-dpl-aod-reader]: [15:24:17][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0007/AO2D.root,size=338499597
+[519646:internal-dpl-aod-reader]: [15:24:21][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0007/AO2D.root,size=338499597,total_df=8,read_df=8,read_bytes=338500705,read_calls=92,io_time=1.3,wait_time=3.2,level=0
+[519646:internal-dpl-aod-reader]: [15:24:21][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0010/AO2D.root,size=347329598
+[519646:internal-dpl-aod-reader]: [15:24:25][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0010/AO2D.root,size=347329598,total_df=9,read_df=9,read_bytes=347330843,read_calls=103,io_time=1.3,wait_time=2.8,level=0
+[519646:internal-dpl-aod-reader]: [15:24:25][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0012/AO2D.root,size=363917053
+[519646:internal-dpl-aod-reader]: [15:24:31][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0012/AO2D.root,size=363917053,total_df=9,read_df=9,read_bytes=363918298,read_calls=103,io_time=1.4,wait_time=4.1,level=0
+[519646:internal-dpl-aod-reader]: [15:24:31][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0008/AO2D.root,size=348475401
+[519646:internal-dpl-aod-reader]: [15:24:36][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0008/AO2D.root,size=348475401,total_df=9,read_df=9,read_bytes=348476646,read_calls=103,io_time=1.4,wait_time=3.5,level=0
+[519646:internal-dpl-aod-reader]: [15:24:36][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0004/AO2D.root,size=333922326
+[519646:internal-dpl-aod-reader]: [15:24:40][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0004/AO2D.root,size=333922326,total_df=8,read_df=8,read_bytes=333923434,read_calls=92,io_time=1.3,wait_time=3.3,level=0
+[519646:internal-dpl-aod-reader]: [15:24:40][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0014/AO2D.root,size=364727219
+[519646:internal-dpl-aod-reader]: [15:24:45][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0014/AO2D.root,size=364727219,total_df=9,read_df=9,read_bytes=364728464,read_calls=103,io_time=1.4,wait_time=3.0,level=0
+[519646:internal-dpl-aod-reader]: [15:24:45][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0001/AO2D.root,size=323380482
+[519646:internal-dpl-aod-reader]: [15:24:49][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0001/AO2D.root,size=323380482,total_df=8,read_df=8,read_bytes=323381590,read_calls=92,io_time=1.3,wait_time=2.7,level=0
+[519646:internal-dpl-aod-reader]: [15:24:49][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0009/AO2D.root,size=348992334
+[519646:internal-dpl-aod-reader]: [15:24:54][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0009/AO2D.root,size=348992334,total_df=9,read_df=9,read_bytes=348993579,read_calls=103,io_time=1.4,wait_time=3.3,level=0
+[519646:internal-dpl-aod-reader]: [15:24:54][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0002/AO2D.root,size=334050328
+[519646:internal-dpl-aod-reader]: [15:24:58][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0002/AO2D.root,size=334050328,total_df=8,read_df=8,read_bytes=334051436,read_calls=92,io_time=1.3,wait_time=3.3,level=0
+[519646:internal-dpl-aod-reader]: [15:24:58][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0003/AO2D.root,size=333196228
+[519646:internal-dpl-aod-reader]: [15:25:02][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0003/AO2D.root,size=333196228,total_df=8,read_df=8,read_bytes=333197336,read_calls=92,io_time=1.3,wait_time=3.1,level=0
+[519646:internal-dpl-aod-reader]: [15:25:02][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0005/AO2D.root,size=333020724
+[519646:internal-dpl-aod-reader]: [15:25:07][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0005/AO2D.root,size=333020724,total_df=8,read_df=8,read_bytes=333021832,read_calls=92,io_time=1.3,wait_time=3.1,level=0
+[519646:internal-dpl-aod-reader]: [15:25:07][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0015/AO2D.root,size=354093473
+[519646:internal-dpl-aod-reader]: [15:25:11][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0015/AO2D.root,size=354093473,total_df=9,read_df=9,read_bytes=354094718,read_calls=103,io_time=1.4,wait_time=2.8,level=0
+[519646:internal-dpl-aod-reader]: [15:25:11][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0017/AO2D.root,size=231661104
+[519646:internal-dpl-aod-reader]: [15:25:14][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0017/AO2D.root,size=231661104,total_df=6,read_df=6,read_bytes=231661938,read_calls=70,io_time=0.9,wait_time=2.1,level=0
+[519646:internal-dpl-aod-reader]: [15:25:14][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0013/AO2D.root,size=349032932
+[519646:internal-dpl-aod-reader]: [15:25:20][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0013/AO2D.root,size=349032932,total_df=9,read_df=9,read_bytes=349034177,read_calls=103,io_time=1.4,wait_time=4.2,level=0
+[519646:internal-dpl-aod-reader]: [15:25:20][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0016/AO2D.root,size=220814836
+[519646:internal-dpl-aod-reader]: [15:25:23][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0016/AO2D.root,size=220814836,total_df=6,read_df=6,read_bytes=220815670,read_calls=70,io_time=0.9,wait_time=2.2,level=0
+[519646:internal-dpl-aod-reader]: [15:25:23][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0006/AO2D.root,size=333593143
+[519646:internal-dpl-aod-reader]: [15:25:27][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355421/0006/AO2D.root,size=333593143,total_df=8,read_df=8,read_bytes=333594251,read_calls=92,io_time=1.3,wait_time=2.8,level=0
+[519646:internal-dpl-aod-reader]: [15:25:27][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0011/AO2D.root,size=367453503
+[519646:internal-dpl-aod-reader]: [15:25:32][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0011/AO2D.root,size=367453503,total_df=9,read_df=9,read_bytes=367454748,read_calls=103,io_time=1.5,wait_time=3.5,level=0
+[519646:internal-dpl-aod-reader]: [15:25:32][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0018/AO2D.root,size=366438122
+[519646:internal-dpl-aod-reader]: [15:25:37][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0018/AO2D.root,size=366438122,total_df=9,read_df=9,read_bytes=366439367,read_calls=103,io_time=1.5,wait_time=3.4,level=0
+[519646:internal-dpl-aod-reader]: [15:25:37][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0007/AO2D.root,size=376504011
+[519646:internal-dpl-aod-reader]: [15:25:42][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0007/AO2D.root,size=376504011,total_df=9,read_df=9,read_bytes=376505256,read_calls=103,io_time=1.5,wait_time=3.9,level=0
+[519646:internal-dpl-aod-reader]: [15:25:42][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0010/AO2D.root,size=394692781
+[519646:internal-dpl-aod-reader]: [15:25:48][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0010/AO2D.root,size=394692781,total_df=10,read_df=10,read_bytes=394694163,read_calls=114,io_time=1.6,wait_time=4.3,level=0
+[519646:internal-dpl-aod-reader]: [15:25:48][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0012/AO2D.root,size=395540086
+[519646:internal-dpl-aod-reader]: [15:25:53][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0012/AO2D.root,size=395540086,total_df=10,read_df=10,read_bytes=395541468,read_calls=114,io_time=1.6,wait_time=3.3,level=0
+[519646:internal-dpl-aod-reader]: [15:25:53][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0008/AO2D.root,size=386903165
+[519646:internal-dpl-aod-reader]: [15:25:59][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0008/AO2D.root,size=386903165,total_df=10,read_df=10,read_bytes=386904547,read_calls=114,io_time=1.5,wait_time=4.5,level=0
+[519646:internal-dpl-aod-reader]: [15:25:59][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0004/AO2D.root,size=372405416
+[519646:internal-dpl-aod-reader]: [15:26:04][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0004/AO2D.root,size=372405416,total_df=9,read_df=9,read_bytes=372406661,read_calls=103,io_time=1.5,wait_time=3.3,level=0
+[519646:internal-dpl-aod-reader]: [15:26:04][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0019/AO2D.root,size=341477852
+[519646:internal-dpl-aod-reader]: [15:26:09][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0019/AO2D.root,size=341477852,total_df=9,read_df=9,read_bytes=341479097,read_calls=103,io_time=1.3,wait_time=3.7,level=0
+[519646:internal-dpl-aod-reader]: [15:26:09][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0014/AO2D.root,size=373763558
+[519646:internal-dpl-aod-reader]: [15:26:14][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0014/AO2D.root,size=373763558,total_df=9,read_df=9,read_bytes=373764803,read_calls=103,io_time=1.5,wait_time=3.6,level=0
+[519646:internal-dpl-aod-reader]: [15:26:14][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0001/AO2D.root,size=351812442
+[519646:internal-dpl-aod-reader]: [15:26:19][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0001/AO2D.root,size=351812442,total_df=9,read_df=9,read_bytes=351813687,read_calls=103,io_time=1.4,wait_time=3.8,level=0
+[519646:internal-dpl-aod-reader]: [15:26:19][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0009/AO2D.root,size=391731445
+[519646:internal-dpl-aod-reader]: [15:26:24][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0009/AO2D.root,size=391731445,total_df=10,read_df=10,read_bytes=391732827,read_calls=114,io_time=1.5,wait_time=3.8,level=0
+[519646:internal-dpl-aod-reader]: [15:26:24][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0002/AO2D.root,size=381810949
+[519646:internal-dpl-aod-reader]: [15:26:30][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0002/AO2D.root,size=381810949,total_df=10,read_df=10,read_bytes=381812331,read_calls=114,io_time=1.5,wait_time=3.9,level=0
+[519646:internal-dpl-aod-reader]: [15:26:30][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0003/AO2D.root,size=380114348
+[519646:internal-dpl-aod-reader]: [15:26:35][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0003/AO2D.root,size=380114348,total_df=9,read_df=9,read_bytes=380115593,read_calls=103,io_time=1.5,wait_time=3.6,level=0
+[519646:internal-dpl-aod-reader]: [15:26:35][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0005/AO2D.root,size=378541969
+[519646:internal-dpl-aod-reader]: [15:26:40][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0005/AO2D.root,size=378541969,total_df=9,read_df=9,read_bytes=378543214,read_calls=103,io_time=1.5,wait_time=3.4,level=0
+[519646:internal-dpl-aod-reader]: [15:26:40][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0015/AO2D.root,size=332201444
+[519646:internal-dpl-aod-reader]: [15:26:45][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0015/AO2D.root,size=332201444,total_df=8,read_df=8,read_bytes=332202552,read_calls=92,io_time=1.3,wait_time=3.4,level=0
+[519646:internal-dpl-aod-reader]: [15:26:45][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0017/AO2D.root,size=362169532
+[519646:internal-dpl-aod-reader]: [15:26:49][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0017/AO2D.root,size=362169532,total_df=9,read_df=9,read_bytes=362170777,read_calls=103,io_time=1.4,wait_time=3.1,level=0
+[519646:internal-dpl-aod-reader]: [15:26:49][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0020/AO2D.root,size=15818828
+[519646:internal-dpl-aod-reader]: [15:26:49][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0020/AO2D.root,size=15818828,total_df=1,read_df=1,read_bytes=15818977,read_calls=15,io_time=0.1,wait_time=0.0,level=0
+[519646:internal-dpl-aod-reader]: [15:26:49][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0013/AO2D.root,size=390864886
+[519646:internal-dpl-aod-reader]: [15:26:55][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0013/AO2D.root,size=390864886,total_df=10,read_df=10,read_bytes=390866268,read_calls=114,io_time=1.6,wait_time=4.3,level=0
+[519646:internal-dpl-aod-reader]: [15:26:55][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0016/AO2D.root,size=311964535
+[519646:internal-dpl-aod-reader]: [15:27:00][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0016/AO2D.root,size=311964535,total_df=8,read_df=8,read_bytes=311965643,read_calls=92,io_time=1.2,wait_time=3.7,level=0
+[519646:internal-dpl-aod-reader]: [15:27:00][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0006/AO2D.root,size=377644105
+[519646:internal-dpl-aod-reader]: [15:27:05][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0006/AO2D.root,size=377644105,total_df=9,read_df=9,read_bytes=377645350,read_calls=103,io_time=1.5,wait_time=3.4,level=0
+[519646:internal-dpl-aod-reader]: [15:27:05][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0011/AO2D.root,size=389340774
+[519646:internal-dpl-aod-reader]: [15:27:11][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0011/AO2D.root,size=389340774,total_df=10,read_df=10,read_bytes=389342156,read_calls=114,io_time=1.6,wait_time=4.3,level=0
+[519646:internal-dpl-aod-reader]: [15:27:11][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0018/AO2D.root,size=31364522
+[519646:internal-dpl-aod-reader]: [15:27:11][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0018/AO2D.root,size=31364522,total_df=1,read_df=1,read_bytes=31364671,read_calls=15,io_time=0.1,wait_time=0.1,level=0
+[519646:internal-dpl-aod-reader]: [15:27:11][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0007/AO2D.root,size=373609927
+[519646:internal-dpl-aod-reader]: [15:27:16][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0007/AO2D.root,size=373609927,total_df=9,read_df=9,read_bytes=373611172,read_calls=103,io_time=1.5,wait_time=3.5,level=0
+[519646:internal-dpl-aod-reader]: [15:27:16][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0010/AO2D.root,size=380180855
+[519646:internal-dpl-aod-reader]: [15:27:21][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0010/AO2D.root,size=380180855,total_df=9,read_df=9,read_bytes=380182100,read_calls=103,io_time=1.5,wait_time=3.5,level=0
+[519646:internal-dpl-aod-reader]: [15:27:21][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0012/AO2D.root,size=389136634
+[519646:internal-dpl-aod-reader]: [15:27:26][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0012/AO2D.root,size=389136634,total_df=10,read_df=10,read_bytes=389138016,read_calls=114,io_time=1.5,wait_time=3.8,level=0
+[519646:internal-dpl-aod-reader]: [15:27:26][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0008/AO2D.root,size=395005537
+[519646:internal-dpl-aod-reader]: [15:27:32][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0008/AO2D.root,size=395005537,total_df=10,read_df=10,read_bytes=395006919,read_calls=114,io_time=1.6,wait_time=4.3,level=0
+[519646:internal-dpl-aod-reader]: [15:27:32][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0004/AO2D.root,size=375782108
+[519646:internal-dpl-aod-reader]: [15:27:37][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0004/AO2D.root,size=375782108,total_df=9,read_df=9,read_bytes=375783353,read_calls=103,io_time=1.5,wait_time=3.3,level=0
+[519646:internal-dpl-aod-reader]: [15:27:37][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0014/AO2D.root,size=340041760
+[519646:internal-dpl-aod-reader]: [15:27:42][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0014/AO2D.root,size=340041760,total_df=9,read_df=9,read_bytes=340043005,read_calls=103,io_time=1.3,wait_time=3.8,level=0
+[519646:internal-dpl-aod-reader]: [15:27:42][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0001/AO2D.root,size=336331139
+[519646:internal-dpl-aod-reader]: [15:27:45][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0001/AO2D.root,size=336331139,total_df=8,read_df=8,read_bytes=336332247,read_calls=92,io_time=1.3,wait_time=1.9,level=0
+[519646:internal-dpl-aod-reader]: [15:27:45][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0009/AO2D.root,size=390376943
+[519646:internal-dpl-aod-reader]: [15:27:52][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0009/AO2D.root,size=390376943,total_df=10,read_df=10,read_bytes=390378325,read_calls=114,io_time=1.5,wait_time=4.9,level=0
+[519646:internal-dpl-aod-reader]: [15:27:52][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0002/AO2D.root,size=378301743
+[519646:internal-dpl-aod-reader]: [15:27:57][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0002/AO2D.root,size=378301743,total_df=9,read_df=9,read_bytes=378302988,read_calls=103,io_time=1.5,wait_time=3.3,level=0
+[519646:internal-dpl-aod-reader]: [15:27:57][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0003/AO2D.root,size=381676245
+[519646:internal-dpl-aod-reader]: [15:28:02][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0003/AO2D.root,size=381676245,total_df=10,read_df=10,read_bytes=381677627,read_calls=114,io_time=1.5,wait_time=4.2,level=0
+[519646:internal-dpl-aod-reader]: [15:28:02][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0005/AO2D.root,size=373979910
+[519646:internal-dpl-aod-reader]: [15:28:07][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0005/AO2D.root,size=373979910,total_df=9,read_df=9,read_bytes=373981155,read_calls=103,io_time=1.4,wait_time=2.9,level=0
+[519646:internal-dpl-aod-reader]: [15:28:07][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0015/AO2D.root,size=295437789
+[519646:internal-dpl-aod-reader]: [15:28:11][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0015/AO2D.root,size=295437789,total_df=7,read_df=7,read_bytes=295438760,read_calls=81,io_time=1.1,wait_time=2.6,level=0
+[519646:internal-dpl-aod-reader]: [15:28:11][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0017/AO2D.root,size=297976350
+[519646:internal-dpl-aod-reader]: [15:28:15][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0017/AO2D.root,size=297976350,total_df=8,read_df=8,read_bytes=297977458,read_calls=92,io_time=1.2,wait_time=3.3,level=0
+[519646:internal-dpl-aod-reader]: [15:28:15][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0013/AO2D.root,size=382979305
+[519646:internal-dpl-aod-reader]: [15:28:21][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0013/AO2D.root,size=382979305,total_df=10,read_df=10,read_bytes=382980687,read_calls=114,io_time=1.5,wait_time=4.2,level=0
+[519646:internal-dpl-aod-reader]: [15:28:21][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0016/AO2D.root,size=311443841
+[519646:internal-dpl-aod-reader]: [15:28:25][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0016/AO2D.root,size=311443841,total_df=8,read_df=8,read_bytes=311444949,read_calls=92,io_time=1.2,wait_time=2.9,level=0
+[519646:internal-dpl-aod-reader]: [15:28:25][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0006/AO2D.root,size=333207175
+[519646:internal-dpl-aod-reader]: [15:28:29][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0006/AO2D.root,size=333207175,total_df=8,read_df=8,read_bytes=333208283,read_calls=92,io_time=1.3,wait_time=2.9,level=0
+[519646:internal-dpl-aod-reader]: [15:28:29][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355420/0001/AO2D.root,size=195966908
+[519646:internal-dpl-aod-reader]: [15:28:32][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355420/0001/AO2D.root,size=195966908,total_df=5,read_df=5,read_bytes=195967605,read_calls=59,io_time=0.8,wait_time=2.1,level=0
+[519646:internal-dpl-aod-reader]: [15:28:32][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355420/0002/AO2D.root,size=77786951
+[519646:internal-dpl-aod-reader]: [15:28:33][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355420/0002/AO2D.root,size=77786951,total_df=2,read_df=2,read_bytes=77787237,read_calls=26,io_time=0.3,wait_time=0.6,level=0
+[519646:internal-dpl-aod-reader]: [15:28:33][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0004/AO2D.root,size=225654596
+[519646:internal-dpl-aod-reader]: [15:28:36][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0004/AO2D.root,size=225654596,total_df=6,read_df=6,read_bytes=225655430,read_calls=70,io_time=0.9,wait_time=2.5,level=0
+[519646:internal-dpl-aod-reader]: [15:28:36][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0001/AO2D.root,size=111410648
+[519646:internal-dpl-aod-reader]: [15:28:37][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0001/AO2D.root,size=111410648,total_df=3,read_df=3,read_bytes=111411071,read_calls=37,io_time=0.4,wait_time=0.5,level=0
+[519646:internal-dpl-aod-reader]: [15:28:37][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0002/AO2D.root,size=168338936
+[519646:internal-dpl-aod-reader]: [15:28:39][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0002/AO2D.root,size=168338936,total_df=4,read_df=4,read_bytes=168339496,read_calls=48,io_time=0.7,wait_time=1.3,level=0
+[519646:internal-dpl-aod-reader]: [15:28:39][INFO] Opening file: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0003/AO2D.root,size=112003503
+[519646:internal-dpl-aod-reader]: [15:28:41][INFO] No input files left to read for reader 0!
+[519646:internal-dpl-aod-reader]: [15:28:41][INFO] Read info: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0003/AO2D.root,size=112003503,total_df=3,read_df=3,read_bytes=112003926,read_calls=37,io_time=0.4,wait_time=1.3,level=0
+[519646:internal-dpl-aod-reader]: [15:28:41][INFO] Sending end-of-stream message to channel from_internal-dpl-aod-reader_to_hf-correlator-flow-charm-hadrons-reduced
+[519646:internal-dpl-aod-reader]: [15:28:41][INFO] Sending end-of-stream message to channel from_internal-dpl-aod-reader_to_internal-dpl-injected-dummy-sink
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:28:43][INFO] Sending end-of-stream message to channel from_hf-correlator-flow-charm-hadrons-reduced_to_internal-dpl-aod-global-analysis-file-sink
+[INFO] Quitting
+[INFO] Quit requested at Wed Nov 19 15:28:47 2025
+
+[519646:internal-dpl-aod-reader]: [15:28:47][INFO] Received device shutdown request (signal 15).
+[519646:internal-dpl-aod-reader]: [15:28:47][INFO] Waiting for graceful device shutdown. Hit Ctrl-C again to abort immediately.
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:28:47][INFO] Received device shutdown request (signal 15).
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:28:47][INFO] Waiting for graceful device shutdown. Hit Ctrl-C again to abort immediately.
+[519646:internal-dpl-aod-reader]: [15:28:47][INFO] New state requested. No timeout set, quitting immediately as per --completion-policy
+[519646:internal-dpl-aod-reader]: [15:28:47][STATE] RUNNING ---> READY
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:28:47][INFO] New state requested. No timeout set, quitting immediately as per --completion-policy
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:28:47][STATE] RUNNING ---> READY
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:28:47][STATE] READY ---> RESETTING TASK
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:28:47][STATE] RESETTING TASK ---> DEVICE READY
+[519649:internal-dpl-injected-dummy-sink]: [15:28:47][INFO] Received device shutdown request (signal 15).
+[519649:internal-dpl-injected-dummy-sink]: [15:28:47][INFO] Waiting for graceful device shutdown. Hit Ctrl-C again to abort immediately.
+[519646:internal-dpl-aod-reader]: [15:28:47][STATE] READY ---> RESETTING TASK
+[519646:internal-dpl-aod-reader]: [15:28:47][STATE] RESETTING TASK ---> DEVICE READY
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:28:47][STATE] DEVICE READY ---> RESETTING DEVICE
+[519649:internal-dpl-injected-dummy-sink]: [15:28:47][INFO] New state requested. No timeout set, quitting immediately as per --completion-policy
+[519649:internal-dpl-injected-dummy-sink]: [15:28:47][STATE] RUNNING ---> READY
+[519649:internal-dpl-injected-dummy-sink]: [15:28:47][STATE] READY ---> RESETTING TASK
+[519649:internal-dpl-injected-dummy-sink]: [15:28:47][STATE] RESETTING TASK ---> DEVICE READY
+[519646:internal-dpl-aod-reader]: [15:28:47][STATE] DEVICE READY ---> RESETTING DEVICE
+[519649:internal-dpl-injected-dummy-sink]: [15:28:47][STATE] DEVICE READY ---> RESETTING DEVICE
+[519645:internal-dpl-clock]: [15:28:47][INFO] Received device shutdown request (signal 15).
+[519645:internal-dpl-clock]: [15:28:47][INFO] Waiting for graceful device shutdown. Hit Ctrl-C again to abort immediately.
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:28:47][INFO] Received device shutdown request (signal 15).
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:28:47][INFO] Waiting for graceful device shutdown. Hit Ctrl-C again to abort immediately.
+[519645:internal-dpl-clock]: [15:28:47][INFO] New state requested. No timeout set, quitting immediately as per --completion-policy
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:28:47][INFO] New state requested. No timeout set, quitting immediately as per --completion-policy
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:28:47][STATE] RUNNING ---> READY
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:28:47][STATE] READY ---> RESETTING TASK
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:28:47][STATE] RESETTING TASK ---> DEVICE READY
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:28:47][STATE] DEVICE READY ---> RESETTING DEVICE
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:28:47][STATE] RESETTING DEVICE ---> IDLE
+[519649:internal-dpl-injected-dummy-sink]: [15:28:47][STATE] RESETTING DEVICE ---> IDLE
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:28:47][STATE] IDLE ---> EXITING
+[519649:internal-dpl-injected-dummy-sink]: [15:28:47][STATE] IDLE ---> EXITING
+[519648:internal-dpl-aod-global-analysis-file-sink]: [15:28:47][STATE] Exiting FairMQ state machine
+[519649:internal-dpl-injected-dummy-sink]: [15:28:47][STATE] Exiting FairMQ state machine
+[519646:internal-dpl-aod-reader]: [15:28:47][STATE] RESETTING DEVICE ---> IDLE
+[519646:internal-dpl-aod-reader]: [15:28:47][STATE] IDLE ---> EXITING
+[519646:internal-dpl-aod-reader]: [15:28:47][STATE] Exiting FairMQ state machine
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:28:47][STATE] RESETTING DEVICE ---> IDLE
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:28:47][STATE] IDLE ---> EXITING
+[519647:hf-correlator-flow-charm-hadrons-reduced]: [15:28:47][STATE] Exiting FairMQ state machine
+[519645:internal-dpl-clock]: [15:28:47][INFO] Sending end-of-stream message to channel from_internal-dpl-clock_to_internal-dpl-aod-reader
+[519645:internal-dpl-clock]: [15:28:47][STATE] RUNNING ---> READY
+[519645:internal-dpl-clock]: [15:28:47][STATE] READY ---> RESETTING TASK
+[519645:internal-dpl-clock]: [15:28:47][STATE] RESETTING TASK ---> DEVICE READY
+[519645:internal-dpl-clock]: [15:28:47][STATE] DEVICE READY ---> RESETTING DEVICE
+[519645:internal-dpl-clock]: [15:28:47][INFO] Cleaning up for shared memory id '44ca0c48'...
+[519645:internal-dpl-clock]: [15:28:47][INFO] Found 0 unmanaged regions...
+[519645:internal-dpl-clock]: [15:28:47][INFO] Found 1 managed segments...
+[519645:internal-dpl-clock]: [15:28:47][INFO] Successfully removed 'fmq_44ca0c48_m_0'.
+[519645:internal-dpl-clock]: [15:28:47][INFO] Successfully removed 'fmq_44ca0c48_mng'.
+[519645:internal-dpl-clock]: [15:28:47][STATE] RESETTING DEVICE ---> IDLE
+[519645:internal-dpl-clock]: [15:28:47][STATE] IDLE ---> EXITING
+[519645:internal-dpl-clock]: [15:28:47][STATE] Exiting FairMQ state machine
+[INFO] ## Processes completed. Run summary:
+[INFO] ### Devices started: 5
+[INFO]  - Device internal-dpl-clock: pid 519645 (exit 0)
+[INFO]  - Device internal-dpl-aod-reader: pid 519646 (exit 0)
+[INFO]  - Device hf-correlator-flow-charm-hadrons-reduced: pid 519647 (exit 0)
+[INFO]  - Device internal-dpl-aod-global-analysis-file-sink: pid 519648 (exit 0)
+[INFO]  - Device internal-dpl-injected-dummy-sink: pid 519649 (exit 0)
+[INFO] ## Analysis Run Summary ##
+[INFO] ### Files read stats ###
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0001/AO2D.root,size=111410648,total_df=3,read_df=3,read_bytes=111411071,read_calls=37,io_time=0.4,wait_time=0.5,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0002/AO2D.root,size=168338936,total_df=4,read_df=4,read_bytes=168339496,read_calls=48,io_time=0.7,wait_time=1.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0003/AO2D.root,size=112003503,total_df=3,read_df=3,read_bytes=112003926,read_calls=37,io_time=0.4,wait_time=1.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0003/AO2D.root,size=380114348,total_df=9,read_df=9,read_bytes=380115593,read_calls=103,io_time=1.5,wait_time=3.6,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0005/AO2D.root,size=378541969,total_df=9,read_df=9,read_bytes=378543214,read_calls=103,io_time=1.5,wait_time=3.4,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0015/AO2D.root,size=332201444,total_df=8,read_df=8,read_bytes=332202552,read_calls=92,io_time=1.3,wait_time=3.4,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0017/AO2D.root,size=362169532,total_df=9,read_df=9,read_bytes=362170777,read_calls=103,io_time=1.4,wait_time=3.1,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0020/AO2D.root,size=15818828,total_df=1,read_df=1,read_bytes=15818977,read_calls=15,io_time=0.1,wait_time=0.0,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0013/AO2D.root,size=390864886,total_df=10,read_df=10,read_bytes=390866268,read_calls=114,io_time=1.6,wait_time=4.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0016/AO2D.root,size=311964535,total_df=8,read_df=8,read_bytes=311965643,read_calls=92,io_time=1.2,wait_time=3.7,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0006/AO2D.root,size=377644105,total_df=9,read_df=9,read_bytes=377645350,read_calls=103,io_time=1.5,wait_time=3.4,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0011/AO2D.root,size=389340774,total_df=10,read_df=10,read_bytes=389342156,read_calls=114,io_time=1.6,wait_time=4.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0018/AO2D.root,size=31364522,total_df=1,read_df=1,read_bytes=31364671,read_calls=15,io_time=0.1,wait_time=0.1,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0007/AO2D.root,size=373609927,total_df=9,read_df=9,read_bytes=373611172,read_calls=103,io_time=1.5,wait_time=3.5,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0010/AO2D.root,size=380180855,total_df=9,read_df=9,read_bytes=380182100,read_calls=103,io_time=1.5,wait_time=3.5,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0012/AO2D.root,size=389136634,total_df=10,read_df=10,read_bytes=389138016,read_calls=114,io_time=1.5,wait_time=3.8,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0008/AO2D.root,size=395005537,total_df=10,read_df=10,read_bytes=395006919,read_calls=114,io_time=1.6,wait_time=4.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0004/AO2D.root,size=375782108,total_df=9,read_df=9,read_bytes=375783353,read_calls=103,io_time=1.5,wait_time=3.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0014/AO2D.root,size=340041760,total_df=9,read_df=9,read_bytes=340043005,read_calls=103,io_time=1.3,wait_time=3.8,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0001/AO2D.root,size=336331139,total_df=8,read_df=8,read_bytes=336332247,read_calls=92,io_time=1.3,wait_time=1.9,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0009/AO2D.root,size=390376943,total_df=10,read_df=10,read_bytes=390378325,read_calls=114,io_time=1.5,wait_time=4.9,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0002/AO2D.root,size=378301743,total_df=9,read_df=9,read_bytes=378302988,read_calls=103,io_time=1.5,wait_time=3.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0003/AO2D.root,size=381676245,total_df=10,read_df=10,read_bytes=381677627,read_calls=114,io_time=1.5,wait_time=4.2,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0005/AO2D.root,size=373979910,total_df=9,read_df=9,read_bytes=373981155,read_calls=103,io_time=1.4,wait_time=2.9,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0015/AO2D.root,size=295437789,total_df=7,read_df=7,read_bytes=295438760,read_calls=81,io_time=1.1,wait_time=2.6,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0017/AO2D.root,size=297976350,total_df=8,read_df=8,read_bytes=297977458,read_calls=92,io_time=1.2,wait_time=3.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0013/AO2D.root,size=382979305,total_df=10,read_df=10,read_bytes=382980687,read_calls=114,io_time=1.5,wait_time=4.2,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0016/AO2D.root,size=311443841,total_df=8,read_df=8,read_bytes=311444949,read_calls=92,io_time=1.2,wait_time=2.9,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0006/AO2D.root,size=333207175,total_df=8,read_df=8,read_bytes=333208283,read_calls=92,io_time=1.3,wait_time=2.9,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355420/0001/AO2D.root,size=195966908,total_df=5,read_df=5,read_bytes=195967605,read_calls=59,io_time=0.8,wait_time=2.1,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355420/0002/AO2D.root,size=77786951,total_df=2,read_df=2,read_bytes=77787237,read_calls=26,io_time=0.3,wait_time=0.6,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0004/AO2D.root,size=225654596,total_df=6,read_df=6,read_bytes=225655430,read_calls=70,io_time=0.9,wait_time=2.5,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0001/AO2D.root,size=111410648,total_df=3,read_df=3,read_bytes=111411071,read_calls=37,io_time=0.4,wait_time=0.5,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0002/AO2D.root,size=168338936,total_df=4,read_df=4,read_bytes=168339496,read_calls=48,io_time=0.7,wait_time=1.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0003/AO2D.root,size=112003503,total_df=3,read_df=3,read_bytes=112003926,read_calls=37,io_time=0.4,wait_time=1.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0003/AO2D.root,size=380114348,total_df=9,read_df=9,read_bytes=380115593,read_calls=103,io_time=1.5,wait_time=3.6,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0005/AO2D.root,size=378541969,total_df=9,read_df=9,read_bytes=378543214,read_calls=103,io_time=1.5,wait_time=3.4,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0015/AO2D.root,size=332201444,total_df=8,read_df=8,read_bytes=332202552,read_calls=92,io_time=1.3,wait_time=3.4,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0017/AO2D.root,size=362169532,total_df=9,read_df=9,read_bytes=362170777,read_calls=103,io_time=1.4,wait_time=3.1,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0020/AO2D.root,size=15818828,total_df=1,read_df=1,read_bytes=15818977,read_calls=15,io_time=0.1,wait_time=0.0,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0013/AO2D.root,size=390864886,total_df=10,read_df=10,read_bytes=390866268,read_calls=114,io_time=1.6,wait_time=4.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0016/AO2D.root,size=311964535,total_df=8,read_df=8,read_bytes=311965643,read_calls=92,io_time=1.2,wait_time=3.7,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0006/AO2D.root,size=377644105,total_df=9,read_df=9,read_bytes=377645350,read_calls=103,io_time=1.5,wait_time=3.4,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0011/AO2D.root,size=389340774,total_df=10,read_df=10,read_bytes=389342156,read_calls=114,io_time=1.6,wait_time=4.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0018/AO2D.root,size=31364522,total_df=1,read_df=1,read_bytes=31364671,read_calls=15,io_time=0.1,wait_time=0.1,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0007/AO2D.root,size=373609927,total_df=9,read_df=9,read_bytes=373611172,read_calls=103,io_time=1.5,wait_time=3.5,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0010/AO2D.root,size=380180855,total_df=9,read_df=9,read_bytes=380182100,read_calls=103,io_time=1.5,wait_time=3.5,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0012/AO2D.root,size=389136634,total_df=10,read_df=10,read_bytes=389138016,read_calls=114,io_time=1.5,wait_time=3.8,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0008/AO2D.root,size=395005537,total_df=10,read_df=10,read_bytes=395006919,read_calls=114,io_time=1.6,wait_time=4.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0004/AO2D.root,size=375782108,total_df=9,read_df=9,read_bytes=375783353,read_calls=103,io_time=1.5,wait_time=3.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0014/AO2D.root,size=340041760,total_df=9,read_df=9,read_bytes=340043005,read_calls=103,io_time=1.3,wait_time=3.8,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0001/AO2D.root,size=336331139,total_df=8,read_df=8,read_bytes=336332247,read_calls=92,io_time=1.3,wait_time=1.9,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0009/AO2D.root,size=390376943,total_df=10,read_df=10,read_bytes=390378325,read_calls=114,io_time=1.5,wait_time=4.9,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0002/AO2D.root,size=378301743,total_df=9,read_df=9,read_bytes=378302988,read_calls=103,io_time=1.5,wait_time=3.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0003/AO2D.root,size=381676245,total_df=10,read_df=10,read_bytes=381677627,read_calls=114,io_time=1.5,wait_time=4.2,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0005/AO2D.root,size=373979910,total_df=9,read_df=9,read_bytes=373981155,read_calls=103,io_time=1.4,wait_time=2.9,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0015/AO2D.root,size=295437789,total_df=7,read_df=7,read_bytes=295438760,read_calls=81,io_time=1.1,wait_time=2.6,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0017/AO2D.root,size=297976350,total_df=8,read_df=8,read_bytes=297977458,read_calls=92,io_time=1.2,wait_time=3.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0013/AO2D.root,size=382979305,total_df=10,read_df=10,read_bytes=382980687,read_calls=114,io_time=1.5,wait_time=4.2,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0016/AO2D.root,size=311443841,total_df=8,read_df=8,read_bytes=311444949,read_calls=92,io_time=1.2,wait_time=2.9,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0006/AO2D.root,size=333207175,total_df=8,read_df=8,read_bytes=333208283,read_calls=92,io_time=1.3,wait_time=2.9,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355420/0001/AO2D.root,size=195966908,total_df=5,read_df=5,read_bytes=195967605,read_calls=59,io_time=0.8,wait_time=2.1,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355420/0002/AO2D.root,size=77786951,total_df=2,read_df=2,read_bytes=77787237,read_calls=26,io_time=0.3,wait_time=0.6,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0004/AO2D.root,size=225654596,total_df=6,read_df=6,read_bytes=225655430,read_calls=70,io_time=0.9,wait_time=2.5,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0001/AO2D.root,size=111410648,total_df=3,read_df=3,read_bytes=111411071,read_calls=37,io_time=0.4,wait_time=0.5,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0002/AO2D.root,size=168338936,total_df=4,read_df=4,read_bytes=168339496,read_calls=48,io_time=0.7,wait_time=1.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0003/AO2D.root,size=112003503,total_df=3,read_df=3,read_bytes=112003926,read_calls=37,io_time=0.4,wait_time=1.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0003/AO2D.root,size=380114348,total_df=9,read_df=9,read_bytes=380115593,read_calls=103,io_time=1.5,wait_time=3.6,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0005/AO2D.root,size=378541969,total_df=9,read_df=9,read_bytes=378543214,read_calls=103,io_time=1.5,wait_time=3.4,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0015/AO2D.root,size=332201444,total_df=8,read_df=8,read_bytes=332202552,read_calls=92,io_time=1.3,wait_time=3.4,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0017/AO2D.root,size=362169532,total_df=9,read_df=9,read_bytes=362170777,read_calls=103,io_time=1.4,wait_time=3.1,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0020/AO2D.root,size=15818828,total_df=1,read_df=1,read_bytes=15818977,read_calls=15,io_time=0.1,wait_time=0.0,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0013/AO2D.root,size=390864886,total_df=10,read_df=10,read_bytes=390866268,read_calls=114,io_time=1.6,wait_time=4.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0016/AO2D.root,size=311964535,total_df=8,read_df=8,read_bytes=311965643,read_calls=92,io_time=1.2,wait_time=3.7,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0006/AO2D.root,size=377644105,total_df=9,read_df=9,read_bytes=377645350,read_calls=103,io_time=1.5,wait_time=3.4,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0011/AO2D.root,size=389340774,total_df=10,read_df=10,read_bytes=389342156,read_calls=114,io_time=1.6,wait_time=4.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0018/AO2D.root,size=31364522,total_df=1,read_df=1,read_bytes=31364671,read_calls=15,io_time=0.1,wait_time=0.1,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0007/AO2D.root,size=373609927,total_df=9,read_df=9,read_bytes=373611172,read_calls=103,io_time=1.5,wait_time=3.5,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0010/AO2D.root,size=380180855,total_df=9,read_df=9,read_bytes=380182100,read_calls=103,io_time=1.5,wait_time=3.5,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0012/AO2D.root,size=389136634,total_df=10,read_df=10,read_bytes=389138016,read_calls=114,io_time=1.5,wait_time=3.8,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0008/AO2D.root,size=395005537,total_df=10,read_df=10,read_bytes=395006919,read_calls=114,io_time=1.6,wait_time=4.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0004/AO2D.root,size=375782108,total_df=9,read_df=9,read_bytes=375783353,read_calls=103,io_time=1.5,wait_time=3.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0014/AO2D.root,size=340041760,total_df=9,read_df=9,read_bytes=340043005,read_calls=103,io_time=1.3,wait_time=3.8,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0001/AO2D.root,size=336331139,total_df=8,read_df=8,read_bytes=336332247,read_calls=92,io_time=1.3,wait_time=1.9,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0009/AO2D.root,size=390376943,total_df=10,read_df=10,read_bytes=390378325,read_calls=114,io_time=1.5,wait_time=4.9,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0002/AO2D.root,size=378301743,total_df=9,read_df=9,read_bytes=378302988,read_calls=103,io_time=1.5,wait_time=3.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0003/AO2D.root,size=381676245,total_df=10,read_df=10,read_bytes=381677627,read_calls=114,io_time=1.5,wait_time=4.2,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0005/AO2D.root,size=373979910,total_df=9,read_df=9,read_bytes=373981155,read_calls=103,io_time=1.4,wait_time=2.9,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0015/AO2D.root,size=295437789,total_df=7,read_df=7,read_bytes=295438760,read_calls=81,io_time=1.1,wait_time=2.6,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0017/AO2D.root,size=297976350,total_df=8,read_df=8,read_bytes=297977458,read_calls=92,io_time=1.2,wait_time=3.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0013/AO2D.root,size=382979305,total_df=10,read_df=10,read_bytes=382980687,read_calls=114,io_time=1.5,wait_time=4.2,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0016/AO2D.root,size=311443841,total_df=8,read_df=8,read_bytes=311444949,read_calls=92,io_time=1.2,wait_time=2.9,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0006/AO2D.root,size=333207175,total_df=8,read_df=8,read_bytes=333208283,read_calls=92,io_time=1.3,wait_time=2.9,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355420/0001/AO2D.root,size=195966908,total_df=5,read_df=5,read_bytes=195967605,read_calls=59,io_time=0.8,wait_time=2.1,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355420/0002/AO2D.root,size=77786951,total_df=2,read_df=2,read_bytes=77787237,read_calls=26,io_time=0.3,wait_time=0.6,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0004/AO2D.root,size=225654596,total_df=6,read_df=6,read_bytes=225655430,read_calls=70,io_time=0.9,wait_time=2.5,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0001/AO2D.root,size=111410648,total_df=3,read_df=3,read_bytes=111411071,read_calls=37,io_time=0.4,wait_time=0.5,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0002/AO2D.root,size=168338936,total_df=4,read_df=4,read_bytes=168339496,read_calls=48,io_time=0.7,wait_time=1.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0003/AO2D.root,size=112003503,total_df=3,read_df=3,read_bytes=112003926,read_calls=37,io_time=0.4,wait_time=1.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0003/AO2D.root,size=380114348,total_df=9,read_df=9,read_bytes=380115593,read_calls=103,io_time=1.5,wait_time=3.6,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0005/AO2D.root,size=378541969,total_df=9,read_df=9,read_bytes=378543214,read_calls=103,io_time=1.5,wait_time=3.4,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0015/AO2D.root,size=332201444,total_df=8,read_df=8,read_bytes=332202552,read_calls=92,io_time=1.3,wait_time=3.4,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0017/AO2D.root,size=362169532,total_df=9,read_df=9,read_bytes=362170777,read_calls=103,io_time=1.4,wait_time=3.1,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0020/AO2D.root,size=15818828,total_df=1,read_df=1,read_bytes=15818977,read_calls=15,io_time=0.1,wait_time=0.0,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0013/AO2D.root,size=390864886,total_df=10,read_df=10,read_bytes=390866268,read_calls=114,io_time=1.6,wait_time=4.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0016/AO2D.root,size=311964535,total_df=8,read_df=8,read_bytes=311965643,read_calls=92,io_time=1.2,wait_time=3.7,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355422/0006/AO2D.root,size=377644105,total_df=9,read_df=9,read_bytes=377645350,read_calls=103,io_time=1.5,wait_time=3.4,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0011/AO2D.root,size=389340774,total_df=10,read_df=10,read_bytes=389342156,read_calls=114,io_time=1.6,wait_time=4.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0018/AO2D.root,size=31364522,total_df=1,read_df=1,read_bytes=31364671,read_calls=15,io_time=0.1,wait_time=0.1,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0007/AO2D.root,size=373609927,total_df=9,read_df=9,read_bytes=373611172,read_calls=103,io_time=1.5,wait_time=3.5,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0010/AO2D.root,size=380180855,total_df=9,read_df=9,read_bytes=380182100,read_calls=103,io_time=1.5,wait_time=3.5,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0012/AO2D.root,size=389136634,total_df=10,read_df=10,read_bytes=389138016,read_calls=114,io_time=1.5,wait_time=3.8,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0008/AO2D.root,size=395005537,total_df=10,read_df=10,read_bytes=395006919,read_calls=114,io_time=1.6,wait_time=4.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0004/AO2D.root,size=375782108,total_df=9,read_df=9,read_bytes=375783353,read_calls=103,io_time=1.5,wait_time=3.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0014/AO2D.root,size=340041760,total_df=9,read_df=9,read_bytes=340043005,read_calls=103,io_time=1.3,wait_time=3.8,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0001/AO2D.root,size=336331139,total_df=8,read_df=8,read_bytes=336332247,read_calls=92,io_time=1.3,wait_time=1.9,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0009/AO2D.root,size=390376943,total_df=10,read_df=10,read_bytes=390378325,read_calls=114,io_time=1.5,wait_time=4.9,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0002/AO2D.root,size=378301743,total_df=9,read_df=9,read_bytes=378302988,read_calls=103,io_time=1.5,wait_time=3.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0003/AO2D.root,size=381676245,total_df=10,read_df=10,read_bytes=381677627,read_calls=114,io_time=1.5,wait_time=4.2,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0005/AO2D.root,size=373979910,total_df=9,read_df=9,read_bytes=373981155,read_calls=103,io_time=1.4,wait_time=2.9,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0015/AO2D.root,size=295437789,total_df=7,read_df=7,read_bytes=295438760,read_calls=81,io_time=1.1,wait_time=2.6,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0017/AO2D.root,size=297976350,total_df=8,read_df=8,read_bytes=297977458,read_calls=92,io_time=1.2,wait_time=3.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0013/AO2D.root,size=382979305,total_df=10,read_df=10,read_bytes=382980687,read_calls=114,io_time=1.5,wait_time=4.2,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0016/AO2D.root,size=311443841,total_df=8,read_df=8,read_bytes=311444949,read_calls=92,io_time=1.2,wait_time=2.9,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355443/0006/AO2D.root,size=333207175,total_df=8,read_df=8,read_bytes=333208283,read_calls=92,io_time=1.3,wait_time=2.9,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355420/0001/AO2D.root,size=195966908,total_df=5,read_df=5,read_bytes=195967605,read_calls=59,io_time=0.8,wait_time=2.1,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355420/0002/AO2D.root,size=77786951,total_df=2,read_df=2,read_bytes=77787237,read_calls=26,io_time=0.3,wait_time=0.6,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0004/AO2D.root,size=225654596,total_df=6,read_df=6,read_bytes=225655430,read_calls=70,io_time=0.9,wait_time=2.5,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0001/AO2D.root,size=111410648,total_df=3,read_df=3,read_bytes=111411071,read_calls=37,io_time=0.4,wait_time=0.5,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0002/AO2D.root,size=168338936,total_df=4,read_df=4,read_bytes=168339496,read_calls=48,io_time=0.7,wait_time=1.3,level=0
+[INFO] lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0003/AO2D.root,size=112003503,total_df=3,read_df=3,read_bytes=112003926,read_calls=37,io_time=0.4,wait_time=1.3,level=0
+[INFO] ### Files opened stats ###
+[INFO] Last file opened: lfn=/home/wuct/MetaData/DATA/OO/apass2/corr/flook_MY/hy_3355418/0003/AO2D.root,size=112003503
+[INFO] Dumping used configuration in dpl-config.json

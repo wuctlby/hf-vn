@@ -124,7 +124,7 @@ def compute_reso(an_res_file, vn_method,
         outfile.cd('..')
     outfile.Close()
 
-    input('Resolutions computed. Press any key to continue')
+    # input('Resolutions computed. Press any key to continue')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Arguments")

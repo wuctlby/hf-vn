@@ -171,14 +171,25 @@ void ExtractOutputCorrel(const TString cfgFileName = "config_CorrAnalysis.json")
   const int nBinsPtCand = binsPtCandIntervals.size() - 1;
   const int nBinsPtHad = binsPtHadIntervals.size() - 1;
 
-  TH2F* hMassVsPt;
-  TH2D* hCorrel_SE[nBinsPtCand][nBinsPtHad][nBinsInvMass];
-  TH2D* hCorrel_ME[nBinsPtCand][nBinsPtHad][nBinsInvMass];
-  TH2D* hCorrectedCorrel_2D[nBinsPtCand][nBinsPtHad][nBinsInvMass];
-  TH1D* hCorrectedCorrel[nBinsPtCand][nBinsPtHad][nBinsInvMass];
-  TH1D* hCorrectedCorrel_BaselineSubtr[nBinsPtCand][nBinsPtHad][nBinsInvMass];
-  TH1D* hCorrectedCorrel_Reflected[nBinsPtCand][nBinsPtHad][nBinsInvMass];
-  TH1D* hCorrectedCorrel_Reflected_BaselineSubtr[nBinsPtCand][nBinsPtHad][nBinsInvMass];
+  // ----------------
+  // TH2F* hMassVsPt;
+  // TH2D* hCorrel_SE[nBinsPtCand][nBinsPtHad][nBinsInvMass];
+  // TH2D* hCorrel_ME[nBinsPtCand][nBinsPtHad][nBinsInvMass];
+  // TH2D* hCorrectedCorrel_2D[nBinsPtCand][nBinsPtHad][nBinsInvMass];
+  // TH1D* hCorrectedCorrel[nBinsPtCand][nBinsPtHad][nBinsInvMass];
+  // TH1D* hCorrectedCorrel_BaselineSubtr[nBinsPtCand][nBinsPtHad][nBinsInvMass];
+  // TH1D* hCorrectedCorrel_Reflected[nBinsPtCand][nBinsPtHad][nBinsInvMass];
+  // TH1D* hCorrectedCorrel_Reflected_BaselineSubtr[nBinsPtCand][nBinsPtHad][nBinsInvMass];
+  // ----------------
+
+  TH2F* hMassVsPt = nullptr;
+  TH2D* hCorrel_SE = nullptr;
+  TH2D* hCorrel_ME = nullptr;
+  TH2D* hCorrectedCorrel_2D = nullptr;
+  TH1D* hCorrectedCorrel = nullptr;
+  TH1D* hCorrectedCorrel_BaselineSubtr = nullptr;
+  TH1D* hCorrectedCorrel_Reflected = nullptr;
+  TH1D* hCorrectedCorrel_Reflected_BaselineSubtr = nullptr;
 
   // Create and set the correlation plotter class
   DhCorrelationExtraction* plotter = new DhCorrelationExtraction();
@@ -226,97 +237,166 @@ void ExtractOutputCorrel(const TString cfgFileName = "config_CorrAnalysis.json")
       std::cout << "Files for secondary part. contamination read correctly" << std::endl;
   }
 
+  string shortName = CodeNameAnalysis.substr(0, 4);
+  TFile* outFileOriginal = new TFile(Form("Output_CorrelationExtraction_%s_Root/ExtractCorrelationsResults_2D.root", CodeNameAnalysis.data()), "RECREATE");
+  TFile* outFile = new TFile(Form("Output_CorrelationExtraction_%s_Root/ExtractCorrelationsResults.root", CodeNameAnalysis.data()), "RECREATE");
+  TFile* outFile_BaselineSubtr = new TFile(Form("Output_CorrelationExtraction_%s_Root/ExtractCorrelationsResults_BaselineSubtr.root", CodeNameAnalysis.data()), "RECREATE");
+  TFile* outFile_Reflected = new TFile(Form("Output_CorrelationExtraction_%s_Root/ExtractCorrelationsResults_Reflected.root", CodeNameAnalysis.data()), "RECREATE");
+  TFile* outFile_Reflected_BaselineSubtr = new TFile(Form("Output_CorrelationExtraction_%s_Root/ExtractCorrelationsResults_Reflected_BaselineSubtr.root", CodeNameAnalysis.data()), "RECREATE");
+  TFile* outFileMass = new TFile(Form("InvMass/InvMassVsPt_%s.root", shortName.data()), "RECREATE");
+
   std::cout << "Start loop inv. mass" << std::endl;
   // Loop over candidate pt and assoc. particle pt
   for (int iBinInvMass = 0; iBinInvMass < nBinsInvMass; iBinInvMass++) {
-    std::cout << "[INFO] InvMass: " << binsInvMassIntervals[iBinInvMass] << " - "<< binsInvMassIntervals[iBinInvMass+1] << std::endl;
+    std::cout << "[INFO] InvMass: " << binsInvMassIntervals[iBinInvMass] << " - " << binsInvMassIntervals[iBinInvMass+1] << std::endl;
     for (int iBinPtCand = 0; iBinPtCand < nBinsPtCand; iBinPtCand++) {
       plotter->SetDividedSidebands(isDividedSideb, useSidebLeft, useSidebRight);
-      //plotter->GetSignalAndBackgroundForNorm(binsPtCandIntervals[iBinPtCand], binsPtCandIntervals[iBinPtCand + 1]);
+      // plotter->ClearTransientObjects();
       plotter->GetSignalAndBackgroundForNorm_v2(binsPtCandIntervals[iBinPtCand], binsPtCandIntervals[iBinPtCand + 1], binsInvMassIntervals[iBinInvMass], binsInvMassIntervals[iBinInvMass + 1]);
       for (int iBinPtHad = 0; iBinPtHad < nBinsPtHad; iBinPtHad++) {
         plotter->SetBinCandAndHad(iBinPtCand + 1, iBinPtHad + 1, iBinInvMass + 1);
         plotter->ExtractCorrelations(binsPtCandIntervals[iBinPtCand], binsPtCandIntervals[iBinPtCand + 1], binsPtHadIntervals[iBinPtHad], binsPtHadIntervals[iBinPtHad + 1], binsInvMassIntervals[iBinInvMass], binsInvMassIntervals[iBinInvMass + 1], CodeNameAnalysis);
-        hCorrel_SE[iBinPtCand][iBinPtHad][iBinInvMass] = (TH2D*)plotter->GetCorrHisto2D_SE();
-        hCorrel_ME[iBinPtCand][iBinPtHad][iBinInvMass] = (TH2D*)plotter->GetCorrHisto2D_ME();
-        if (iBinInvMass == 0 && iBinPtCand == 0 && iBinPtHad == 0) hMassVsPt = (TH2F*)plotter->GetInvMassVsPtHisto();
-        hCorrectedCorrel_2D[iBinPtCand][iBinPtHad][iBinInvMass] = (TH2D*)plotter->GetCorrectedCorrHisto2D();
-        hCorrectedCorrel[iBinPtCand][iBinPtHad][iBinInvMass] = (TH1D*)plotter->GetCorrectedCorrHisto();
-        hCorrectedCorrel_BaselineSubtr[iBinPtCand][iBinPtHad][iBinInvMass] = (TH1D*)plotter->GetCorrectedCorrHisto_BaselineSubtr();
-        hCorrectedCorrel_Reflected[iBinPtCand][iBinPtHad][iBinInvMass] = (TH1D*)plotter->GetCorrectedCorrHisto_Reflected();
-        hCorrectedCorrel_Reflected_BaselineSubtr[iBinPtCand][iBinPtHad][iBinInvMass] = (TH1D*)plotter->GetCorrectedCorrHisto_Reflected_BaselineSubtr();
+        // get histos
+        hCorrel_SE = (TH2D*)plotter->GetCorrHisto2D_SE();
+        hCorrel_ME = (TH2D*)plotter->GetCorrHisto2D_ME();
+        if (iBinInvMass == 0 && iBinPtCand == 0 && iBinPtHad == 0) {
+          hMassVsPt = (TH2F*)plotter->GetInvMassVsPtHisto()->Clone("hMassVsPt");
+          hMassVsPt->SetDirectory(0);
+          outFileMass->cd();
+          if (hMassVsPt) hMassVsPt->Write();
+          outFileMass->Close(); delete outFileMass;
+        }
+        hCorrectedCorrel_2D = (TH2D*)plotter->GetCorrectedCorrHisto2D();
+        hCorrectedCorrel = (TH1D*)plotter->GetCorrectedCorrHisto();
+        hCorrectedCorrel_BaselineSubtr = (TH1D*)plotter->GetCorrectedCorrHisto_BaselineSubtr();
+        hCorrectedCorrel_Reflected = (TH1D*)plotter->GetCorrectedCorrHisto_Reflected();
+        hCorrectedCorrel_Reflected_BaselineSubtr = (TH1D*)plotter->GetCorrectedCorrHisto_Reflected_BaselineSubtr();
+        // write and delete immediately to free memory
+        outFileOriginal->cd();
+        if (hCorrel_SE) { hCorrel_SE->Write(); delete hCorrel_SE; hCorrel_SE = nullptr; }
+        if (hCorrel_ME) { hCorrel_ME->Write(); delete hCorrel_ME; hCorrel_ME = nullptr; }
+        if (hCorrectedCorrel_2D) { hCorrectedCorrel_2D->Write(); delete hCorrectedCorrel_2D; hCorrectedCorrel_2D = nullptr; }
+
+        outFile->cd();
+        if (hCorrectedCorrel) { hCorrectedCorrel->Write(); delete hCorrectedCorrel; hCorrectedCorrel = nullptr; }
+
+        outFile_BaselineSubtr->cd();
+        if (hCorrectedCorrel_BaselineSubtr) { hCorrectedCorrel_BaselineSubtr->Write(); delete hCorrectedCorrel_BaselineSubtr; hCorrectedCorrel_BaselineSubtr = nullptr; }
+
+        outFile_Reflected->cd();
+        if (hCorrectedCorrel_Reflected) { hCorrectedCorrel_Reflected->Write(); delete hCorrectedCorrel_Reflected; hCorrectedCorrel_Reflected = nullptr; }
+
+        outFile_Reflected_BaselineSubtr->cd();
+        if (hCorrectedCorrel_Reflected_BaselineSubtr) { hCorrectedCorrel_Reflected_BaselineSubtr->Write(); delete hCorrectedCorrel_Reflected_BaselineSubtr; hCorrectedCorrel_Reflected_BaselineSubtr = nullptr; }
       }
     }
   }
 
-  // output file inv mass vs pt
-  string shortName = CodeNameAnalysis.substr(0, 4); // first 3 characters from index 0 to index 3
-  TFile* outFileMass = new TFile(Form("InvMass/InvMassVsPt_%s.root", shortName.data()), "RECREATE");
-  outFileMass->cd();
-  hMassVsPt->Write();
-  outFileMass->Close();
+  // close files
+  outFileOriginal->Close(); delete outFileOriginal;
+  outFile->Close(); delete outFile;
+  outFile_BaselineSubtr->Close(); delete outFile_BaselineSubtr;
+  outFile_Reflected->Close(); delete outFile_Reflected;
+  outFile_Reflected_BaselineSubtr->Close(); delete outFile_Reflected_BaselineSubtr;
 
-  // output file original 2D distributions
-  TFile* outFileOriginal = new TFile(Form("Output_CorrelationExtraction_%s_Root/ExtractCorrelationsResults_2D.root", CodeNameAnalysis.data()), "RECREATE");
-  outFileOriginal->cd();
-  for (int iBinInvMass = 0; iBinInvMass < nBinsInvMass; iBinInvMass++) {
-    for (int iBinPtCand = 0; iBinPtCand < nBinsPtCand; iBinPtCand++) {
-      for (int iBinPtHad = 0; iBinPtHad < nBinsPtHad; iBinPtHad++) {
-        hCorrel_SE[iBinPtCand][iBinPtHad][iBinInvMass]->Write();
-        hCorrel_ME[iBinPtCand][iBinPtHad][iBinInvMass]->Write();
-        hCorrectedCorrel_2D[iBinPtCand][iBinPtHad][iBinInvMass]->Write();
-      }
-    }
-  }
-  outFileOriginal->Close();
+  // write mass vs pt
 
-  // output file
-  TFile* outFile = new TFile(Form("Output_CorrelationExtraction_%s_Root/ExtractCorrelationsResults.root", CodeNameAnalysis.data()), "RECREATE");
-  outFile->cd();
-  for (int iBinInvMass = 0; iBinInvMass < nBinsInvMass; iBinInvMass++) {
-    for (int iBinPtCand = 0; iBinPtCand < nBinsPtCand; iBinPtCand++) {
-      for (int iBinPtHad = 0; iBinPtHad < nBinsPtHad; iBinPtHad++) {
-        hCorrectedCorrel[iBinPtCand][iBinPtHad][iBinInvMass]->Write();
-      }
-    }
-  }
-  outFile->Close();
+  
 
-  // output file baseline subtr.
-  TFile* outFile_BaselineSubtr = new TFile(Form("Output_CorrelationExtraction_%s_Root/ExtractCorrelationsResults_BaselineSubtr.root", CodeNameAnalysis.data()), "RECREATE");
-  outFile_BaselineSubtr->cd();
-  for (int iBinInvMass = 0; iBinInvMass < nBinsInvMass; iBinInvMass++) {
-    for (int iBinPtCand = 0; iBinPtCand < nBinsPtCand; iBinPtCand++) {
-      for (int iBinPtHad = 0; iBinPtHad < nBinsPtHad; iBinPtHad++) {
-        hCorrectedCorrel_BaselineSubtr[iBinPtCand][iBinPtHad][iBinInvMass]->Write();
-      }
-    }
-  }
-  outFile_BaselineSubtr->Close();
 
-  // output file reflected
-  TFile* outFile_Reflected = new TFile(Form("Output_CorrelationExtraction_%s_Root/ExtractCorrelationsResults_Reflected.root", CodeNameAnalysis.data()), "RECREATE");
-  outFile_Reflected->cd();
-  for (int iBinInvMass = 0; iBinInvMass < nBinsInvMass; iBinInvMass++) {
-    for (int iBinPtCand = 0; iBinPtCand < nBinsPtCand; iBinPtCand++) {
-      for (int iBinPtHad = 0; iBinPtHad < nBinsPtHad; iBinPtHad++) {
-        hCorrectedCorrel_Reflected[iBinPtCand][iBinPtHad][iBinInvMass]->Write();
-      }
-    }
-  }
-  outFile_Reflected->Close();
+  // ----------------
+  // for (int iBinInvMass = 0; iBinInvMass < nBinsInvMass; iBinInvMass++) {
+  //   std::cout << "[INFO] InvMass: " << binsInvMassIntervals[iBinInvMass] << " - "<< binsInvMassIntervals[iBinInvMass+1] << std::endl;
+  //   for (int iBinPtCand = 0; iBinPtCand < nBinsPtCand; iBinPtCand++) {
+  //     plotter->SetDividedSidebands(isDividedSideb, useSidebLeft, useSidebRight);
+  //     //plotter->GetSignalAndBackgroundForNorm(binsPtCandIntervals[iBinPtCand], binsPtCandIntervals[iBinPtCand + 1]);
+  //     plotter->GetSignalAndBackgroundForNorm_v2(binsPtCandIntervals[iBinPtCand], binsPtCandIntervals[iBinPtCand + 1], binsInvMassIntervals[iBinInvMass], binsInvMassIntervals[iBinInvMass + 1]);
+  //     for (int iBinPtHad = 0; iBinPtHad < nBinsPtHad; iBinPtHad++) {
+  //       plotter->SetBinCandAndHad(iBinPtCand + 1, iBinPtHad + 1, iBinInvMass + 1);
+  //       plotter->ExtractCorrelations(binsPtCandIntervals[iBinPtCand], binsPtCandIntervals[iBinPtCand + 1], binsPtHadIntervals[iBinPtHad], binsPtHadIntervals[iBinPtHad + 1], binsInvMassIntervals[iBinInvMass], binsInvMassIntervals[iBinInvMass + 1], CodeNameAnalysis);
+  //       hCorrel_SE[iBinPtCand][iBinPtHad][iBinInvMass] = (TH2D*)plotter->GetCorrHisto2D_SE();
+  //       hCorrel_ME[iBinPtCand][iBinPtHad][iBinInvMass] = (TH2D*)plotter->GetCorrHisto2D_ME();
+  //       if (iBinInvMass == 0 && iBinPtCand == 0 && iBinPtHad == 0) hMassVsPt = (TH2F*)plotter->GetInvMassVsPtHisto();
+  //       hCorrectedCorrel_2D[iBinPtCand][iBinPtHad][iBinInvMass] = (TH2D*)plotter->GetCorrectedCorrHisto2D();
+  //       hCorrectedCorrel[iBinPtCand][iBinPtHad][iBinInvMass] = (TH1D*)plotter->GetCorrectedCorrHisto();
+  //       hCorrectedCorrel_BaselineSubtr[iBinPtCand][iBinPtHad][iBinInvMass] = (TH1D*)plotter->GetCorrectedCorrHisto_BaselineSubtr();
+  //       hCorrectedCorrel_Reflected[iBinPtCand][iBinPtHad][iBinInvMass] = (TH1D*)plotter->GetCorrectedCorrHisto_Reflected();
+  //       hCorrectedCorrel_Reflected_BaselineSubtr[iBinPtCand][iBinPtHad][iBinInvMass] = (TH1D*)plotter->GetCorrectedCorrHisto_Reflected_BaselineSubtr();
+  //       delete plotter;
+  //       plotter = new DhCorrelationExtraction();
+  //     }
+  //   }
+  // }
 
-  // output file reflected baseline subtr.
-  TFile* outFile_Reflected_BaselineSubtr = new TFile(Form("Output_CorrelationExtraction_%s_Root/ExtractCorrelationsResults_Reflected_BaselineSubtr.root", CodeNameAnalysis.data()), "RECREATE");
-  outFile_Reflected_BaselineSubtr->cd();
-  for (int iBinInvMass = 0; iBinInvMass < nBinsInvMass; iBinInvMass++) {
-    for (int iBinPtCand = 0; iBinPtCand < nBinsPtCand; iBinPtCand++) {
-      for (int iBinPtHad = 0; iBinPtHad < nBinsPtHad; iBinPtHad++) {
-        hCorrectedCorrel_Reflected_BaselineSubtr[iBinPtCand][iBinPtHad][iBinInvMass]->Write();
-      }
-    }
-  }
-  outFile_Reflected_BaselineSubtr->Close();
+  // // output file inv mass vs pt
+  // string shortName = CodeNameAnalysis.substr(0, 4); // first 3 characters from index 0 to index 3
+  // TFile* outFileMass = new TFile(Form("InvMass/InvMassVsPt_%s.root", shortName.data()), "RECREATE");
+  // outFileMass->cd();
+  // hMassVsPt->Write();
+  // outFileMass->Close();
+
+  // // output file original 2D distributions
+  // TFile* outFileOriginal = new TFile(Form("Output_CorrelationExtraction_%s_Root/ExtractCorrelationsResults_2D.root", CodeNameAnalysis.data()), "RECREATE");
+  // outFileOriginal->cd();
+  // for (int iBinInvMass = 0; iBinInvMass < nBinsInvMass; iBinInvMass++) {
+  //   for (int iBinPtCand = 0; iBinPtCand < nBinsPtCand; iBinPtCand++) {
+  //     for (int iBinPtHad = 0; iBinPtHad < nBinsPtHad; iBinPtHad++) {
+  //       hCorrel_SE[iBinPtCand][iBinPtHad][iBinInvMass]->Write();
+  //       hCorrel_ME[iBinPtCand][iBinPtHad][iBinInvMass]->Write();
+  //       hCorrectedCorrel_2D[iBinPtCand][iBinPtHad][iBinInvMass]->Write();
+  //     }
+  //   }
+  // }
+  // outFileOriginal->Close();
+
+  // // output file
+  // TFile* outFile = new TFile(Form("Output_CorrelationExtraction_%s_Root/ExtractCorrelationsResults.root", CodeNameAnalysis.data()), "RECREATE");
+  // outFile->cd();
+  // for (int iBinInvMass = 0; iBinInvMass < nBinsInvMass; iBinInvMass++) {
+  //   for (int iBinPtCand = 0; iBinPtCand < nBinsPtCand; iBinPtCand++) {
+  //     for (int iBinPtHad = 0; iBinPtHad < nBinsPtHad; iBinPtHad++) {
+  //       hCorrectedCorrel[iBinPtCand][iBinPtHad][iBinInvMass]->Write();
+  //     }
+  //   }
+  // }
+  // outFile->Close();
+
+  // // output file baseline subtr.
+  // TFile* outFile_BaselineSubtr = new TFile(Form("Output_CorrelationExtraction_%s_Root/ExtractCorrelationsResults_BaselineSubtr.root", CodeNameAnalysis.data()), "RECREATE");
+  // outFile_BaselineSubtr->cd();
+  // for (int iBinInvMass = 0; iBinInvMass < nBinsInvMass; iBinInvMass++) {
+  //   for (int iBinPtCand = 0; iBinPtCand < nBinsPtCand; iBinPtCand++) {
+  //     for (int iBinPtHad = 0; iBinPtHad < nBinsPtHad; iBinPtHad++) {
+  //       hCorrectedCorrel_BaselineSubtr[iBinPtCand][iBinPtHad][iBinInvMass]->Write();
+  //     }
+  //   }
+  // }
+  // outFile_BaselineSubtr->Close();
+
+  // // output file reflected
+  // TFile* outFile_Reflected = new TFile(Form("Output_CorrelationExtraction_%s_Root/ExtractCorrelationsResults_Reflected.root", CodeNameAnalysis.data()), "RECREATE");
+  // outFile_Reflected->cd();
+  // for (int iBinInvMass = 0; iBinInvMass < nBinsInvMass; iBinInvMass++) {
+  //   for (int iBinPtCand = 0; iBinPtCand < nBinsPtCand; iBinPtCand++) {
+  //     for (int iBinPtHad = 0; iBinPtHad < nBinsPtHad; iBinPtHad++) {
+  //       hCorrectedCorrel_Reflected[iBinPtCand][iBinPtHad][iBinInvMass]->Write();
+  //     }
+  //   }
+  // }
+  // outFile_Reflected->Close();
+
+  // // output file reflected baseline subtr.
+  // TFile* outFile_Reflected_BaselineSubtr = new TFile(Form("Output_CorrelationExtraction_%s_Root/ExtractCorrelationsResults_Reflected_BaselineSubtr.root", CodeNameAnalysis.data()), "RECREATE");
+  // outFile_Reflected_BaselineSubtr->cd();
+  // for (int iBinInvMass = 0; iBinInvMass < nBinsInvMass; iBinInvMass++) {
+  //   for (int iBinPtCand = 0; iBinPtCand < nBinsPtCand; iBinPtCand++) {
+  //     for (int iBinPtHad = 0; iBinPtHad < nBinsPtHad; iBinPtHad++) {
+  //       hCorrectedCorrel_Reflected_BaselineSubtr[iBinPtCand][iBinPtHad][iBinInvMass]->Write();
+  //     }
+  //   }
+  // }
+  // outFile_Reflected_BaselineSubtr->Close();
+  // ----------------
 
   return;
 }

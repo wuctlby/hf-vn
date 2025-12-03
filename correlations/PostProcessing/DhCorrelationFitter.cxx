@@ -268,6 +268,10 @@ void DhCorrelationFitter::SetExternalValsAndBounds(Int_t nPars, Double_t* vals, 
 
 void DhCorrelationFitter::Fitting(Bool_t drawSplitTerm, Bool_t useExternalPars)
 {
+  if (fHist == nullptr) {
+    Error("DhCorrelationFitter::Fitting", "No histogram to fit!");
+    return;
+  }
   // -> fFixBase = 0 : baseline free
   //             = 1 : fix the baseline to the minimum of the histogram
   //             < 0 : fix the baseline to the weighted average of the abs(fFixBaseline) lower points
@@ -310,6 +314,11 @@ void DhCorrelationFitter::Fitting(Bool_t drawSplitTerm, Bool_t useExternalPars)
     if (fTypeOfFitFunc == 3 || fTypeOfFitFunc == 6)
       fFit->FixParameter(2, TMath::Pi());
   }
+  printf("[INFO] DhCorrelationFitter::Fitting, Starting fit with function type: %d \n", fTypeOfFitFunc);
+  printf("[INFO] DhCorrelationFitter::Fitting, Fit range: %.3f to %.3f \n", fMinCorr, fMaxCorr);
+  printf("[INFO] DhCorrelationFitter::Fitting, bins in fit range: %d to %d \n", fHist->GetXaxis()->FindBin(fMinCorr), fHist->GetXaxis()->FindBin(fMaxCorr));
+  printf("[INFO] DhCorrelationFitter::Fitting, Number of points in histogram: %d \n", fHist->GetNbinsX());
+  printf("[INFO] DhCorrelationFitter::Fitting, Name of histogram: %s \n", fHist->GetName());
 
   Printf("[INFO] DhCorrelationFitter::Fitting, Fitting");
   TVirtualFitter::SetMaxIterations(20000);
@@ -933,6 +942,10 @@ void DhCorrelationFitter::CalculateYieldsAboveBaseline()
 Double_t DhCorrelationFitter::CalculateBaseline(TH1F*& histo, Bool_t totalRange)
 {
 
+  if (histo == nullptr) {
+    printf("[ERROR] DhCorrelationFitter::CalculateBaseline. Null pointer for input histogram \n");
+    return -1.;
+  }
   // total range = 2*Pi
   // half range = Pi , for histogram reflected under symmetric assumption
 
@@ -1005,7 +1018,10 @@ Double_t DhCorrelationFitter::CalculateBaseline(TH1F*& histo, Bool_t totalRange)
 
 Double_t DhCorrelationFitter::CalculateBaselineError(TH1F*& histo, Bool_t totalRange)
 {
-
+  if (histo == nullptr) {
+    printf("[ERROR] DhCorrelationFitter::CalculateBaselineError. Null pointer for input histogram \n");
+    return -1.;
+  }
   // total range = 2*Pi
   // half range = Pi , for histogram reflected under symmetric assumption
 

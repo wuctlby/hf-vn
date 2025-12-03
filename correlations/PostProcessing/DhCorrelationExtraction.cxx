@@ -120,6 +120,8 @@ DhCorrelationExtraction::DhCorrelationExtraction(const DhCorrelationExtraction& 
                                                                                           fFilePromptMc(source.fFilePromptMc),
                                                                                           fFileNonPromptMc(source.fFileNonPromptMc),
                                                                                           fDirMass(source.fDirMass),
+                                                                                          fDirSE(source.fDirSE),
+                                                                                          fDirME(source.fDirME),
                                                                                           fDirSecPart(source.fDirSecPart),
                                                                                           fCorrHisto_2D_SE(source.fCorrHisto_2D_SE),
                                                                                           fCorrHisto_2D_ME(source.fCorrHisto_2D_ME),
@@ -185,11 +187,29 @@ DhCorrelationExtraction::DhCorrelationExtraction(const DhCorrelationExtraction& 
                                                                                           fSecPartContamination(source.fSecPartContamination),
                                                                                           fCorrBiasBtoD(source.fCorrBiasBtoD)
 {
+  
 }
 
 DhCorrelationExtraction::~DhCorrelationExtraction()
 // destructor
 {
+  if (fCorrHisto_2D_SE) { delete fCorrHisto_2D_SE; fCorrHisto_2D_SE = nullptr; }
+  if (fCorrHisto_2D_ME) { delete fCorrHisto_2D_ME; fCorrHisto_2D_ME = nullptr; }
+  if (fCorrectedCorrHisto_2D) { delete fCorrectedCorrHisto_2D; fCorrectedCorrHisto_2D = nullptr; }
+  if (fMassVsPt) { delete fMassVsPt; fMassVsPt = nullptr; }
+  if (fCorrectedCorrHisto) { delete fCorrectedCorrHisto; fCorrectedCorrHisto = nullptr; }
+  if (fCorrectedCorrHisto_BaselineSubtr) { delete fCorrectedCorrHisto_BaselineSubtr; fCorrectedCorrHisto_BaselineSubtr = nullptr; }
+  if (fCorrectedCorrHisto_Reflected) { delete fCorrectedCorrHisto_Reflected; fCorrectedCorrHisto_Reflected = nullptr; }
+  if (fCorrectedCorrHisto_Reflected_BaselineSubtr) { delete fCorrectedCorrHisto_Reflected_BaselineSubtr; fCorrectedCorrHisto_Reflected_BaselineSubtr = nullptr; }
+
+  if (fFileMass)  { fFileMass->Close();  delete fFileMass;  fFileMass = nullptr; }
+  if (fFileSE)    { fFileSE->Close();    delete fFileSE;    fFileSE = nullptr; }
+  if (fFileME)    { fFileME->Close();    delete fFileME;    fFileME = nullptr; }
+  if (fFileFDTemplate) { fFileFDTemplate->Close(); delete fFileFDTemplate; fFileFDTemplate = nullptr; }
+  if (fFileFDPromptFrac) { fFileFDPromptFrac->Close(); delete fFileFDPromptFrac; fFileFDPromptFrac = nullptr; }
+  if (fFileSecPart) { fFileSecPart->Close(); delete fFileSecPart; fFileSecPart = nullptr; }
+  if (fFilePromptMc) { fFilePromptMc->Close(); delete fFilePromptMc; fFilePromptMc = nullptr; }
+  if (fFileNonPromptMc) { fFileNonPromptMc->Close(); delete fFileNonPromptMc; fFileNonPromptMc = nullptr; }
 }
 
 Bool_t DhCorrelationExtraction::SetDmesonSpecie(DmesonSpecie k)
@@ -233,34 +253,33 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
   TH2D* hCorr_Sign[fNpools];
   TH2D* hCorr_Sideb[fNpools];
 
-  TH2D* h2D_SE;
-  TH2D* h2D_ME;
-  TH2D* h2D_Sign;
-  TH2D* h2D_Sideb;
-  TH2D* h2D_Subtr;
+  TH2D* h2D_SE = nullptr;
+  TH2D* h2D_ME = nullptr;
+  TH2D* h2D_Sign = nullptr;
+  TH2D* h2D_Sideb = nullptr;
+  TH2D* h2D_Subtr = nullptr;
+  TH2D* h2D_FDTemplatePrompt = nullptr;
+  TH2D* h2D_FDTemplateNonPrompt = nullptr;
 
-  TH2D* h2D_FDTemplatePrompt;
-  TH2D* h2D_FDTemplateNonPrompt;
-
-  TH1D* h1D_Sign;
-  TH1D* h1D_Sideb;
-  TH1D* h1D_Subtr;
-  TH1D* h1D_SignNorm;
-  TH1D* h1D_SidebNorm;
-  TH1D* h1D_SubtrNorm;
-  TH1D* h1D_FDTemplatePrompt;
-  TH1D* h1D_FDTemplateNonPrompt;
-  TH1D* h1D_TemplateTotal;
-  TH1D* h1D_SubtrFDNorm;
-  TH1D* h1D_PrimaryPartCorr;
-  TH1D* h1D_AllPartCorr;
-  TH1D* h1D_SecPartFrac;
-  TH1D* h1D_SubtrNorm_SecPart;
-  TH1D* h1D_BaselineSubtr;
-  TH1D* h1D_ReflCorr;
-  TH1D* h1D_ReflCorr_BaselineSubtr;
-  TH1D* hModul;
-  TH1D* hBeforeModulCorr;
+  TH1D* h1D_Sign = nullptr;
+  TH1D* h1D_Sideb = nullptr;
+  TH1D* h1D_Subtr = nullptr;
+  TH1D* h1D_SignNorm = nullptr;
+  TH1D* h1D_SidebNorm = nullptr;
+  TH1D* h1D_SubtrNorm = nullptr;
+  TH1D* h1D_FDTemplatePrompt = nullptr;
+  TH1D* h1D_FDTemplateNonPrompt = nullptr;
+  TH1D* h1D_TemplateTotal = nullptr;
+  TH1D* h1D_SubtrFDNorm = nullptr;
+  TH1D* h1D_PrimaryPartCorr = nullptr;
+  TH1D* h1D_AllPartCorr = nullptr;
+  TH1D* h1D_SecPartFrac = nullptr;
+  TH1D* h1D_SubtrNorm_SecPart = nullptr;
+  TH1D* h1D_BaselineSubtr = nullptr;
+  TH1D* h1D_ReflCorr = nullptr;
+  TH1D* h1D_ReflCorr_BaselineSubtr = nullptr;
+  TH1D* hModul = nullptr;
+  TH1D* hBeforeModulCorr = nullptr;
 
   Double_t FDPromptFrac;
 
@@ -295,14 +314,17 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
       hME_Sign[iPool]->Draw("lego2");
       c->SaveAs(Form("Output_CorrelationExtraction_%s_png/CorrSEandME_Original_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.png", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
       c->SaveAs(Form("Output_CorrelationExtraction_%s_Root/CorrSEandME_Original_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.root", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
+      delete c;
     }
 
     hME_Original[iPool] = reinterpret_cast<TH2D*>(hME_Sign[iPool]->Clone(Form("hME_Original_Pool%d", iPool)));
+    hME_Original[iPool]->SetDirectory(0);
     // Normalize ME plots for the entries in (deltaEta, deltaPhi) = (0, 0)
     NormalizeMEplot(hME_Sign[iPool], hME_Sign_SoftPi[iPool]);
 
     // Apply Event Mixing Correction
     hCorr_Sign[iPool] = reinterpret_cast<TH2D*>(hSE_Sign[iPool]->Clone(Form("hCorr_Sign_Pool%d", iPool)));
+    hCorr_Sign[iPool]->SetDirectory(0);
     hCorr_Sign[iPool]->Sumw2();
     hCorr_Sign[iPool]->Divide(hME_Sign[iPool]);
 
@@ -330,13 +352,17 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
       hCorr_Sign[iPool]->Draw("lego2");
       c->SaveAs(Form("Output_CorrelationExtraction_%s_png/CorrSEandME_%s_Canvas_PtCand%.0fto%.0f_Pool%d_PtAssoc%.0fto%.0f_InvMassBin%d.png", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, iPool, PtHadMin, PtHadMax, fBinInvMass));
       c->SaveAs(Form("Output_CorrelationExtraction_%s_Root/CorrSEandME_%s_Canvas_PtCand%.0fto%.0f_Pool%d_PtAssoc%.0fto%.0f_InvMassBin%d.root", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, iPool, PtHadMin, PtHadMax, fBinInvMass));
+      delete c;
     }
 
     // Pools integration
     if (iPool == 0) {
       h2D_Sign = reinterpret_cast<TH2D*>(hCorr_Sign[0]->Clone("h2D_Sign"));
+      h2D_Sign->SetDirectory(0);
       h2D_SE = reinterpret_cast<TH2D*>(hSE_Sign[0]->Clone("h2D_SE"));
+      h2D_SE->SetDirectory(0);
       h2D_ME = reinterpret_cast<TH2D*>(hME_Original[0]->Clone("h2D_ME"));
+      h2D_ME->SetDirectory(0);
       h2D_Sign->Sumw2();
       h2D_SE->Sumw2();
       h2D_ME->Sumw2();
@@ -348,8 +374,14 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
   } // end pool loop
 
   fCorrHisto_2D_SE = reinterpret_cast<TH2D*>(h2D_SE->Clone(Form("hCorrSE_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMassBin%d", PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass)));
-  fCorrHisto_2D_ME = reinterpret_cast<TH2D*>(h2D_ME->Clone(Form("hCorrME_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMassBin%d", PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass)));h2D_ME;
+  fCorrHisto_2D_SE->SetDirectory(0);
+  fCorrHisto_2D_ME = reinterpret_cast<TH2D*>(h2D_ME->Clone(Form("hCorrME_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMassBin%d", PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass)));
+  fCorrHisto_2D_ME->SetDirectory(0);
   fCorrectedCorrHisto_2D = reinterpret_cast<TH2D*>(h2D_Sign->Clone(Form("hCorrSE_MEcorrected_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMassBin%d", PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass)));
+  fCorrectedCorrHisto_2D->SetDirectory(0);
+
+  delete h2D_SE;
+  delete h2D_ME;
 
   // Get FD correlations for FD subtraction
   if (fFDsubtraction) {
@@ -373,21 +405,27 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
       h2D_FDTemplateNonPrompt->SetMinimum(0);
       h2D_FDTemplateNonPrompt->Draw("lego2");
       c->SaveAs(Form("Output_CorrelationExtraction_%s_png/CorrFDTemplate_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.png", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
+      delete c;
     }
   }
 
   // 1D projection
   h1D_Sign = reinterpret_cast<TH1D*>(h2D_Sign->ProjectionY("h1D_Sign")); // projection on deltaPhi axis
+  h1D_Sign->SetDirectory(0);
+  delete h2D_Sign;
 
   // Bkg subtraction (1D plot) - NOT DONE
   h1D_Subtr = reinterpret_cast<TH1D*>(h1D_Sign->Clone("h1D_Subtr"));
+  h1D_Subtr->SetDirectory(0);
   h1D_Subtr->Sumw2();
   //h1D_Subtr->Add(h1D_Sideb, -1);
   //h1D_Subtr->SetEntries(h1D_Sign->GetEntries() - h1D_Sideb->GetEntries());
   //h1D_Subtr->SetTitle("Signal region after sideb. subt. corr.");
+  delete h1D_Sign;
 
   // Apply normalization to number of triggers - NOT DONE
   h1D_SubtrNorm = reinterpret_cast<TH1D*>(h1D_Subtr->Clone("h1D_SubtrNorm"));
+  h1D_SubtrNorm->SetDirectory(0);
   h1D_SubtrNorm->Sumw2();
   //h1D_SubtrNorm->Scale(1. / fSgnYieldNorm);
   //h1D_SubtrNorm->SetTitle("Signal region after sideb. subt. corr. - Normalized to # of triggers");
@@ -398,6 +436,7 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
     TCanvas* c1D_corrBbias = new TCanvas(Form("c1D_corrBbias_IntPools_PtCand%.0fto%.0f_PtHad%.0fto%.0f", PtCandMin, PtCandMax, PtHadMin, PtHadMax), Form("c1D_corrBbias_%s_IntPools_PtAssoc%.0fto%.0f", fDmesonLabel.Data(), PtHadMin, PtHadMax), 100, 100, 1600, 500);
     c1D_corrBbias->cd();
     hBeforeModulCorr = reinterpret_cast<TH1D*>(h1D_SubtrNorm->Clone("hBeforeModulCorr"));
+    hBeforeModulCorr->SetDirectory(0);
     hBeforeModulCorr->SetLineColor(kViolet - 3);
     hBeforeModulCorr->GetYaxis()->SetRangeUser(0., 5.);
     hBeforeModulCorr->Draw();
@@ -405,12 +444,16 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
     h1D_SubtrNorm->Draw("same");
     c1D_corrBbias->SaveAs(Form("Output_CorrelationExtraction_%s_png/ComparisonCorrBiasBtoD_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.png", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
     c1D_corrBbias->SaveAs(Form("Output_CorrelationExtraction_%s_Root/ComparisonCorrBiasBtoD_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.root", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
+    delete c1D_corrBbias;
 
     TFile* file = new TFile(Form("Output_CorrelationExtraction_%s_Root/SystematicCorrBiasBtoD_%s_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f.root", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax), "RECREATE"); // Open file in write mode
     TH1D* h1D_SubtrNorm_Clone = reinterpret_cast<TH1D*>(h1D_SubtrNorm->Clone("h1D_SubtrNorm_Clone"));
+    h1D_SubtrNorm_Clone->SetDirectory(0);
     h1D_SubtrNorm_Clone = ReflectCorrHistogram(h1D_SubtrNorm_Clone);
+    h1D_SubtrNorm_Clone->SetDirectory(0);
     hBeforeModulCorr = ReflectCorrHistogram(hBeforeModulCorr);
     TH1D* hSystematicCorrBiasBtoD = reinterpret_cast<TH1D*>(h1D_SubtrNorm_Clone->Clone("hSystematicCorrBiasBtoD"));
+    hSystematicCorrBiasBtoD->SetDirectory(0);
     hSystematicCorrBiasBtoD->Add(h1D_SubtrNorm_Clone, hBeforeModulCorr, 1, -1);
     // Set bin contents to absolute values
     for (int i = 1; i <= hSystematicCorrBiasBtoD->GetNbinsX(); ++i) {
@@ -433,6 +476,7 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
       std::cout << "Secondary particle histogram rebinned" << std::endl;
     }
     h1D_SecPartFrac = reinterpret_cast<TH1D*>(h1D_PrimaryPartCorr->Clone(Form("hCorrRatio_PtD%.0fto%.0f_PtHad%.0fto%.0f", PtCandMin, PtCandMax, PtHadMin, PtHadMax)));
+    h1D_SecPartFrac->SetDirectory(0);
     h1D_SecPartFrac->Sumw2();
     h1D_SecPartFrac->Divide(h1D_PrimaryPartCorr, h1D_AllPartCorr, 1., 1., "B");
 
@@ -442,8 +486,10 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
     h1D_SecPartFrac->Draw();
     c1D->SaveAs(Form("Output_CorrelationExtraction_%s_png/CorrPrimaryPartRatio_%s_Canvas_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMassBin%d.png", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
     c1D->SaveAs(Form("Output_CorrelationExtraction_%s_Root/CorrPrimaryPartRatio_%s_Canvas_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMassBin%d.root", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
+    delete c1D;
 
     h1D_SubtrNorm_SecPart = reinterpret_cast<TH1D*>(h1D_SubtrNorm->Clone("h1D_SubtrNorm_SecPart"));
+    h1D_SubtrNorm_SecPart->SetDirectory(0);
     h1D_SubtrNorm_SecPart->Sumw2();
     Int_t nBinsPhi = h1D_SubtrNorm_SecPart->GetNbinsX();
     if (nBinsPhi != h1D_SecPartFrac->GetNbinsX()) {
@@ -456,12 +502,15 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
   // FD Subtraction
   if (fFDsubtraction) {
     h1D_FDTemplatePrompt = reinterpret_cast<TH1D*>(h2D_FDTemplatePrompt->ProjectionY("h1D_FDTemplatePrompt"));
+    h1D_FDTemplatePrompt->SetDirectory(0);
     h1D_FDTemplateNonPrompt = reinterpret_cast<TH1D*>(h2D_FDTemplateNonPrompt->ProjectionY("h1D_FDTemplateNonPrompt"));
+    h1D_FDTemplateNonPrompt->SetDirectory(0);
 
     h1D_FDTemplatePrompt->Scale(1. / h1D_FDTemplatePrompt->GetXaxis()->GetBinWidth(1));
     h1D_FDTemplateNonPrompt->Scale(1. / h1D_FDTemplateNonPrompt->GetXaxis()->GetBinWidth(1));
 
     h1D_TemplateTotal = reinterpret_cast<TH1D*>(h1D_FDTemplatePrompt->Clone("h1D_TemplateTotal"));
+    h1D_TemplateTotal->SetDirectory(0);
     h1D_TemplateTotal->Sumw2();
     h1D_TemplateTotal->Scale(FDPromptFrac);
     h1D_TemplateTotal->Add(h1D_FDTemplateNonPrompt, 1 - FDPromptFrac);
@@ -493,6 +542,7 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
       lFD->Draw("same");
       c->SaveAs(Form("Output_CorrelationExtraction_%s_png/CorrFDTemplate_1D_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.png", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
       c->SaveAs(Form("Output_CorrelationExtraction_%s_Root/CorrFDTemplate_1D_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.root", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
+      delete c;
     }
 
     Double_t BaselineFD = CalculateBaseline(h1D_TemplateTotal, kTRUE);
@@ -511,6 +561,7 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
 
     Double_t Baselinediff = BaselineData - BaselineFD;
     TH1D* hBaselineDiff = reinterpret_cast<TH1D*>(h1D_FDTemplateNonPrompt->Clone("hBaselineDiff"));
+    hBaselineDiff->SetDirectory(0);
     for (int iBin = 0; iBin < hBaselineDiff->GetNbinsX(); iBin++) {
       hBaselineDiff->SetBinContent(iBin + 1, Baselinediff);
     }
@@ -518,8 +569,10 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
     h1D_TemplateTotal->Add(hBaselineDiff);
     if (fSecPartContamination) {
       h1D_SubtrFDNorm = reinterpret_cast<TH1D*>(h1D_SubtrNorm_SecPart->Clone("h1D_SubtrFDNorm"));
+      h1D_SubtrFDNorm->SetDirectory(0);
     } else {
       h1D_SubtrFDNorm = reinterpret_cast<TH1D*>(h1D_SubtrNorm->Clone("h1D_SubtrFDNorm"));
+      h1D_SubtrFDNorm->SetDirectory(0);
     }
     h1D_FDTemplateNonPrompt->Scale(1 - FDPromptFrac);
     h1D_SubtrFDNorm->Add(h1D_FDTemplateNonPrompt, -1);
@@ -560,15 +613,19 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
       h1D_TemplateTotal->Draw("same");
       c1->SaveAs(Form("Output_CorrelationExtraction_%s_png/CorrFDTemplateSubtr_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.png", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
       c1->SaveAs(Form("Output_CorrelationExtraction_%s_Root/CorrFDTemplateSubtr_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.root", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
+      delete c1;
     }
   }
 
   if (fFDsubtraction) {
     fCorrectedCorrHisto = reinterpret_cast<TH1D*>(h1D_SubtrFDNorm->Clone(Form("hCorrectedCorr_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMassBin%d", PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass)));
+    fCorrectedCorrHisto->SetDirectory(0);
   } else if (fSecPartContamination) {
     fCorrectedCorrHisto = reinterpret_cast<TH1D*>(h1D_SubtrNorm_SecPart->Clone(Form("hCorrectedCorr_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMassBin%d", PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass)));
+    fCorrectedCorrHisto->SetDirectory(0);
   } else {
     fCorrectedCorrHisto = reinterpret_cast<TH1D*>(h1D_SubtrNorm->Clone(Form("hCorrectedCorr_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMassBin%d", PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass)));
+    fCorrectedCorrHisto->SetDirectory(0);
   }
 
   std::cout << "Analysis steps completed - baseline subtraction missing" << std::endl;
@@ -607,10 +664,12 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
   //lFinal->Draw("same");
   cFinal->SaveAs(Form("Output_CorrelationExtraction_%s_png/AzimCorrDistr_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.png", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
   cFinal->SaveAs(Form("Output_CorrelationExtraction_%s_Root/AzimCorrDistr_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.root", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
+  delete cFinal;
 
   // Baseline subtraction
   Double_t BaselineData, BaselineDataErr;
   TH1D* hBaseline = reinterpret_cast<TH1D*>(h1D_SubtrNorm->Clone("hBaseline"));
+  hBaseline->SetDirectory(0);
   hBaseline->Sumw2();
   if (fFDsubtraction) {
     BaselineData = CalculateBaseline(h1D_SubtrFDNorm, kTRUE, kFALSE); // introduced kFALSE
@@ -620,6 +679,7 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
       hBaseline->SetBinError(iBin + 1, BaselineDataErr);
     }
     h1D_BaselineSubtr = reinterpret_cast<TH1D*>(h1D_SubtrFDNorm->Clone("h1D_BaselineSubtr"));
+    h1D_BaselineSubtr->SetDirectory(0);
     h1D_BaselineSubtr->Add(hBaseline, -1.);
   } else if (fSecPartContamination) {
     BaselineData = CalculateBaseline(h1D_SubtrNorm_SecPart, kTRUE, kFALSE);
@@ -629,6 +689,7 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
       hBaseline->SetBinError(iBin + 1, BaselineDataErr);
     }
     h1D_BaselineSubtr = reinterpret_cast<TH1D*>(h1D_SubtrNorm_SecPart->Clone("h1D_BaselineSubtr"));
+    h1D_BaselineSubtr->SetDirectory(0);
     h1D_BaselineSubtr->Add(hBaseline, -1.);
   } else {
     BaselineData = CalculateBaseline(h1D_SubtrNorm, kTRUE, kFALSE);
@@ -638,10 +699,12 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
       hBaseline->SetBinError(iBin + 1, BaselineDataErr);
     }
     h1D_BaselineSubtr = reinterpret_cast<TH1D*>(h1D_SubtrNorm->Clone("h1D_BaselineSubtr"));
+    h1D_BaselineSubtr->SetDirectory(0);
     h1D_BaselineSubtr->Add(hBaseline, -1.);
   }
 
   fCorrectedCorrHisto_BaselineSubtr = reinterpret_cast<TH1D*>(h1D_BaselineSubtr->Clone(Form("hCorrectedCorrBaselineSubtr_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMassBin%d", PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass)));
+  fCorrectedCorrHisto_BaselineSubtr->SetDirectory(0);
 
   TCanvas* cFinal_BaselineSubtr = new TCanvas(Form("cFinal_BaselineSubtr_%.0fto%.0f", PtHadMin, PtHadMax), Form("cFinal_BaselineSubtr_%s_IntPools_PtAssoc%.0fto%.0f", fDmesonLabel.Data(), PtHadMin, PtHadMax), 100, 100, 1200, 700);
   h1D_BaselineSubtr->SetMarkerColor(kOrange + 8);
@@ -660,8 +723,11 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
   hBaseline->SetLineColor(kPink - 6);
   hBaseline->Draw("same");
 
-  //cFinal_BaselineSubtr->SaveAs(Form("Output_CorrelationExtraction_%s_png/AzimCorrDistr_BaselineSubtr_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.png", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
-  //cFinal_BaselineSubtr->SaveAs(Form("Output_CorrelationExtraction_%s_Root/AzimCorrDistr_BaselineSubtr_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.root", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
+  // cFinal_BaselineSubtr->SaveAs(Form("Output_CorrelationExtraction_%s_png/AzimCorrDistr_BaselineSubtr_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.png", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
+  // cFinal_BaselineSubtr->SaveAs(Form("Output_CorrelationExtraction_%s_Root/AzimCorrDistr_BaselineSubtr_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.root", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
+  delete cFinal_BaselineSubtr;
+  delete hBaseline;
+  delete h1D_BaselineSubtr;
 
   // Reflected histograms
   if (fFDsubtraction) {
@@ -686,11 +752,13 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
   SetTH1HistoStyle(h1D_ReflCorr, Form("%.0f < p_{T} < %.0f GeV/c", PtCandMin, PtCandMax), "#Delta#phi [rad]", "#frac{1}{N_{D}}#frac{dN^{assoc}}{d#Delta#phi} [rad^{-1}]", kFullCircle, kOrange + 8, 1.6, kOrange + 8, 3);
   h1D_ReflCorr->SetMinimum(0);
   h1D_ReflCorr->Draw();
-  //cFinal_Reflected->SaveAs(Form("Output_CorrelationExtraction_%s_png/AzimCorrDistr_Reflected_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.png", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
-  //cFinal_Reflected->SaveAs(Form("Output_CorrelationExtraction_%s_Root/AzimCorrDistr_Reflected_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.root", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
+  // cFinal_Reflected->SaveAs(Form("Output_CorrelationExtraction_%s_png/AzimCorrDistr_Reflected_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.png", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
+  // cFinal_Reflected->SaveAs(Form("Output_CorrelationExtraction_%s_Root/AzimCorrDistr_Reflected_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.root", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
+  delete cFinal_Reflected;
 
   // Reflected histograms baseline subtracted
   TH1D* hBaseline_Refl = reinterpret_cast<TH1D*>(h1D_ReflCorr->Clone("hBaseline_Refl"));
+  hBaseline_Refl->SetDirectory(0);
   hBaseline_Refl->Sumw2();
   BaselineData = CalculateBaseline(h1D_ReflCorr, kFALSE, kTRUE);
   BaselineDataErr = CalculateBaselineError(h1D_ReflCorr, kFALSE, kTRUE);
@@ -700,6 +768,7 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
     hBaseline_Refl->SetBinError(iBin + 1, BaselineDataErr);
   }
   h1D_ReflCorr_BaselineSubtr = reinterpret_cast<TH1D*>(h1D_ReflCorr->Clone("h1D_ReflCorr_BaselineSubtr"));
+  h1D_ReflCorr_BaselineSubtr->SetDirectory(0);
   h1D_ReflCorr_BaselineSubtr->Sumw2();
   h1D_ReflCorr_BaselineSubtr->Add(hBaseline_Refl, -1.);
 
@@ -724,11 +793,19 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations(Double_t PtCandMin, Double_t
   h1D_ReflCorr_BaselineSubtr->SetStats(0);
   h1D_ReflCorr_BaselineSubtr->Draw("same"); // then keep just this
   fConstZero->Draw("same");
-  //cFinal_Reflected_BaselineSubtr->SaveAs(Form("Output_CorrelationExtraction_%s_png/AzimCorrDistr_Reflected_BaselineSubtr_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.png", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
-  //cFinal_Reflected_BaselineSubtr->SaveAs(Form("Output_CorrelationExtraction_%s_Root/AzimCorrDistr_Reflected_BaselineSubtr_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.root", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
+  // cFinal_Reflected_BaselineSubtr->SaveAs(Form("Output_CorrelationExtraction_%s_png/AzimCorrDistr_Reflected_BaselineSubtr_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.png", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
+  // cFinal_Reflected_BaselineSubtr->SaveAs(Form("Output_CorrelationExtraction_%s_Root/AzimCorrDistr_Reflected_BaselineSubtr_%s_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.root", codeName.Data(), fDmesonLabel.Data(), PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
 
   fCorrectedCorrHisto_Reflected = reinterpret_cast<TH1D*>(h1D_ReflCorr->Clone(Form("hCorrectedCorrReflected_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMassBin%d", PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass)));
+  fCorrectedCorrHisto_Reflected->SetDirectory(0);
   fCorrectedCorrHisto_Reflected_BaselineSubtr = reinterpret_cast<TH1D*>(h1D_ReflCorr_BaselineSubtr->Clone(Form("hCorrectedCorrReflected_BaselineSubtr_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMassBin%d", PtCandMin, PtCandMax, PtHadMin, PtHadMax,fBinInvMass)));
+  fCorrectedCorrHisto_Reflected_BaselineSubtr->SetDirectory(0);
+
+  delete cFinal_Reflected_BaselineSubtr;
+  delete hBaseline_Refl;
+  delete fConstZero;
+  delete h1D_ReflCorr;
+  delete h1D_ReflCorr_BaselineSubtr;
 
   return kTRUE;
 }
@@ -869,9 +946,11 @@ TH1D* DhCorrelationExtraction::EvaluateMCClosModulations(Double_t PtCandMin, Dou
   hGenNonPrompt->Sumw2();
 
   TH1D* hRatioNonPrompt = reinterpret_cast<TH1D*>(hRecNonPrompt->Clone("hRatioNonPrompt"));
+  hRatioNonPrompt->SetDirectory(0);
   hRatioNonPrompt->Sumw2();
   hRatioNonPrompt->Divide(hRecNonPrompt, hGenNonPrompt, 1., 1., "B");
   hModul = reinterpret_cast<TH1D*>(hRatioNonPrompt->Clone("hModul"));
+  hModul->SetDirectory(0);
 
   TF1* funFit = new TF1("funFit", "[0]", TMath::Pi() * 3. / 8., TMath::Pi() * 3 / 2);
   hRatioNonPrompt->Fit(funFit, "R");
@@ -908,6 +987,7 @@ TH1D* DhCorrelationExtraction::EvaluateMCClosModulations(Double_t PtCandMin, Dou
   hModul->Draw("same");
 
   cRatio_MCClosure->SaveAs(Form("Output_CorrelationExtraction_Thin2023_FullAnalysis_CentralPoints_png/Ratio_MCClosure_Canvas_PtCand%.0fto%.0f_PoolInt_PtAssoc%.0fto%.0f_InvMassBin%d.png", PtCandMin, PtCandMax, PtHadMin, PtHadMax, fBinInvMass));
+  delete cRatio_MCClosure;
 
   return hModul;
 }
@@ -959,11 +1039,14 @@ TH2D* DhCorrelationExtraction::GetCorrelHisto(Int_t SEorME, Int_t pool, Double_t
   hSparse->GetAxis(5)->SetRange(binExtInvMassMin, binExtInvMassMax);   // axis5: inv mass
   std::cout<< "Va bene fin qui" << std::endl;
   h2D = reinterpret_cast<TH2D*>(hSparse->Projection(4, 3));            // axis4: deltaPhi, axis3: deltaEta
+  h2D->SetDirectory(0);
   if (SEorME == kSE) { // Same Event
     h2D->SetName(Form("hCorr_SE_2D_PtCandBin%d_PtHadBin%d_InvMassBin%d_iPool%d", binExtPtCandMin, binExtPtHadMin, binExtInvMassMin, pool));
   } else { // Mixed Event
       h2D->SetName(Form("hCorr_ME_2D_PtCandBin%d_PtHadBin%d_InvMassBin%d_iPool%d", binExtPtCandMin, binExtPtHadMin, binExtInvMassMin, pool));
   }
+
+  delete hSparse;
 
   return h2D;
 }
@@ -1021,14 +1104,17 @@ void DhCorrelationExtraction::GetSignalAndBackgroundForNorm_v2(Double_t PtCandMi
   // using results obtained from HFInvariantMassFitter.cxx class
   THnSparseF* hMassSparse = reinterpret_cast<THnSparseF*>(fFileMass->Get(fMassHistoNameSgn.Data()));
   TH2F* hMassFitSgnYield = reinterpret_cast<TH2F*>(hMassSparse->Projection(1,0));
+  hMassFitSgnYield->SetDirectory(0);
   hMassFitSgnYield -> SetName("hMassVsPt");
 
-  fMassVsPt = hMassFitSgnYield;
+  fMassVsPt = reinterpret_cast<TH2F*>(hMassFitSgnYield->Clone("fMassVsPt"));
+  fMassVsPt->SetDirectory(0);
 
   Int_t ptBinMin = hMassFitSgnYield->GetYaxis()->FindBin(PtCandMin + 1e-6);
   Int_t ptBinMax = hMassFitSgnYield->GetYaxis()->FindBin(PtCandMax - 1e-6);
 
   TH1D* hMass = hMassFitSgnYield->ProjectionX(Form("%s_proj_mass", hMassFitSgnYield->GetName()), ptBinMin, ptBinMax);
+  hMass->SetDirectory(0);
 
   Int_t massBinMin = hMass->GetXaxis()->FindBin(InvMassMin);
   Int_t massBinMax = hMass->GetXaxis()->FindBin(InvMassMax);
@@ -1044,6 +1130,8 @@ void DhCorrelationExtraction::GetSignalAndBackgroundForNorm_v2(Double_t PtCandMi
   std::cout << " " << std::endl;
 
   SetSignalYieldforNorm(SgnYield);
+
+  delete hMassSparse; delete hMassFitSgnYield; delete hMass;
 
   return;
 }
@@ -1116,6 +1204,7 @@ TH1D* DhCorrelationExtraction::GetCorrelHistoSecondaryPart(Int_t PartType, Doubl
   }
 
   h1D = reinterpret_cast<TH1D*>(hSparse->Projection(0)); // axis0: deltaPhi
+  h1D->SetDirectory(0);
   if (PartType == kPrimaryPart) {                        // primary particles
     h1D->SetName(Form("hPrimaryPartCorr_PtD%.0fto%.0f_PtHad%.0fto%.0f", PtCandMin, PtCandMax, PtHadMin, PtHadMax));
   } else { // all selected particles

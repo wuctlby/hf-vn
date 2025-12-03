@@ -13,7 +13,7 @@
     "hf-correlator-flow-charm-hadrons-reduced": {
         "fillSparses": "true",
         "fillTables": "true",
-        "numberEventsMixed": "5",
+        "numberEventsMixed": "10",
         "binsPtTrig": {
             "values": [
                 "0",
@@ -196,9 +196,9 @@
         },
         "processSameEventCharmHadWMultMix": "false",
         "processSameEventHadHadWMultMix": "false",
-        "processSameEventCharmHadWCentMix": "true",
+        "processSameEventCharmHadWCentMix": "false",
         "processSameEventHadHadWCentMix": "false",
-        "processMixedEventCharmHadWCentMix": "false",
+        "processMixedEventCharmHadWCentMix": "true",
         "processMixedEventCharmHadWMultMix": "false",
         "processMixedEventHadHadWCentMix": "false",
         "processMixedEventHadHadWMultMix": "false",

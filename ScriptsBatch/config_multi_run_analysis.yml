@@ -1,0 +1,80 @@
+### Predefined operation modes
+ONLY_DATA: &ONLY_DATA
+  preprocess_data: true
+  preprocess_mc: false
+  proj_data: true
+  proj_mc: false
+ONLY_PREP_DATA: &ONLY_PREP_DATA
+  preprocess_data: false
+  preprocess_mc: false
+  proj_data: true
+  proj_mc: false
+ONLY_MC: &ONLY_MC
+  preprocess_data: false
+  preprocess_mc: true
+  proj_data: false
+  proj_mc: true
+BOTH_DATA_MC: &BOTH_DATA_MC
+  preprocess_data: true
+  preprocess_mc: true
+  proj_data: true
+  proj_mc: true
+
+# MODE
+inclusive_v2: &inclusive_v2
+  operations:
+    <<: *ONLY_DATA
+    make_yaml: true
+    get_vn_vs_mass: true
+
+inclusive_v2_prep: &inclusive_v2_prep
+  operations:
+    <<: *ONLY_PREP_DATA
+    make_yaml: true
+    get_vn_vs_mass: true
+
+### Predefined TASK
+META_TASK: &META_TASK
+  mode: inclusive_v2
+  config: /home/wuct/ALICE/reps/hf-vn-working/configs/config_D0.yml
+  method: correlated
+TASK_BASE: &TASK_BASE
+  <<: *META_TASK
+  outdir: /home/wuct/MetaData/DATA/OO/apass2/sp/result/flook_corrected_evt_sels_pid
+  outdirPrep: /home/wuct/MetaData/DATA/OO/apass2/sp/result/flook_corrected_evt_sels_pid
+  dataDir: /home/wuct/MetaData/DATA/OO/apass2/sp/result/flook_corrected_evt_sels_pid # preprocess: data: 2023: files: path
+  resoDir: /home/wuct/MetaData/DATA/OO/apass2/resolution/corrected_evt_sels_pid/resosp_k010.root
+  suffix: flook_corrected_evt_sels_pid
+  centrality: k010
+  Dmeson: Dzero
+  nworkers: 18
+  detA: FT0c
+  detB: FV0a
+  detC: TPCtot
+
+# TASKS
+task1: &task1
+  <<: *TASK_BASE
+  outdir: /home/wuct/MetaData/DATA/OO/apass2/sp/result/flook_corrected_evt_sels_pid/FT0c
+  outdirPrep: /home/wuct/MetaData/DATA/OO/apass2/sp/result/flook_corrected_evt_sels_pid/FT0c
+  dataDir: /home/wuct/MetaData/DATA/OO/apass2/sp/flook_corrected_evt_sels_pid/FT0c
+  suffix: flook_corrected_evt_sels_pid_FT0c
+  detA: FT0c
+
+task2: &task2
+  <<: *TASK_BASE
+  outdir: /home/wuct/MetaData/DATA/OO/apass2/sp/result/flook_corrected_evt_sels_pid/FT0a
+  outdirPrep: /home/wuct/MetaData/DATA/OO/apass2/sp/result/flook_corrected_evt_sels_pid/FT0a
+  dataDir: /home/wuct/MetaData/DATA/OO/apass2/sp/flook_corrected_evt_sels_pid/FT0a
+  suffix: flook_corrected_evt_sels_pid_FT0a
+  detA: FT0a
+
+task3: &task3
+  <<: *TASK_BASE
+  outdir: /home/wuct/MetaData/DATA/OO/apass2/sp/result/flook_corrected_evt_sels_pid/FT0m
+  outdirPrep: /home/wuct/MetaData/DATA/OO/apass2/sp/result/flook_corrected_evt_sels_pid/FT0m
+  dataDir: /home/wuct/MetaData/DATA/OO/apass2/sp/flook_corrected_evt_sels_pid/FT0m
+  suffix: flook_corrected_evt_sels_pid_FT0m
+  detA: FT0m
+
+

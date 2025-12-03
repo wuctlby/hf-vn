@@ -4,6 +4,9 @@
 **/__pycache__/
 **/resolution/reso*
 
+*.png
+*.root
+
 # test files to ignore
 test*
 *.pyc

@@ -83,7 +83,11 @@ void FitCorrel(const TString cfgFileName = "config_CorrAnalysis.json")
   gSystem->Exec(Form("mkdir Output_CorrelationFitting_%s_Root/ Output_CorrelationFitting_%s_png/", CodeNameAnalysis.data(), CodeNameAnalysis.data()));
 
   string inputFileNameFit = config["InputFileNameFitCorr"].GetString();
-  const TString inFileName = Form("Output_CorrelationExtraction_%s_Root/%s", CodeNameAnalysis.data(), inputFileNameFit.data());
+  // const TString inFileName = Form("Output_CorrelationExtraction_%s_Root/%s", CodeNameAnalysis.data(), inputFileNameFit.data());
+  const TString inFileName = TString(inputFileNameFit);
+  const int DmesonSpecies = config["DmesonSpecies"].GetInt();
+  const TString DmesonName = (DmesonSpecies == 0) ? "D0" : (DmesonSpecies == 1) ? "Dplus" : (DmesonSpecies == 2) ? "Ds" : "DStar";
+  const TString fDmesonLabel = (DmesonSpecies == 0) ? "D^{0}" : (DmesonSpecies == 1) ? "D^{+}" : (DmesonSpecies == 2) ? "D_{s}^{+}" : "D^{*+}";
 
   bool isReflected = config["IsRiflected"].GetBool();
   bool drawSystematicErrors = config["DrawSystematics"].GetBool();
@@ -162,16 +166,16 @@ void FitCorrel(const TString cfgFileName = "config_CorrAnalysis.json")
 
   // Input file
   TFile* inFile = new TFile(inFileName.Data());
-  TFile* inFileSystematicErrors = new TFile("OutputSystematicUncertainties/SystematicUncertaintesAngCorrMerged.root");
-  TFile* inFileFitSystematicErrors = new TFile("OutputSystematicUncertainties/SystematicUncertaintesFitPhysObsMerged.root");
+  // TFile* inFileSystematicErrors = new TFile("OutputSystematicUncertainties/SystematicUncertaintesAngCorrMerged.root");
+  // TFile* inFileFitSystematicErrors = new TFile("OutputSystematicUncertainties/SystematicUncertaintesFitPhysObsMerged.root");
 
   // Canvas
-  TCanvas* CanvasCorrPhi[nBinsPtHad][nBinsInvMass];
+  TCanvas* CanvasCorrPhi[nBinsPtCand][nBinsPtHad][nBinsInvMass];
 
   // Histograms
   TH1D* hCorrPhi[nBinsPtCand][nBinsPtHad][nBinsInvMass];
-  TH1F* hSystematicErrors[nBinsPtCand][nBinsPtHad][nBinsInvMass];
-  TH1D* hSystematicErrorsPlot[nBinsPtCand][nBinsPtHad][nBinsInvMass];
+  // TH1F* hSystematicErrors[nBinsPtCand][nBinsPtHad][nBinsInvMass];
+  // TH1D* hSystematicErrorsPlot[nBinsPtCand][nBinsPtHad][nBinsInvMass];
 
   // DhCorrelationFitter
   const double fMin{-0.5 * TMath::Pi()}, fMax{1.5 * TMath::Pi()}; // limits for the fitting function
@@ -195,9 +199,19 @@ void FitCorrel(const TString cfgFileName = "config_CorrAnalysis.json")
         if (isReflected) {
           hCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass] = reinterpret_cast<TH1D*>(inFile->Get(Form("hCorrectedCorrReflected_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMassBin%d", binsPtCandIntervals[iBinPtCand], binsPtCandIntervals[iBinPtCand + 1], binsPtHadIntervals[iBinPtHad], binsPtHadIntervals[iBinPtHad + 1], iBinInvMass+1)));
         } else {
-          hCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass] = reinterpret_cast<TH1D*>(inFile->Get(Form("hCorrectedCorr_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMassBin%d", binsPtCandIntervals[iBinPtCand], binsPtCandIntervals[iBinPtCand + 1], binsPtHadIntervals[iBinPtHad], binsPtHadIntervals[iBinPtHad + 1], iBinInvMass+1)));
+          hCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass] = dynamic_cast<TH1D*>(inFile->Get(Form("hCorrectedCorr_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMassBin%d", binsPtCandIntervals[iBinPtCand], binsPtCandIntervals[iBinPtCand + 1], binsPtHadIntervals[iBinPtHad], binsPtHadIntervals[iBinPtHad + 1], iBinInvMass+1)));
+          if (!hCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass]) {
+            printf("Not found Fitting histogram: hCorrectedCorr_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMassBin%d\n", binsPtCandIntervals[iBinPtCand], binsPtCandIntervals[iBinPtCand + 1], binsPtHadIntervals[iBinPtHad], binsPtHadIntervals[iBinPtHad + 1], iBinInvMass+1);
+            continue;
+          }
         }
-
+        std::string histoName = hCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass]->GetName();
+        printf("Fitting histogram: %s\n", histoName.c_str());
+        double minHisto = hCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass]->GetXaxis()->GetXmin();
+        double maxHisto = hCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass]->GetXaxis()->GetXmax();
+        printf("Histo range: [%.2f, %.2f]\n", minHisto, maxHisto);
+        double integralHisto = hCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass]->Integral();
+        printf("Histo integral: %.5f\n", integralHisto);
         corrFitter[iBinPtHad][iBinPtCand][iBinInvMass] = new DhCorrelationFitter(reinterpret_cast<TH1F*>(hCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass]), fMin, fMax);
         corrFitter[iBinPtHad][iBinPtCand][iBinInvMass]->SetHistoIsReflected(refl);
         corrFitter[iBinPtHad][iBinPtCand][iBinInvMass]->SetFixBaseline(fixBase);
@@ -218,14 +232,6 @@ void FitCorrel(const TString cfgFileName = "config_CorrAnalysis.json")
     std::cout << "[INFO] InvMass: " << binsInvMassIntervals[iBinInvMass] << " - "<< binsInvMassIntervals[iBinInvMass+1] << std::endl;
     for (int iBinPtHad = 0; iBinPtHad < nBinsPtHad; iBinPtHad++) {
       std::cout << "[INFO] PtHad: " << binsPtHadIntervals[iBinPtHad] << " - "<< binsPtHadIntervals[iBinPtHad+1] << std::endl;
-      CanvasCorrPhi[iBinPtHad][iBinInvMass] = new TCanvas(Form("CanvasCorrPhi_PtBinAssoc%d_InvMassBin%d", iBinPtHad + 1, iBinInvMass+1), Form("CorrPhiDs_PtBinAssoc%d_InvMassBin%d", iBinPtHad + 1, iBinInvMass+1));
-      
-      if (nBinsPtCand <= 4) {
-          CanvasCorrPhi[iBinPtHad][iBinInvMass]->Divide(2, 2);
-        }
-        if (nBinsPtCand > 4 && nBinsPtCand <= 6) {
-          CanvasCorrPhi[iBinPtHad][iBinInvMass]->Divide(3, 2);
-        }
 
       // histograms with fir parameters
       hBaselin[iBinPtHad][iBinInvMass] = new TH1D(Form("hBaselin_PtBinAssoc%d_InvMassBin%d", iBinPtHad + 1, iBinInvMass+1), "", nBinsPtCand, binsPtCandIntervals);
@@ -240,11 +246,13 @@ void FitCorrel(const TString cfgFileName = "config_CorrAnalysis.json")
 
       for (int iBinPtCand = 0; iBinPtCand < nBinsPtCand; iBinPtCand++) {
         std::cout << "[INFO] PtCand: " << binsPtCandIntervals[iBinPtCand] << " - "<< binsPtCandIntervals[iBinPtCand+1] << std::endl;
+        CanvasCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass] = new TCanvas(Form("CanvasCorrPhi_PtBinCand%d_PtBinAssoc%d_InvMassBin%d", iBinPtCand + 1, iBinPtHad + 1, iBinInvMass+1), Form("CorrPhi%s_PtBinCand%d_PtBinAssoc%d_InvMassBin%d", DmesonName.Data(), iBinPtCand + 1, iBinPtHad + 1, iBinInvMass+1));
+
         SetTH1HistoStyle(hCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass], "", "#Delta#phi [rad]", "#frac{dN^{assoc}}{d#Delta#phi} [rad^{-1}]", kFullCircle, kRed + 1, 1.4, kRed + 1, 3);
 
-        CanvasCorrPhi[iBinPtHad][iBinInvMass]->cd(iBinPtCand + 1);
-        CanvasCorrPhi[iBinPtHad][iBinInvMass]->SetTickx();
-        CanvasCorrPhi[iBinPtHad][iBinInvMass]->SetTicky();
+        CanvasCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass]->cd(iBinPtCand + 1);
+        CanvasCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass]->SetTickx();
+        CanvasCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass]->SetTicky();
         hCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass]->SetStats(0);
         hCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass]->SetMinimum(0);
 
@@ -258,7 +266,8 @@ void FitCorrel(const TString cfgFileName = "config_CorrAnalysis.json")
         TPaveText* pttext = new TPaveText(0.15, 0.9, 0.85, 0.95, "NDC");
         pttext->SetFillStyle(0);
         pttext->SetBorderSize(0);
-        TText* tpT = pttext->AddText(0., 0.8, Form("%.0f < p_{T}^{D_{s}} < %.0f GeV/c, p_{T}^{assoc} > %.1f GeV/c", binsPtCandIntervals[iBinPtCand], binsPtCandIntervals[iBinPtCand + 1], binsPtHadIntervals[iBinPtHad]));
+
+        TText* tpT = pttext->AddText(0., 0.8, Form("%.0f < p_{T}^{%s} < %.0f GeV/c, p_{T}^{assoc} > %.1f GeV/c", binsPtCandIntervals[iBinPtCand], fDmesonLabel.Data(), binsPtCandIntervals[iBinPtCand + 1], binsPtHadIntervals[iBinPtHad]));
 
         // Fill the histograms with the fit parameters
         if (doCorrelation) {
@@ -314,14 +323,14 @@ void FitCorrel(const TString cfgFileName = "config_CorrAnalysis.json")
         // Draw
         hCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass]->Draw("same");
         pttext->Draw("same");
+        CanvasCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass]->SaveAs(Form("Output_CorrelationFitting_%s_png/CorrPhi%s_PtBinCand%d_PtBinAssoc%d_InvMassBin%d.png", CodeNameAnalysis.data(), DmesonName.Data(), iBinPtCand + 1, iBinPtHad + 1, iBinInvMass+1));
+        CanvasCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass]->SaveAs(Form("Output_CorrelationFitting_%s_Root/CorrPhi%s_PtBinCand%d_PtBinAssoc%d_InvMassBin%d.root", CodeNameAnalysis.data(), DmesonName.Data(), iBinPtCand + 1, iBinPtHad + 1, iBinInvMass+1));
       }
-      CanvasCorrPhi[iBinPtHad][iBinInvMass]->SaveAs(Form("Output_CorrelationFitting_%s_png/CorrPhiDs_PtBinAssoc%d_InvMassBin%d.png", CodeNameAnalysis.data(), iBinPtHad + 1, iBinInvMass+1));
-      CanvasCorrPhi[iBinPtHad][iBinInvMass]->SaveAs(Form("Output_CorrelationFitting_%s_Root/CorrPhiDs_PtBinAssoc%d_InvMassBin%d.root", CodeNameAnalysis.data(), iBinPtHad + 1, iBinInvMass+1));
     }
   }
 
   // histogram with fit parameter and errors
-  TFile* outFile = new TFile(Form("Output_CorrelationFitting_%s_Root/CorrPhiDs_FinalPlots.root", CodeNameAnalysis.data()), "RECREATE");
+  TFile* outFile = new TFile(Form("Output_CorrelationFitting_%s_Root/CorrPhi%s_FinalPlots.root", CodeNameAnalysis.data(), DmesonName.Data()), "RECREATE");
   outFile->cd();
   for (int iBinInvMass = 0; iBinInvMass < nBinsInvMass; iBinInvMass++) {
     for (int iBinPtHad = 0; iBinPtHad < nBinsPtHad; iBinPtHad++) {
