@@ -26,7 +26,7 @@ def load_root_files(inputPath, prefix: str, suffix='.root') -> list[str]:
         logger(f'No folder found in {inputPath}', level='ERROR')
         raise ValueError(f'No folder found in {inputPath}')
 
-def load_reso_histos(an_res_file, wagon_id, vn_method):
+def load_reso_histos(an_res_file, wagon_id):
     '''
     Get list of histograms for SP or EP resolution
 
@@ -35,8 +35,6 @@ def load_reso_histos(an_res_file, wagon_id, vn_method):
             str, resolution file
         - wagon_id:
             str, wagon ID
-        - vn_method:
-            str, vn method (sp or ep)
 
     Output:
         - correct_histo_triplets:
@@ -47,13 +45,9 @@ def load_reso_histos(an_res_file, wagon_id, vn_method):
     infile_path = f'hf-task-flow-charm-hadrons'
     if wagon_id:
         infile_path = f'{infile_path}_id{wagon_id}'
-    if vn_method != 'sp':
-        infile_path = f'{infile_path}/{vn_method}Reso'
-        prefix = f'hEpReso'
-    else:
-        infile_path = f'{infile_path}/spReso'
-        prefix = 'hSpReso'
 
+    infile_path = f'{infile_path}/spReso'  # for sp method only
+    prefix = 'hSpReso'  # for sp method only
     infile = TFile(an_res_file, 'READ')
     directory = infile.GetDirectory(infile_path)
     histos = [key.ReadObj() for key in directory.GetListOfKeys()]

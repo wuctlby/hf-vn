@@ -34,20 +34,14 @@ def SetFrameStyle(hFrame, xtitle, ytitle, ytitleoffset, ytitlesize, ylabelsize,
     hFrame.GetYaxis().CenterTitle(ycentertitle)
     hFrame.GetYaxis().SetMaxDigits(ymaxdigits)
 
-def compute_reso(an_res_file, vn_method,
-                 centClass, wagon_id, outputdir, suffix):
+def compute_reso(an_res_file, centClass, wagon_id, outputdir, suffix):
 
     _, cent_min_max = get_centrality_bins(centClass)
-    histos_triplets, histos_triplets_lables = load_reso_histos(an_res_file, wagon_id, vn_method)
+    histos_triplets, histos_triplets_lables = load_reso_histos(an_res_file, wagon_id)
 
     # prepare output file
-    if vn_method == 'sp':
-        ytitle = 'Q^{A} Q^{B}'
-    elif vn_method == 'ep' or vn_method == 'deltaphi':
-        ytitle = 'cos(2(#Psi^{A}-#Psi^{B}))'
-    else:
-        sys.exit('\033[91mFATAL: Invalid vn_method. Only sp, ep, deltaphi implemented. Exit!\033[0m')
-    outfile_name = f'{outputdir}reso{vn_method}{suffix}.root'
+    ytitle = 'Q^{A} Q^{B}'
+    outfile_name = f'{outputdir}reso_{suffix}.root'
     outfile = ROOT.TFile(outfile_name, 'RECREATE')
 
     # loop over all possible combinations of detectors
@@ -131,7 +125,6 @@ if __name__ == "__main__":
     parser.add_argument("an_res_file", metavar="text",
                         default="an_res.root", help="input ROOT file with anres")
     parser.add_argument('--centClass', '-c', metavar='text', default='k0100')
-    parser.add_argument('--vn_method', '-vn', metavar='text', default='sp')
     parser.add_argument("--wagon_id", "-w", metavar="text",
                         default="", help="wagon ID", required=False)
     parser.add_argument("--outputdir", "-o", metavar="text",
@@ -142,7 +135,6 @@ if __name__ == "__main__":
 
     compute_reso(
         an_res_file=args.an_res_file,
-        vn_method=args.vn_method,
         centClass=args.centClass,
         wagon_id=args.wagon_id,
         outputdir=args.outputdir,
