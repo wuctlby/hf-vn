@@ -26,7 +26,6 @@ export n_parallel=20
 export config_modifies="/home/mdicosta/FlowDplus/TestRCT/systMultitrial.yml"
 export config_default="/home/mdicosta/FlowDplus/TestRCT/config.yml"
 export output_dir="/home/mdicosta/FlowDplus/TestRCT/cutvar_RCTFlagsOn_combined"
-export multitrial_cutsets_script="/home/mdicosta/alice/hf-vn/syst/multitrial/make_cutsets_multitrial.py"
 export do_cutset_generation=false
 export do_compile_fitter=false
 export do_projections=false

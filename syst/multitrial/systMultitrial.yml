@@ -1,7 +1,7 @@
 # using sample with a given bdt cut set below
 ptbins:
 -   range: [1.0, 1.5]
-    MaxChi2: 10
+    MaxChi2PerNDF: 10
     MinSignificance: 5
     MaxSignificance: 400
     multitrial:

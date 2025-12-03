@@ -64,7 +64,7 @@ def proj_multitrial(config, multitrial_folder):
             hist_vn_vs_mass = profile_mass_sp(default_histos[suffix]['MassSp'], config_trial['projections']['inv_mass_bins'][0], 0.746)
             hist_vn_vs_mass.Write("hVnVsMassData")
             output_file.Close()
-        print(f"[{trial_number}] Completed projections!")
+        logger(f"[{trial_number}] Completed projections!", level='INFO')
 
     # Parallel execution
     multitrial_dirs = [f for f in glob.glob(f"{multitrial_folder}/trial_*/")]

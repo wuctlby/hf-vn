@@ -333,7 +333,7 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
         # Quality selection for systematics multitrial
         if isMultitrial:
             try:
-                if vnFitter[iPt].GetReducedChiSquare() > config.get('MaxChi2PerNDF', 1.e20):
+                if vnFitter[iPt].GetReducedChiSquare() > config.get('MaxChi2PerNDF', 10):
                     print(f'[{inFileName}] Rejecting trial due to Chi2/NDF = {vnFitter[iPt].GetReducedChiSquare()} > {config.get("MaxChi2PerNDF", 1.e20)}')
                     return
             except Exception as e:

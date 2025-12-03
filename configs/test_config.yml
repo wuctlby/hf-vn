@@ -122,7 +122,6 @@ projections:
                     ]
 
 preprocess:
-    workers: 1
     bkg_cuts: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
     inputs:
     -   files: [
