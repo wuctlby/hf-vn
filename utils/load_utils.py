@@ -28,7 +28,7 @@ def load_root_files(inputPath, prefix: str, suffix='.root') -> list[str]:
 
 def load_reso_histos(an_res_file, wagon_id):
     '''
-    Get list of histograms for SP or EP resolution
+    Get list of histograms for SP resolution
 
     Input:
         - an_res_file:
