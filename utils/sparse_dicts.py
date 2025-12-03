@@ -139,13 +139,12 @@ def get_sparse_dict(sparse_name, dmeson):
                 return {
                     'Mass': 0,
                     'Pt': 1,
-                    'ScoreBkg': 4,
-                    'ScorePrompt': 5,
-                    'ScoreFD': 6,
-                    'Cent': 7,
-                    'Occ': 8,
-                    'PtBMoth': 2,
-                    'FlagBHad': 3,
+                    'ScoreBkg': 2,
+                    'ScorePrompt': 3,
+                    'ScoreFD': 4,
+                    'Cent': 5,
+                    'PtBMoth': 6,
+                    'FlagBHad': 7,
                 }
             elif sparse_name == "GenPrompt":
                 return {
@@ -158,10 +157,9 @@ def get_sparse_dict(sparse_name, dmeson):
                 return {
                 'Pt': 0,
                 'Y': 1,
-                'Cent': 4,
-                'Occ': 5,
-                'PtBMoth': 2,
-                'FlagBHad': 3,
+                'Cent': 2,
+                'PtBMoth': 3,
+                'FlagBHad': 4,
             }
             else:
                 logger(f"Unknown sparse type for Ds {sparse_name}", level='ERROR')

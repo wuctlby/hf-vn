@@ -126,7 +126,7 @@ def cut_variation(flow_config, outdir, correlated, combined=False, operations=No
 			import copy
 			operationsCorr = copy.deepcopy(operations)
 			for key in operationsCorr:
-				if key in ['do_cut_variation', 'make_yaml', 'proj_mc', 'proj_data', 'efficiencies', 'get_vn_vs_mass', 'get_vn_yield_extraction']:
+				if key in ['do_cut_variation', 'make_yaml', 'proj_mc', 'proj_data', 'efficiencies', 'get_vn_vs_mass']:
 					operationsCorr[key] = True
 				else:
 					operationsCorr[key] = False
@@ -135,7 +135,7 @@ def cut_variation(flow_config, outdir, correlated, combined=False, operations=No
 			with open(flow_config, 'r') as cfgFlow:
 				config = yaml.safe_load(cfgFlow)
 				config['operations'] = operationsCorr
-				config['outdir'] = outdirCorr
+				config['outdir'] = os.path.dirname(outdir)
 				with open(flow_configCorr, 'w') as cfgFlow:
 					yaml.dump(config, cfgFlow, default_flow_style=True)
 			logger(f"Using temporary flow config: {flow_configCorr}", level="WARNING")
@@ -320,7 +320,7 @@ if __name__ == "__main__":
 
 	if operations.get('preprocess'):
 		print("\033[32mINFO: Preprocess will be performed\033[0m")
-		os.system(f"python3 {paths['Preprocess']} {args.flow_config}")
+		os.system(f"python3 {paths['Preprocess']} {args.flow_config} --workers {nworkers}")
 	else:
 		print("\033[33mWARNING: Preprocess will not be performed\033[0m")
 

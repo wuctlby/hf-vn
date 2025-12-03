@@ -342,7 +342,7 @@ class BkgFitFuncCreator:
         funcBkg.SetLineColor(kGreen+2)
         return funcBkg
 
-def RebinHisto(h_orig, reb, first_use = 0):
+def RebinHisto(h_orig, reb, show_print, first_use = 0):
     '''
     Rebin histogram, from bin firstUse to lastUse
     Use all bins if firstUse=-1
@@ -369,8 +369,8 @@ def RebinHisto(h_orig, reb, first_use = 0):
             last_bin_orig = first_bin_orig + n_bin_orig_used - 1
 
     n_bin_final = round(n_bin_final)
-    print(f"Rebin from {n_bin_orig} bins to {n_bin_final} bins -- Used bins = {n_bin_orig_used} in range {first_bin_orig}-{last_bin_orig}\n")
-    
+    if (show_print):
+        print(f"Rebin from {n_bin_orig} bins to {n_bin_final} bins -- Used bins = {n_bin_orig_used} in range {first_bin_orig}-{last_bin_orig}\n")
     low_lim = h_orig.GetXaxis().GetBinLowEdge(first_bin_orig)
     hi_lim = h_orig.GetXaxis().GetBinUpEdge(last_bin_orig)
     hRebin = TH1D(f"{h_orig.GetName()}-rebin", h_orig.GetTitle(), n_bin_final, low_lim, hi_lim)

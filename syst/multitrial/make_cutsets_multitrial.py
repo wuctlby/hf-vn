@@ -7,7 +7,7 @@ import argparse
 import itertools
 import sys
 sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/../../utils")
-from utils import check_dir, logger
+from utils import logger
 
 def get_reference_config_pt_bin(config_flow, iPtBin):
     # Deepcopy to ensure that we are working with a copy and not modifying the original config_flow
@@ -41,7 +41,6 @@ def modify_yaml_bdt(config_flow, config_mod, output_dir):
         cfg_mod = yaml.safe_load(CfgMod)
 
     multitrial_dir = f"{output_dir}/syst/multitrial/"
-    check_dir(multitrial_dir)
     os.makedirs(multitrial_dir, exist_ok=True)
     os.makedirs(f"{multitrial_dir}/config_history/", exist_ok=True)
 
@@ -97,14 +96,19 @@ def modify_yaml_bdt(config_flow, config_mod, output_dir):
                     else:
                         cfg_variant[varied_var] = variant[varied_var]
 
-            cfg_variant["v2extraction"]["MassFitRanges"] = [[variant["MassMin"], variant["MassMax"]]]
-            cfg_variant["v2extraction"]["BkgFunc"] = [variant["BkgFunc"]]
-            cfg_variant["v2extraction"]["SgnFunc"] = [variant["SgnFunc"]]
-            cfg_variant["v2extraction"]["BkgFuncVn"] = [variant["BkgFuncVn"]]
-            cfg_variant["projections"]["inv_mass_bins"] = [np.arange(variant['MassMin'], variant['MassMax'] + variant['inv_mass_bins_steps'], variant['inv_mass_bins_steps']).tolist()]
-            if cfg_flow['Dmeson'] == 'Dplus' and (variant["MassMin"] > 1.75 or variant["MassMax"] < 1.95):
+            if variant.get("MassMin") and variant.get("MassMax"):
+                cfg_variant["v2extraction"]["MassFitRanges"] = [[variant["MassMin"], variant["MassMax"]]]
+                cfg_variant["projections"]["inv_mass_bins"] = [np.arange(variant['MassMin'], variant['MassMax'] + variant['inv_mass_bins_steps'], variant['inv_mass_bins_steps']).tolist()]
                 # else the region used for the prefit of the bkg function would be empty, leading to a crash
-                cfg_variant["NSigma4SB"] = [2]
+                if cfg_flow['Dmeson'] == 'Dplus' and (variant["MassMin"] > 1.75 or variant["MassMax"] < 1.95):
+                    cfg_variant["NSigma4SB"] = [2]
+                    cfg_variant["v2extraction"]["Sigma"] = [0.01]
+            if variant.get("BkgFunc"):
+                cfg_variant["v2extraction"]["BkgFunc"] = [variant["BkgFunc"]]
+            if variant.get("SgnFunc"):
+                cfg_variant["v2extraction"]["SgnFunc"] = [variant["SgnFunc"]]
+            if variant.get("BkgFuncVn"):
+                cfg_variant["v2extraction"]["BkgFuncVn"] = [variant["BkgFuncVn"]]
 
             os.makedirs(os.path.join(f"{multitrial_pt_dir}/trial_{idx}"), exist_ok=True)
             output_file = os.path.join(f"{multitrial_pt_dir}/trial_{idx}", f"config_trial_{idx}.yml")

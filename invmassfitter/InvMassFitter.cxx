@@ -267,23 +267,26 @@ Int_t InvMassFitter::MassFitter(Bool_t draw){
   fBkgFuncSb = CreateBackgroundFitFunction("funcbkgsb",integralHisto);
   Int_t status=-1;
   Bool_t isFitValid=kFALSE;
-  printf("\n--- First fit with only background on the side bands - Exclusion region = %.2f sigma ---\n",fNSigma4SideBands);
+  if (!fSuppressOutput) {
+    printf("\n--- First fit with only background on the side bands - Exclusion region = %.2f sigma ---\n",fNSigma4SideBands);
+  }
   if(fTypeOfFit4Bkg==6){
     if(PrepareHighPolFit(fBkgFuncSb)){
-    //   fHistoInvMass->GetListOfFunctions()->Add(fBkgFuncSb);
-    //   fHistoInvMass->GetFunction(fBkgFuncSb->GetName())->SetBit(1<<9,kTRUE);
+      //   fHistoInvMass->GetListOfFunctions()->Add(fBkgFuncSb);
+      //   fHistoInvMass->GetFunction(fBkgFuncSb->GetName())->SetBit(1<<9,kTRUE);
       status=0;
       isFitValid=kTRUE;
     }
-  }
-  else{
+  } else {
     TFitResultPtr resultptr_bkg=fHistoInvMass->Fit("funcbkgsb",Form("R,S,%s,+,0",fFitOption.Data()));
     status=(Int_t) resultptr_bkg;
     isFitValid=resultptr_bkg->IsValid();
   }
   fBkgFuncSb->SetLineColor(kGray+1);
   if ( (status!=0 && !fAcceptValidFit) || (fAcceptValidFit && !isFitValid) ){
-    printf("   ---> Failed first fit with only background, minuit status = %d\n",status);
+    if (!fSuppressOutput) {
+      printf("   ---> Failed first fit with only background, minuit status = %d\n",status);
+    }
     return 0;
   }
 
@@ -294,13 +297,17 @@ Int_t InvMassFitter::MassFitter(Bool_t draw){
   }
   fBkgFunc->SetLineColor(kGray+1);
 
-  printf("\n--- Estimate signal counts in the peak region ---\n");
+  if (!fSuppressOutput) {
+    printf("\n--- Estimate signal counts in the peak region ---\n");
+  }
   Double_t estimSignal=CheckForSignal(fMass,fSigmaSgn);
   Bool_t doFinalFit=kTRUE;
   if(fCheckSignalCountsAfterFirstFit && estimSignal<0.){
     estimSignal=0.;
     doFinalFit=kFALSE;
-    printf("Abandon fit: no signal counts after first fit\n");
+    if (!fSuppressOutput) {
+      printf("Abandon fit: no signal counts after first fit\n");
+    }
   }
 
   fRawYieldHelp=estimSignal; // needed for reflection normalization
@@ -327,14 +334,20 @@ Int_t InvMassFitter::MassFitter(Bool_t draw){
   fTotFunc = CreateTotalFitFunction("funcmass");
 
   if(doFinalFit){
-    printf("\n--- Final fit with signal+background on the full range ---\n");
+    if (!fSuppressOutput) {
+      printf("\n--- Final fit with signal+background on the full range ---\n");
+    }
     TFitResultPtr resultptr=fHistoInvMass->Fit("funcmass",Form("R,S,%s,+,0",fFitOption.Data()));
     isFitValid = resultptr->IsValid();
     status = (Int_t) resultptr;
-    printf("[InvMassFitter] final fit status %d\n",status);
-    printf("[InvMassFitter] IsValid() = %d\n",isFitValid);
+    if (!fSuppressOutput) {
+      printf("[InvMassFitter] final fit status %d\n",status);
+      printf("[InvMassFitter] IsValid() = %d\n",isFitValid);
+    }
     if ( (status!=0 && !fAcceptValidFit) || (fAcceptValidFit && !isFitValid) ){
-      printf("   ---> Failed fit with signal+background, minuit status = %d\n",status);
+      if (!fSuppressOutput) {
+        printf("   ---> Failed fit with signal+background, minuit status = %d\n",status);
+      }
       return 0;
     }
   }
@@ -406,9 +419,13 @@ Double_t InvMassFitter::CheckForSignal(Double_t mean, Double_t sigma){
     sumback+=fBkgFunc->Eval(fHistoInvMass->GetBinCenter(ibin));
   }
   Double_t diffUnderPeak=(sum-sumback);
-  printf("   ---> IntegralUnderHisto=%f  IntegralUnderBkgFunc=%f   EstimatedSignal=%f\n",sum,sumback,diffUnderPeak);
+  if (!fSuppressOutput) {
+    printf("   ---> IntegralUnderHisto=%f  IntegralUnderBkgFunc=%f   EstimatedSignal=%f\n",sum,sumback,diffUnderPeak);
+  }
   if(diffUnderPeak/TMath::Sqrt(sum)<1.){
-    printf("   ---> (Tot-Bkg)/sqrt(Tot)=%f ---> Likely no signal\n",diffUnderPeak/TMath::Sqrt(sum));
+    if (!fSuppressOutput) {
+      printf("   ---> (Tot-Bkg)/sqrt(Tot)=%f ---> Likely no signal\n",diffUnderPeak/TMath::Sqrt(sum));
+    }
     return -1;
   }
   return diffUnderPeak*fHistoInvMass->GetBinWidth(1);
@@ -418,7 +435,6 @@ Double_t InvMassFitter::CheckForSignal(Double_t mean, Double_t sigma){
 TF1* InvMassFitter::CreateBackgroundFitFunction(TString fname, Double_t integral){
   /// Creates the background fit fucntion
   ///
-
   SetNumberOfParams();
   TF1* funcbkg =  new TF1(fname.Data(),this,&InvMassFitter::FitFunction4Bkg,fMinMass,fMaxMass,fNParsBkg,"InvMassFitter","FitFunction4Bkg");
   switch (fTypeOfFit4Bkg) {
@@ -952,7 +968,7 @@ Bool_t InvMassFitter::PrepareHighPolFit(TF1 *fback){
     funcbkg = new TF1(Form("temp%d",fCurPolDegreeBkg),this,&InvMassFitter::BackFitFuncPolHelper,fMinMass,fMaxMass,fCurPolDegreeBkg+1,"InvMassFitter","BackFitFuncPolHelper");
     if(funcPrev){
       for(Int_t j=0;j<fCurPolDegreeBkg;j++){// now is +1 degree w.r.t. previous fit funct
-	funcbkg->SetParameter(j,funcPrev->GetParameter(j));
+        funcbkg->SetParameter(j,funcPrev->GetParameter(j));
       }
       delete funcPrev;
     }
@@ -960,10 +976,10 @@ Bool_t InvMassFitter::PrepareHighPolFit(TF1 *fback){
       funcbkg->SetParameter(0,estimatecent);
       funcbkg->SetParameter(1,estimateslope);
     }
-    printf("   ---> Pre-fit of background with pol degree %d ---\n",fCurPolDegreeBkg);
     if (fSuppressOutput) {
       fHistoInvMass->Fit(funcbkg,"REMNQ","");
     } else {
+      printf("   ---> Pre-fit of background with pol degree %d ---\n",fCurPolDegreeBkg);
       fHistoInvMass->Fit(funcbkg,"REMN","");
     }
     funcPrev=(TF1*)funcbkg->Clone("ftemp");
@@ -975,7 +991,9 @@ Bool_t InvMassFitter::PrepareHighPolFit(TF1 *fback){
     fback->SetParameter(j,funcPrev->GetParameter(j));
     fback->SetParError(j,funcPrev->GetParError(j));
   }
-  printf("   ---> Final background fit with pol degree %d ---\n",fPolDegreeBkg);
+  if (!fSuppressOutput) {
+    printf("   ---> Final background fit with pol degree %d ---\n",fPolDegreeBkg);
+  }
   fHistoInvMass->Fit(fback,Form("R,%s,+,0",fFitOption.Data()));// THIS IS JUST TO SET NOT ONLY THE PARAMETERS BUT ALSO chi2, etc...
 
   // The following lines might be useful for debugging

@@ -232,7 +232,6 @@ VnVsMassFitter::~VnVsMassFitter() {
 //________________________________________________________________
 Bool_t VnVsMassFitter::SimultaneousFit(Bool_t drawFit) {
   if (fSuppressOutput) {
-    cout << "Suppressing output for simultaneous fit" << std::endl;
     gErrorIgnoreLevel = kFatal;
   }
   if(!fMassHisto || !fVnVsMassHisto) {printf("Histograms not set! Exit."); return kFALSE;}
@@ -606,6 +605,9 @@ Bool_t VnVsMassFitter::MassPrefit() {
     else if(fFrac2GausFixed==2) fMassFitter->SetFixFrac2Gaus(fFrac2GausInit);
   }
   fMassFitter->SetUseLikelihoodFit();
+  if (fSuppressOutput) {
+    fMassFitter->SetSuppressOutput(kTRUE);
+  }
   if(fMassBkgFuncType==kPoln) {fMassFitter->SetPolDegreeForBackgroundFit(fPolDegreeBkg);}
   if(fSecondPeak) {fMassFitter->IncludeSecondGausPeak(fSecMass,fFixSecMass,fSecWidth,fFixSecWidth);}
   if(fReflections) {
@@ -614,10 +616,13 @@ Bool_t VnVsMassFitter::MassPrefit() {
     if(fFixRflOverSig) {fMassFitter->SetFixReflOverS(fRflOverSig);}
   }
   if(fTemplates) {fMassFitter->SetTemplates(fKDETemplates, fMassInitWeights, fMassWeightsLowerLims, fMassWeightsUpperLims);}
-  if (fSuppressOutput) {
-    fMassFitter->SetSuppressOutput(kTRUE);
+  if (!fSuppressOutput) {
+    std::cout << "Starting mass prefit..." << std::endl;
   }
   Bool_t status = fMassFitter->MassFitter(kFALSE);
+  if (!fSuppressOutput) {
+    std::cout << "Mass prefit done." << std::endl;
+  }
 
   if(status) {
     fMassFuncFromPrefit = (TF1*)fMassFitter->GetMassFunc();
