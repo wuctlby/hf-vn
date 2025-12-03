@@ -325,7 +325,7 @@ def get_particle_info(particleName):
 
 def get_resolution(dets, det_lables, cent_min_max):
     '''
-    Compute resolution for SP or EP method
+    Compute resolution for SP method
 
     Input:
         - dets:
