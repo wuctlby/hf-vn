@@ -1,13 +1,8 @@
 '''
 Script for the computation of pT shape weights
 run: 
-python ./ComputePtweights.py \
-        <config> \
-        --Bspecie <Bspecie> \
-        --suffix <suffix> \
-        --fonllD <{fonllD> \
-        --fonllB <fonllB> \
-        <Raa>
+python ./compute_pt_weights.py \
+        <cfg>
 '''
 import os
 import sys
@@ -18,80 +13,125 @@ from ROOT import kBlack, kRed, kAzure # pylint: disable=import-error,no-name-in-
 work_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append('../')
 sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/../utils")
+from utils import logger
 from ReadModel import ReadFONLL, ReadTAMU  #pylint: disable=wrong-import-position,import-error
 from StyleFormatter import SetObjectStyle     #pylint: disable=wrong-import-position,import-error
-from sparse_dicts import get_sparses
+sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/../src")
+from pre_process import get_inputs_sparse, get_input_paths  #pylint: disable=wrong-import-position,import-error
 
-def computePtWeights(config):
+def fill_pt_spectrum(hist, pp_cross_sect, pp_cross_sect_pt_min=None, pp_cross_sect_pt_max=None,
+                     RAA=None, RAA_pt_min=None, RAA_pt_max=None):
+    """
+    Fill histogram h using cross_sect(pt)
+    optionally multiplied by RAA(pt) (with boundary saturation).
+    """
 
-    # load input configuration
-    with open(config, 'r') as ymlCfgFile:
-        config = yaml.load(ymlCfgFile, yaml.FullLoader)
+    for i in range(1, hist.GetNbinsX() + 1):
+        pt = hist.GetBinCenter(i)
+        if pt < pp_cross_sect_pt_min or pt > pp_cross_sect_pt_max:
+            continue  # skip out-of-range bins
 
-    Dspecie = config['Dmeson']
+        val = pp_cross_sect(pt)
+        if RAA is not None:
+            if RAA_pt_min <= pt <= RAA_pt_max:
+                val *= RAA(pt)
+            elif pt > RAA_pt_max:
+                val *= RAA(RAA_pt_max)
+            else:
+                val *= RAA(RAA_pt_min)
+        hist.SetBinContent(i, val)
+
+    hist.Sumw2()
+    hist.Scale(1.0 / hist.Integral())
+    return hist
+
+def compute_pt_weights(cfg):
+
+    # load input cfguration
+    with open(cfg, 'r') as ymlCfgFile:
+        cfg = yaml.load(ymlCfgFile, yaml.FullLoader)
+
+    cfg_pt_weights = cfg['ptWeights']
+    Dspecie = cfg['Dmeson']
 
     # 'Ds', 'Dplus', 'Dzero', 'Lc'
     if Dspecie not in ['Ds', 'Dplus', 'Dzero', 'Lc']:
         print(f'ERROR: D specie {Dspecie} not supported! Only Ds, Dplus, Dzero, Lc is supported! Exit')
         sys.exit()
-    
-    cent = config['Centrality']
-    Bspecie = config.get('Bspecie', None)
-    rebin = config.get('Rebin', 1) # default rebin
-    smooth = config.get('Smooth', 100) # default smooth
-    suffix = config.get('Suffix', 'suffix')
 
-    _, _, sparsesGen, axes, _ = get_sparses(config, get_data=False, get_mc=True, debug=False)
-    # load thnSparse
+    cent = cfg['centrality']
+    Bspecie = cfg_pt_weights.get('Bspecie', None)
+    rebin = cfg_pt_weights.get('Rebin', 1) # default rebin
+    smooth = cfg_pt_weights.get('Smooth', 100) # default smooth
+    suffix = cfg_pt_weights.get('Suffix', 'suffix')
 
-    sparseGenD = sparsesGen['GenPrompt'][0]
-    sparseGenD.SetName('sparseGenD')
-    sparseGenB = sparsesGen['GenFD'][0]
-    sparseGenB.SetName('sparseGenB')
+    # Retrieve sparse inputs
+    #___________________________________________________________________________________________________________________________
+    for sparses_cfg in cfg['preprocess']['inputs']:
+        if not 'sparses' in sparses_cfg:
+            continue
+        for sparse_cfg in sparses_cfg['sparses']:
+            if sparse_cfg['name'] == 'GenPrompt':
+                sparse_gen_prompt = sparse_cfg
+                sparse_file_path = get_input_paths(sparses_cfg, "AnalysisResults")[0]
+            if sparse_cfg['name'] == 'GenFD':
+                sparse_gen_FD = sparse_cfg
+                sparse_file_path = get_input_paths(sparses_cfg, "AnalysisResults")[0]
 
-    hPtGenD = sparseGenD.Projection(axes['GenPrompt']['Pt'])
-    hPtGenD.SetDirectory(0)
-    hPtGenD.SetName('hPtGenD')
-    hPtGenD.Sumw2()
-    hPtGenD.Rebin(rebin)
-    hPtGenD.Scale(1./hPtGenD.Integral())
+    sparse_file = TFile.Open(sparse_file_path, "read")
+    sparseGenPromptD, axesPromptD = get_inputs_sparse(sparse_file, cfg, sparse_gen_prompt)
+    sparseGenNonPromptD, axesNonPromptD = get_inputs_sparse(sparse_file, cfg, sparse_gen_FD)
+    sparse_file.Close()
+
+    sparseGenPromptD.SetName('sparseGenPromptD')
+    sparseGenNonPromptD.SetName('sparseGenNonPromptD')
+
+    hPtGenPromptD = sparseGenPromptD.Projection(axesPromptD['Pt'])
+    hPtGenPromptD.SetDirectory(0)
+    hPtGenPromptD.SetName('hPtGenPromptD')
+    hPtGenPromptD.Sumw2()
+    hPtGenPromptD.Rebin(rebin)
+    hPtGenPromptD.Scale(1./hPtGenPromptD.Integral())
 
     if Bspecie:
-        hPtGenB = sparseGenB.Projection(axes['GenFD']['PtBMoth'])
-        if Dspecie == 'Ds':
-            sparseGenBPlusBZero = sparseGenB.Clone('sparseGenBPlusBZero')
-            sparseGenBPlusBZero.GetAxis(axes['GenFD']['Origin']).SetRange(1, 2)
-            sparseGenLambdaBZero = sparseGenB.Clone('sparseGenLambdaBZero')
-            sparseGenLambdaBZero.GetAxis(axes['GenFD']['Origin']).SetRange(4, 4)
-            hPtGenB = sparseGenLambdaBZero.Projection(axes['GenFD']['Pt'])
-            hPtGenB.Add(sparseGenBPlusBZero.Projection(axes['GenFD']['Pt']))
-        
-        #TODO: modifications for other B mesons
-        hPtGenB.SetDirectory(0)
+        if Dspecie == 'Ds' and Bspecie == 'BsBmix':
+            # Add LambdaB
+            sparseGenDFromLambdaB = sparseGenNonPromptD.Clone('sparseGenDFromLambdaB')
+            sparseGenDFromLambdaB.GetAxis(axesNonPromptD['FlagBHad']).SetRange(4, 4)
+            hPtGenB = sparseGenDFromLambdaB.Projection(axesNonPromptD['PtBMoth'])
+
+            # Add B+ and B0
+            sparseGenDFromBPlusBZero = sparseGenNonPromptD.Clone('sparseGenDFromBPlusBZero')
+            sparseGenDFromBPlusBZero.GetAxis(axesNonPromptD['FlagBHad']).SetRange(1, 2)
+            hPtGenB.Add(sparseGenDFromBPlusBZero.Projection(axesNonPromptD['PtBMoth']))
+
+            # Add Bs
+            sparseGenDFromBs = sparseGenNonPromptD.Clone('sparseGenDFromBs')
+            sparseGenDFromBs.GetAxis(axesNonPromptD['FlagBHad']).SetRange(3, 3)
+            hPtGenBs = sparseGenDFromBs.Projection(axesNonPromptD['PtBMoth'])
+            hPtGenBs.SetDirectory(0)
+            hPtGenBs.Scale(1./2 * hPtGenBs.Integral())
+            hPtGenB.Scale(1./2)
+            hPtGenB.Add(hPtGenBs) # assuming 50% Bs and 50% B, reasonable for non-prompt Ds
+        else:
+            #TODO: modifications for other B mesons
+            hPtGenB = sparseGenNonPromptD.Projection(axesNonPromptD['PtBMoth'])
+
         hPtGenB.SetName('hPtGenB')
+        hPtGenB.SetDirectory(0)
         hPtGenB.Sumw2()
         hPtGenB.Rebin(rebin)
         hPtGenB.Scale(1./hPtGenB.Integral())
-    
-    if Bspecie == 'BsBmix':
-        sparseGenB.GetAxis(axes['GenFD']['Origin']).SetRange(3, 3)
-        hPtGenBs = sparseGenB.Projection(axes['GenFD']['PtBMoth'])
-        hPtGenBs.SetDirectory(0)
-        hPtGenBs.SetName('hPtGenBs')
-        hPtGenBs.Rebin(rebin)
-        hPtGenBs.Scale(1./2 * hPtGenBs.Integral())
-        hPtGenB.Scale(1./2)
-        hPtGenB.Add(hPtGenBs) # assuming 50% Bs and 50% B, reasonable for non-prompt Ds
 
-    print('INFO: MC input loaded')
+    logger('MC input loaded', level='INFO')
     # load models predictions
     #___________________________________________________________________________________________________________________________
-    sFONLLD, _, ptMinFONLL, ptMaxFONLL = ReadFONLL(config['PtShapeFONLL_D'], True, Dspecie)
-    sFONLLB, _, ptMinFONLLB, ptMaxFONLLB = ReadFONLL(config['PtShapeFONLL_B'], True, 'B')
-    sTAMU, _, ptMinTAMU, ptMaxTAMU = ReadTAMU(config['RaaTAMU_D'])
-    sTAMUB, _, ptMinTAMUB, ptMaxTAMUB = ReadTAMU(config['RaaTAMU_B'])
-    if Dspecie == 'Ds' and Bspecie == 'BsBmix' and config.get('RaaTAMU_Bs'):
-        sTAMUBs, _, ptMinTAMUBs, ptMaxTAMUBs = ReadTAMU(config['RaaTAMU_Bs'])
+    sFONLLD, _, ptMinFONLL, ptMaxFONLL = ReadFONLL(cfg_pt_weights['PtShapeFONLL_D'], True, Dspecie)
+    sFONLLB, _, ptMinFONLLB, ptMaxFONLLB = ReadFONLL(cfg_pt_weights['PtShapeFONLL_B'], True, 'B')
+    sTAMUD, _, ptMinTAMUD, ptMaxTAMUD = ReadTAMU(cfg_pt_weights['RaaTAMU_D'])
+    sTAMUB, _, ptMinTAMUB, ptMaxTAMUB = ReadTAMU(cfg_pt_weights['RaaTAMU_B'])
+    if Dspecie == 'Ds' and Bspecie == 'BsBmix' and cfg_pt_weights.get('RaaTAMU_Bs'):
+        sTAMUBs, _, ptMinTAMUBs, ptMaxTAMUBs = ReadTAMU(cfg_pt_weights['RaaTAMU_Bs'])
 
     histoDNames = ['hPtFONLLDcent', 'hPtFONLLDmin', 'hPtFONLLDmax']
     histoBNames = ['hPtFONLLBcent', 'hPtFONLLBmin', 'hPtFONLLBmax']
@@ -99,96 +139,70 @@ def computePtWeights(config):
 
     hPtFONLLD, hPtFONLLB, hPtFONLLtimesTAMUD, hPtFONLLtimesTAMUB = [], [], [], []
     hPtWeightsFONLLD, hPtWeightsFONLLB, hPtWeightsFONLLtimesTAMUD, hPtWeightsFONLLtimesTAMUB = [], [], [], []
-    print('INFO: Start computing pT weights')
+    logger("Start computing pT weights", level='INFO')
 
     # D meson weights
     #___________________________________________________________________________________________________________________________
     for histoName, pred in zip(histoDNames, modelPred):
-        hPtFONLLD.append(hPtGenD.Clone(histoName))
-        hPtFONLLtimesTAMUD.append(hPtGenD.Clone(histoName.replace('FONLL', 'FONLLtimesTAMU')))
+        hPtFONLL = hPtGenPromptD.Clone(histoName)
+        hPtFONLLtimesTAMU = hPtGenPromptD.Clone(histoName.replace("FONLL", "FONLLtimesTAMU"))
 
-        for iPt in range(1, hPtFONLLD[-1].GetNbinsX()+1):
-            ptCent = hPtFONLLD[-1].GetBinCenter(iPt)
-            if ptMinFONLL < ptCent < ptMaxFONLL:
-                hPtFONLLD[-1].SetBinContent(iPt, sFONLLD[pred](ptCent))
-                if ptMinTAMU <= ptCent <= ptMaxTAMU:
-                    hPtFONLLtimesTAMUD[-1].SetBinContent(iPt, sFONLLD[pred](ptCent) * sTAMU['yCent'](ptCent))
-                elif ptCent > ptMaxTAMU:
-                    hPtFONLLtimesTAMUD[-1].SetBinContent(iPt, sFONLLD[pred](ptCent) * sTAMU['yCent'](ptMaxTAMU))
-                else:
-                    hPtFONLLtimesTAMUD[-1].SetBinContent(iPt, sFONLLD[pred](ptCent) * sTAMU['yCent'](ptMinTAMU))
-            elif ptCent > ptMaxFONLL:
-                print(f'WARNING: Results for pT > {ptMaxFONLL} not reliable!')
-                continue
-            else:
-                print(f'WARNING: Results for pT < {ptMinFONLL} not reliable!')
-                continue
+        fill_pt_spectrum(hPtFONLL, pp_cross_sect = sFONLLD[pred],
+                         pp_cross_sect_pt_min = ptMinFONLL, pp_cross_sect_pt_max = ptMaxFONLL)
+        hPtFONLLD.append(hPtFONLL)
+        fill_pt_spectrum(hPtFONLLtimesTAMU,
+                         pp_cross_sect = sFONLLD[pred], pp_cross_sect_pt_min = ptMinFONLL, pp_cross_sect_pt_max = ptMaxFONLL,
+                         RAA = sTAMUD["yCent"], RAA_pt_min = ptMinTAMUD, RAA_pt_max = ptMaxTAMUD
+        )
+        hPtFONLLtimesTAMUD.append(hPtFONLLtimesTAMU)
 
-        hPtFONLLD[-1].Sumw2()
-        hPtFONLLD[-1].Scale(1./hPtFONLLD[-1].Integral())
-        hPtWeightsFONLLD.append(hPtFONLLD[-1].Clone(histoName.replace('Pt', 'PtWeights')))
-        hPtWeightsFONLLD[-1].Divide(hPtFONLLD[-1], hPtGenD)
-        hPtWeightsFONLLD[-1].Smooth(smooth)
-        hPtFONLLtimesTAMUD[-1].Scale(1./hPtFONLLtimesTAMUD[-1].Integral())
-        hPtWeightsFONLLtimesTAMUD.append(
-            hPtFONLLtimesTAMUD[-1].Clone(hPtFONLLtimesTAMUD[-1].GetName().replace('Pt', 'PtWeights')))
-        hPtWeightsFONLLtimesTAMUD[-1].Divide(hPtFONLLtimesTAMUD[-1], hPtGenD)
-        hPtWeightsFONLLtimesTAMUD[-1].Smooth(smooth)
-    print('INFO: D pT weights calculated')
+        hPtWeightsFONLL = hPtFONLL.Clone(histoName.replace("Pt", "PtWeights"))
+        hPtWeightsFONLL.Divide(hPtFONLL, hPtGenPromptD)
+        hPtWeightsFONLL.Smooth(smooth)
+        hPtWeightsFONLLD.append(hPtWeightsFONLL)
+
+        hPtWeightsFONLLtimesTAMU = hPtFONLLtimesTAMU.Clone(hPtFONLLtimesTAMU.GetName().replace("Pt", "PtWeights"))
+        hPtWeightsFONLLtimesTAMU.Divide(hPtFONLLtimesTAMU, hPtGenPromptD)
+        hPtWeightsFONLLtimesTAMU.Smooth(smooth)
+        hPtWeightsFONLLtimesTAMUD.append(hPtWeightsFONLLtimesTAMU)
 
     # B meson weights
     #___________________________________________________________________________________________________________________________
     if Bspecie:
         for histoName, pred in zip(histoBNames, modelPred):
-            hPtFONLLB.append(hPtGenB.Clone(histoName))
-            hPtFONLLtimesTAMUB.append(hPtGenB.Clone(histoName.replace('FONLL', 'FONLLtimesTAMU')))
 
-            for iPt in range(1, hPtFONLLB[-1].GetNbinsX()+1):
-                ptCent = hPtFONLLB[-1].GetBinCenter(iPt)
-                if ptMinFONLLB < ptCent < ptMaxFONLLB:
-                    hPtFONLLB[-1].SetBinContent(iPt, sFONLLB[pred](ptCent))
-                    if Bspecie != 'BsBmix':
-                        if ptMinTAMUB <= ptCent <= ptMaxTAMUB:
-                            hPtFONLLtimesTAMUB[-1].SetBinContent(iPt, sFONLLB[pred](ptCent) * sTAMUB['yCent'](ptCent))
-                        elif ptCent > ptMaxTAMUB:
-                            hPtFONLLtimesTAMUB[-1].SetBinContent(iPt, sFONLLB[pred](ptCent) * sTAMUB['yCent'](ptMaxTAMUB))
-                        else:
-                            hPtFONLLtimesTAMUB[-1].SetBinContent(iPt, sFONLLB[pred](ptCent) * sTAMUB['yCent'](ptMinTAMUB))
-                    else:
-                        ptMaxMix = min([ptMaxTAMUB, ptMaxTAMUBs])
-                        ptMinMix = max([ptMinTAMUB, ptMinTAMUBs])
-                        if ptMinMix <= ptCent <= ptMaxMix:
-                            rAAMix = (sTAMUB['yCent'](ptCent) + sTAMUBs['yCent'](ptCent)) / 2
-                        elif ptCent > ptMaxMix:
-                            rAAMix = (sTAMUB['yCent'](ptMaxMix) + sTAMUBs['yCent'](ptMaxMix)) / 2
-                        else:
-                            rAAMix = (sTAMUB['yCent'](ptMinMix) + sTAMUBs['yCent'](ptMinMix)) / 2
-                        hPtFONLLtimesTAMUB[-1].SetBinContent(iPt, sFONLLB[pred](ptCent) * rAAMix)
-                elif ptCent > ptMaxFONLLB:
-                    print(f'WARNING: Results for pT > {ptMaxFONLLB} not reliable! Set weights to 0')
-                    continue
-                else:
-                    print(f'WARNING: Results for pT < {ptMinFONLLB} not reliable! Set weights to 0')
-                    continue
+            hPtFONLL = hPtGenB.Clone(histoName)
+            hPtFONLLtimesTAMU = hPtGenB.Clone(histoName.replace("FONLL", "FONLLtimesTAMU"))
 
-            hPtFONLLB[-1].Sumw2()
-            hPtFONLLB[-1].Scale(1./hPtFONLLB[-1].Integral())
-            hPtWeightsFONLLB.append(hPtFONLLB[-1].Clone(histoName.replace('Pt', 'PtWeights')))
-            hPtWeightsFONLLB[-1].Divide(hPtFONLLB[-1], hPtGenB)
-            hPtWeightsFONLLB[-1].Smooth(smooth)
-            hPtFONLLtimesTAMUB[-1].Scale(1./hPtFONLLtimesTAMUB[-1].Integral())
-            hPtWeightsFONLLtimesTAMUB.append(
-                hPtFONLLtimesTAMUB[-1].Clone(hPtFONLLtimesTAMUB[-1].GetName().replace('Pt', 'PtWeights')))
-            hPtWeightsFONLLtimesTAMUB[-1].Divide(hPtFONLLtimesTAMUB[-1], hPtGenB)
-            hPtWeightsFONLLtimesTAMUB[-1].Smooth(smooth)
-    print('INFO: B pT weights calculated')
+            fill_pt_spectrum(hPtFONLL, pp_cross_sect = sFONLLB[pred],
+                             pp_cross_sect_pt_min = ptMinFONLL, pp_cross_sect_pt_max = ptMaxFONLL)
+            hPtFONLLB.append(hPtFONLL)
+            fill_pt_spectrum(hPtFONLLtimesTAMU,
+                             pp_cross_sect = sFONLLB[pred], pp_cross_sect_pt_min = ptMinFONLL, pp_cross_sect_pt_max = ptMaxFONLL,
+                             RAA = sTAMUB["yCent"] if Bspecie != 'BsBmix' else (lambda pt: (sTAMUB['yCent'](pt) + sTAMUBs['yCent'](pt)) / 2),
+                             RAA_pt_min = ptMinTAMUB if Bspecie != 'BsBmix' else min([ptMinTAMUB, ptMinTAMUBs]),
+                             RAA_pt_max = ptMaxTAMUB if Bspecie != 'BsBmix' else max([ptMaxTAMUB, ptMaxTAMUBs])
+            )
+            hPtFONLLtimesTAMUB.append(hPtFONLLtimesTAMU)
+
+            hPtWeightsFONLL = hPtFONLL.Clone(histoName.replace("Pt", "PtWeights"))
+            hPtWeightsFONLL.Divide(hPtFONLL, hPtGenB)
+            hPtWeightsFONLL.Smooth(smooth)
+            hPtWeightsFONLLB.append(hPtWeightsFONLL)
+
+            hPtWeightsFONLLtimesTAMU = hPtFONLLtimesTAMU.Clone(hPtFONLLtimesTAMU.GetName().replace("Pt", "PtWeights"))
+            hPtWeightsFONLLtimesTAMU.Divide(hPtFONLLtimesTAMU, hPtGenB)
+            hPtWeightsFONLLtimesTAMU.Smooth(smooth)
+            hPtWeightsFONLLtimesTAMUB.append(hPtWeightsFONLLtimesTAMU)
+
+    logger("B pT weights calculated", level='INFO')
 
     # save output
     #___________________________________________________________________________________________________________________________
     outputDir = f'{work_dir}/weights/{Dspecie}/{cent}/'
     os.makedirs(outputDir, exist_ok=True)
-    outfile = TFile(f'{outputDir}/pTweight_{Dspecie}_{cent}_{suffix}.root', 'recreate')
-    hPtGenD.Write()
+    outfile = TFile(f'{outputDir}/pTweight_{Dspecie}_{cent}_{suffix}_new.root', 'recreate')
+    hPtGenPromptD.Write()
     if Bspecie:
         hPtGenB.Write()
     for iHisto, _ in enumerate(hPtFONLLD):
@@ -208,7 +222,7 @@ def computePtWeights(config):
     canvPtshape.Divide(2, 1)
     ptD = [0, 36]
     canvPtshape.cd(1).DrawFrame(ptD[0], 0.0000001, ptD[1], 1,
-                        f';#it{{p_{{T}}}} (GeV/c);Prompt {config["Dmeson"]}')
+                        f';#it{{p_{{T}}}} (GeV/c);Prompt {cfg["Dmeson"]}')
     canvPtshape.cd(1)
     canvPtshape.cd(1).SetLogy()
 
@@ -217,14 +231,14 @@ def computePtWeights(config):
     leg.SetBorderSize(0)
     leg.SetTextSize(0.04)
 
-    SetObjectStyle(hPtGenD, color=kRed, markersize=0.5)
-    leg.AddEntry(hPtGenD, 'Gen Prompt', 'lp')
+    SetObjectStyle(hPtGenPromptD, color=kRed, markersize=0.5)
+    leg.AddEntry(hPtGenPromptD, 'Gen Prompt', 'lp')
     SetObjectStyle(hPtFONLLtimesTAMUD[0], color=kBlack, markersize=0.5)
     leg.AddEntry(hPtFONLLtimesTAMUD[0], 'FONLL #times TAMU (R_{AA})', 'lp')
     SetObjectStyle(hPtFONLLD[0], color=kAzure, markersize=0.5)
 
     hPtFONLLtimesTAMUD[0].Draw('same')
-    hPtGenD.Draw('same')
+    hPtGenPromptD.Draw('same')
     leg.Draw()
 
     canvPtshape.cd(2).DrawFrame(0, 0., ptD[1], 5, ';#it{p_{T}} (GeV/c);Ratio')
@@ -293,7 +307,7 @@ def computePtWeights(config):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arguments')
-    parser.add_argument("config", type=str, help="flow config file")
+    parser.add_argument("cfg", type=str, help="flow cfg file")
     args = parser.parse_args()
 
-    computePtWeights(args.config)
+    compute_pt_weights(args.cfg)

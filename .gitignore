@@ -3,6 +3,9 @@
 **/config/
 **/__pycache__/
 **/resolution/reso*
+./ptweights/*.root
+./ptweights/*.png
+./ptweights/weights/
 
 # test files to ignore
 test*
