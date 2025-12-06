@@ -524,7 +524,7 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
 
     # Save output histos
     if not isMultitrial:
-        logger('Saving output histos', level='INFO')
+        logger(f'Saving output histos to {outFileName}.root')
     os.makedirs(os.path.dirname(outFileName), exist_ok=True)
     for iPt, (ptMin, ptMax) in enumerate(zip(ptmins, ptmaxs)):
         if iPt == 0:

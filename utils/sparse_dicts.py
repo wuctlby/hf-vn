@@ -168,12 +168,11 @@ def get_sparse_dict(sparse_name, dmeson):
                 return {
                     'Mass': 0,
                     'Pt': 1,
-                    'Cent': 3,
-                    'NPvContr': 4,
-                    'ScoreBkg': 5,
-                    'ScorePrompt': 6,
-                    'ScoreFD': 7,
-                    'Occ': 8,
+                    'Cent': 2,
+                    'ScoreBkg': 3,
+                    'ScoreFD': 5,
+                    'ScorePrompt': 4,
+                    'NPvContr': 6
                 }
             elif sparse_name == "RecoFD":
                 return {
@@ -181,30 +180,29 @@ def get_sparse_dict(sparse_name, dmeson):
                     'Pt': 1,
                     'Cent': 2,
                     'ScoreBkg': 3,
-                    'ScorePrompt': 4,
                     'ScoreFD': 5,
-                    'PtBMoth': 6,
-                    'FlagBHad': 7,
-                    'Occ': 8
+                    'ScorePrompt': 4,
+                    'NPvContr': 6,
+                    'PtBMoth': 7,
+                    'FlagBHad': 8,
                 }
             elif sparse_name == "GenPrompt":
                 return {
                     'Pt': 0,
                     'Y': 1,
                     'NPvContr': 2,
-                    'Cent': 3,
-                    'Occ': 4
+                    'Cent': 3
                 }
             elif sparse_name == "GenFD":
                 return {
                     'Pt': 0,
                     'Y': 1,
-                    'Cent': 2,
-                    'PtBMoth': 3,
-                    'FlagBHad': 4,
-                    'Occ': 5
+                    'NPvContr': 2,
+                    'Cent': 3,
+                    'PtBMoth': 4,
+                    'FlagBHad': 5
                 }
             else:
                 logger(f"Unknown sparse type for Ds {sparse_name}", level='ERROR')
         else:
-            logger(f"Data type {data_type} not recognized", level='ERROR')
+            logger(f"Sparse dictionary not defined for Dmeson type {dmeson}", level='ERROR')

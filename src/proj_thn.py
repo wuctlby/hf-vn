@@ -276,7 +276,7 @@ if __name__ == "__main__":
         det_A = config["projections"].get('detA', 'FT0c')
         det_B = config["projections"].get('detB', 'FV0a')
         det_C = config["projections"].get('detC', 'TPCtot')
-        logger(f"Getting resolution histogram from file {config["projections"]['Resolution']} for triplet {det_A}_{det_B}_{det_C}",  "WARNING")
+        logger(f"Getting resolution histogram from file {config['projections']['Resolution']} for triplet {det_A}_{det_B}_{det_C}",  "WARNING")
         reso_hist = reso_file.Get(f'{det_A}_{det_B}_{det_C}/histo_reso_delta_cent')
         reso_hist.SetDirectory(0)
         reso_file.Close()
@@ -290,7 +290,7 @@ if __name__ == "__main__":
                                                                                    cutSetCfg['ScoreFD']['min'], cutSetCfg['ScoreFD']['max'])):
 
             # Cut on centrality and pt on data applied in the preprocessing
-            print(f'Projecting distributions for {pt_min:.1f} < pT < {pt_max:.1f} GeV/c')
+            logger(f'Projecting distributions for {pt_min:.1f} < pT < {pt_max:.1f} GeV/c')
             pt_label = f"pt_{int(pt_min*10)}_{int(pt_max*10)}"
             make_dir_root_file(pt_label, outfile)
             sparse_flow, sparses_reco, sparses_gen, axes = get_pt_preprocessed_sparses(config, pt_label)
@@ -299,7 +299,7 @@ if __name__ == "__main__":
                 sparse_flow["FlowSP"].GetAxis(axes['FlowSP']['ScoreFD']).SetRangeUser(fd_min, fd_max)
                 sparse_flow["FlowSP"].GetAxis(axes['FlowSP']['ScoreBkg']).SetRangeUser(bkg_min, bkg_max)
                 proj_data(i_pt, sparse_flow["FlowSP"], axes, resolution, config["projections"], write_opt_data)
-                print(f"Projected data!")
+                logger(f"Projected data!")
 
             if operations.get("proj_mc"):
                 for key, i_sparse in sparses_reco.items():
@@ -307,11 +307,10 @@ if __name__ == "__main__":
                     i_sparse.GetAxis(axes[key]['ScoreFD']).SetRangeUser(fd_min, fd_max)
 
                 proj_mc_reco(sparses_reco, sPtWeightsD, sPtWeightsB, Bspeciesweights, write_opt_mc)
-                print("Projected mc reco!")
+                logger("Projected mc reco!")
                 proj_mc_gen(sparses_gen, sPtWeightsD, sPtWeightsB, Bspeciesweights, write_opt_mc)
-                print("Projected mc gen!")
+                logger("Projected mc gen!\n\n")
 
-            print('\n\n')
             bar()
 
     outfile.Close()

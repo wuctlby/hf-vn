@@ -56,7 +56,11 @@ def get_inputs(file, full_cfg, sparse_cfg, debug=False):
 
     axes = get_sparse_dict(sparse_cfg['name'], full_cfg['Dmeson'])
     sparse = file.Get(sparse_cfg['path'])
-    logger(f"Sparse {sparse} loaded from {sparse_cfg['path']}", level='INFO')
+    if sparse is None:
+        logger(f"Sparse {sparse_cfg['name']} not found in file {file.GetName()} at path {sparse_cfg['path']}", level='ERROR')
+    else:
+        logger(f"Sparse {sparse} loaded from {sparse_cfg['path']}", level='INFO')
+    
     if full_cfg['Dmeson'] == 'Dzero':
         # TODO: safety checks for Dmeson reflecton and secondary peak
         if sparse_cfg['name'] == "RecoPrompt":
@@ -85,8 +89,7 @@ def get_inputs(file, full_cfg, sparse_cfg, debug=False):
         logger('###############################################################', level='DEBUG')
         for key, value in axes.items():
             logger(f"    {key}: {value}", level='DEBUG')
-        logger('###############################################################', level='DEBUG')
-        print('\n')
+        logger('###############################################################\n', level='DEBUG')
 
     return sparse, axes
 
@@ -103,7 +106,7 @@ def process_sparse(i_file, infile, full_cfg, sparse_cfg, prep_out_dir, input_out
         input_out_dir (str): sub-directory for the specific input configuration
     """
 
-    logger(f'[Data] Processing file {i_file}, {infile.GetName()}')
+    logger(f'Processing file {i_file}, {infile.GetName()}')
     sparse, axes = get_inputs(infile, full_cfg, sparse_cfg, True)
 
     # Only for flow with SP, not for correlations (applied in O2Physics)
@@ -118,8 +121,9 @@ def process_sparse(i_file, infile, full_cfg, sparse_cfg, prep_out_dir, input_out
     sparse_type, sparse_path = sparse_cfg['name'], sparse_cfg['path']
     sparse_dir, sparse_name = sparse_path.split('/')[0], sparse_path.split('/')[1]
 
+    logger(f"Projecting sparse {sparse_cfg['name']} for file {i_file} into pT bins ({pt_mins} - {pt_maxs}) with bkg cuts {bkg_maxs}", level='INFO')
     for pt_min, pt_max, bkg_max in zip(pt_mins, pt_maxs, bkg_maxs):
-        logger(f"Processing pT bin {pt_min} - {pt_max} with bkg max {bkg_max} ...", level='INFO')
+        logger(f"Processing pT bin {pt_min} - {pt_max} with bkg max {bkg_max}", level='INFO')
         # Create output file
         out_file_dir = f"{prep_out_dir}/preprocess/pt_{int(pt_min*10)}_{int(pt_max*10)}/{input_out_dir}"
         os.makedirs(out_file_dir, exist_ok=True)
@@ -169,6 +173,7 @@ if __name__ == "__main__":
 
         # use hadd to merge the results in the directories for the different pT bins
         for directory in os.listdir(f"{output_dir}/preprocess/"):
+            logger(f"Merging files in {output_dir}/preprocess/{directory}/{input_cfg['outdir']}/jobs ...", "INFO")
             prep_dir = f"{output_dir}/preprocess/{directory}/{input_cfg['outdir']}"
             files_to_merge = [f"./jobs/{file}" for file in os.listdir(f"{prep_dir}/jobs") if file.startswith("AnalysisResults_") and file.endswith(".root")]
             files_to_merge_str = ' '.join(files_to_merge)

@@ -127,7 +127,7 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
         nSets = len(listRawYield)
         logger(f'Pt: {ptMin:.1f}-{ptMax:.1f}, iPt: {iPt+1}', level='INFO')
         for i in range(len(listEffPrompt)):
-            logger(f'({oCuts[i]}) Eff Prompt: {listEffPrompt[i]:.6f}    Eff FD: {listEffFD[i]:.6f}    Raw Yield: {listRawYield[i]:.2f}', level='INFO')
+            logger(f'({oCuts[i]}) Eff Prompt: {listEffPrompt[i]:.6f}    Eff FD: {listEffFD[i]:.6f}    Raw Yield: {listRawYield[i]:.2f}', level='DEBUG')
 
         corrYields, covMatrixCorrYields, chiSquare, matrices = \
             GetMinimisation(listEffPrompt, listEffFD, listRawYield, listEffPromptUnc, listEffFDUnc, listRawYieldUnc)
