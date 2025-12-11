@@ -3,12 +3,14 @@ import sys
 import os
 import re
 import array
+import time
 os.environ["CUDA_VISIBLE_DEVICES"] = ""  # pylint: disable=wrong-import-position
 import pandas as pd
 import numpy as np
 import seaborn as sns
+import awkward as ak
 import matplotlib.pyplot as plt
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import itertools
 sys.path.append("./flareflyfitter/")
 from raw_yield_fitter import RawYieldFitter
@@ -22,212 +24,229 @@ from matplotlib import gridspec
 import uproot
 from multiprocessing import Pool, cpu_count
 ROOT.gROOT.SetBatch(True)
+import tensorflow as tf
+tf.config.threading.set_intra_op_parallelism_threads(20)
+tf.config.threading.set_inter_op_parallelism_threads(20)
 
-def fit_control_var(df, i_bin, pt_min, pt_max, cfg_full, cfg_fit, output_dir, sel_string):
-    print("\n\n")
-    part_name = cfg_full['Dmeson']
-    fitter = RawYieldFitter(part_name, os.path.basename(output_dir), True)
-    fitter.set_rebin(cfg_fit.get('rebin', 1))
-    fitter.set_fit_range(cfg_fit['MassFitRanges'][i_bin][0], cfg_fit['MassFitRanges'][i_bin][1])
-    fitter.set_data_to_fit_df(df)
+def load_aod_file(aod_file, has_sp_cent, num_workers=16, chunk_size=1_000_000):
+    start_total = time.time()
+    branches = ["fPt", "fM", "fMlScore0", "fMlScore1", "fScalarProd", "fCent"] \
+               if has_sp_cent else ["fPt", "fM", "fMlScore0", "fMlScore1"]
+    key = "ptcentersp" if has_sp_cent else "ptcenter"
 
-    bkg_funcs = cfg_fit['BkgFunc'][i_bin] if isinstance(cfg_fit['BkgFunc'], list) else [cfg_fit['BkgFunc']]
-    for bkg_func in bkg_funcs:
-        fitter.add_bkg_func(bkg_func, "Comb. bkg")
+    # Open with parallel decompression
+    t0 = time.time()
+    f = uproot.open(aod_file, num_workers=8)
+    entries = f[key].num_entries
+    logger(f"Opened file in {time.time()-t0:.2f}s using {num_workers} workers, total entries: {entries}", level="INFO")
 
-    sgn_funcs = cfg_fit['SgnFunc'][i_bin] if isinstance(cfg_fit['SgnFunc'], list) else [cfg_fit['SgnFunc']]
-    for i_sgn, sgn_func in enumerate(sgn_funcs):
-        fitter.add_sgn_func(sgn_func, f"signal_{i_sgn}")
-
-    # Add correlated background if specified
-    if cfg_full.get('corr_bkgs'):
-        fitter.add_corr_bkgs(cfg_full['corr_bkgs'], sel_string, pt_min, pt_max)
-
-    fitter.setup()
-    fit_res = fitter.fit()
-
-    sgn_sweights = fitter.get_sweights_sgn(len(sgn_funcs)-1)
-
-    os.makedirs(output_dir, exist_ok=True)
-    with open(f"{output_dir}/../fits_status.txt", "a") as f:
-        computed_sweights = True if sgn_sweights is not None else False
-        f.write(
-                f"{output_dir}: fit_res.valid -> {fit_res.valid}, "
-                f"fit_res.status -> {fit_res.status}, "
-                f"fit_res.converged -> {fit_res.converged}, "
-                f"sweights computed -> {computed_sweights} \n"
-                )
-
-    fig, _ = fitter.plot_fit(False, True, loc=["lower left", "upper left"]) # (log, show_extra_info)
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    fig.savefig(
-        os.path.join(
-            output_dir,
-            f'fits/fM_fit.png'
-        ),
-        dpi=300, bbox_inches="tight"
-    )
-
-    return sgn_sweights
-
-def load_aod_file(i_file, aod_file):
-    logger(f"Loading AOD file [{i_file}]: {aod_file}", "INFO")
-    branches = ["fPt", "fM", "fMlScore0", "fMlScore1", "fScalarProd", "fCent"]
-    try:
-        f = uproot.open(aod_file)
-        o2_keys = [k for k in f.keys() if "O2" in k]
-        dfs = []
-        for key in o2_keys:
-            arr = f[key].arrays(branches, library="ak")
-            arr = ak.zip({b: arr[b] for b in arr.fields})  # row-wise structure
-            df_tree = pd.DataFrame({b: arr[b].to_numpy() for b in arr.fields})
-            dfs.append(df_tree)
-
-        # concatenate all O2 trees in this file
-        if dfs:
-            df_file = pd.concat(dfs, ignore_index=True)
-        else:
-            df_file = pd.DataFrame()
-
-        logger(f"[{i_file}] Loaded {aod_file} with {len(df_file)} total entries from {len(o2_keys)} O2 trees", "INFO")
-        return df_file
-    except Exception as e:
-        logger(f"Failed to load {aod_file}: {e}", "ERROR")
-        return pd.DataFrame()  # return empty DataFrame on failure
-
-def load_input_df(input_aod_cfg, workers):
-
-    # Input files
-    if isinstance(input_aod_cfg, str) and input_aod_cfg.endswith('.root'):
-        logger("Single AOD file detected.", "INFO")
-        input_aods = [input_aod_cfg]
-    elif isinstance(input_aod_cfg, list):
-        logger("List of AOD files detected.", "INFO")
-        input_aods = input_aod_cfg
-    elif isinstance(input_aod_cfg, str) and os.path.isdir(input_aod_cfg):
-        logger("Directory of AOD files detected.", "INFO")
-        input_aods = [os.path.join(input_aod_cfg, f) for f in os.listdir(input_aod_cfg) if f.endswith('.root') and 'AO2D' in f]
-    else:
-        logger("Invalid input_aod configuration.", "ERROR")
-        sys.exit(1)
-    input_aods = sorted(input_aods, key=lambda x: int(__import__('re').search(r'AO2D_(\d+)', x).group(1)))
-    print(f"Total AOD files to load: {len(input_aods)}")
-    with Pool(processes=workers) as pool:
-        dfs = pool.starmap(load_aod_file, enumerate(input_aods))
+    # Iterate in chunks
+    dfs = []
+    for df_chunk in f[key].iterate(filter_name=branches, step_size=chunk_size, library="np"):
+        dfs.append(pd.DataFrame(df_chunk))
 
     # Concatenate
+    t2 = time.time()
     df = pd.concat(dfs, ignore_index=True)
-    logger(f"Total entries: {len(df)}", "INFO")
+    logger(f"TOTAL time: {time.time()-start_total:.2f}s", level="INFO")
     return df
 
-def eval_pt_center(cfg_file_name, workers=1):
+def eval_pt_center(cfg_file_name, minimizer, workers=1):
     # Read the configuration file
     with open(cfg_file_name, 'r') as cfg_file:
         cfg = yaml.safe_load(cfg_file)
+    print(tf.config.threading.get_intra_op_parallelism_threads())
 
     # Retrieve cutsets configs
     cutsets_dir = os.path.join(cfg['outdir'], f"cutvar_{cfg['suffix']}_combined/cutsets")
     cutset_files = [os.path.join(cutsets_dir, f) for f in os.listdir(cutsets_dir) if f.endswith('.yml')]
     cutset_files.sort(key=lambda x: int(re.search(r'(\d+)', os.path.basename(x)).group(1)))
-    print(f"Found {cutset_files} cutset files in {cutsets_dir}")
 
-    df = load_input_df(cfg["pt_centering"]["input_aod"], workers=workers)
-    infer_vars = df.columns.tolist()
-    infer_vars.remove('fM')
-    infer_vars.remove('fMlScore0')
-    infer_vars.remove('fMlScore1')
+    infer_vars = ['fPt', 'fScalarProd', 'fCent']
 
     # Loop over cutset configs
     s_weights = {}
     cfg_fit = cfg["v2extraction"]
-    for cutset_file in cutset_files:
-        with open(cutset_file, 'r') as cs_file:
-            cutset_cfg = yaml.safe_load(cs_file)
-        out_file_path = cutset_file.replace('cutset', 'ptcenter').replace('.yml', '.root')
-        os.makedirs(os.path.dirname(out_file_path), exist_ok=True)
-        out_file = TFile.Open(out_file_path, "recreate")
 
+    for i_bin, (pt_min, pt_max) in enumerate(zip(cfg["ptbins"][:-1], cfg["ptbins"][1:])):
+        logger(f"Pt bin {i_bin}: {pt_min} - {pt_max}", level="INFO")
+
+        # Load input
+        pt_str = f"pt_{int(pt_min*10)}_{int(pt_max*10)}"
+        has_sp_cent = True
+        prep_dir = f"{cfg['outdir']}/preprocess/{pt_str}/TreesPtCenterSp"
+        if not os.path.exists(prep_dir):
+            prep_dir = f"{cfg['outdir']}/preprocess/{pt_str}/TreesPtCenter"
+            has_sp_cent = False
+            logger(f"Using tree without SP and centrality!", level="WARNING")
+        df = load_aod_file(f"{prep_dir}/AO2D_{pt_str}.root", has_sp_cent)
+
+        out_dir_pt = f"{cfg['outdir']}/cutvar_{cfg['suffix']}_combined/ptcenter_{minimizer}/{pt_str}"
+        os.makedirs(out_dir_pt, exist_ok=True)
+        os.makedirs(out_dir_pt + "/fits", exist_ok=True)
+        os.makedirs(out_dir_pt + "/vars", exist_ok=True)
+
+        out_file = TFile.Open(f"{out_dir_pt}/pt_center.root", "recreate")
+        print(f"Output ROOT file: {out_file.GetName()}")
         histos_avgs = {}
         for var in infer_vars:
-            histos_avgs[f"h_{var}_sgn"] = ROOT.TH1F(f"h_{var}_sgn", f"h_{var}_sgn", len(cutset_cfg["Pt"]["min"]), array.array('d', cutset_cfg["Pt"]["min"] + [cutset_cfg["Pt"]["max"][-1]]))
-            histos_avgs[f"h_{var}_bkg"] = ROOT.TH1F(f"h_{var}_bkg", f"h_{var}_bkg", len(cutset_cfg["Pt"]["min"]), array.array('d', cutset_cfg["Pt"]["min"] + [cutset_cfg["Pt"]["max"][-1]]))
+            histos_avgs[f"h_{var}_sgn"] = ROOT.TH1F(f"h_{var}_sgn", f"h_{var}_sgn", len(cutset_files)-1, array.array('d', [i for i in range(len(cutset_files))]))
+            histos_avgs[f"h_{var}_bkg"] = ROOT.TH1F(f"h_{var}_bkg", f"h_{var}_bkg", len(cutset_files)-1, array.array('d', [i for i in range(len(cutset_files))]))
 
-        # Loop over pt bins
-        for i_bin, (pt_min, pt_max, score_bkg_min, score_bkg_max, score_fd_min, score_fd_max) in \
-            enumerate(zip(cutset_cfg["Pt"]["min"], cutset_cfg["Pt"]["max"],
-                          cutset_cfg["ScoreBkg"]["min"], cutset_cfg["ScoreBkg"]["max"],
-                          cutset_cfg["ScoreFD"]["min"], cutset_cfg["ScoreFD"]["max"])):
+        sgn_funcs = {} # More info for signal functions, a dictionary is better
+        sgn_funcs[cfg_fit['SgnFuncLabel']] = {
+            'func': cfg_fit['SgnFunc'][i_bin] if isinstance(cfg_fit['SgnFunc'], list) else cfg_fit['SgnFunc'],
+            'part': cfg['Dmeson']
+        }
+        histos_avgs[f"h_ry_{cfg_fit['SgnFuncLabel']}"] = ROOT.TH1F(f"h_ry_{cfg_fit['SgnFuncLabel']}",
+                                                                   f"h_ry_{cfg_fit['SgnFuncLabel']}",
+                                                                   len(cutset_files)-1,
+                                                                   array.array('d', [i for i in range(len(cutset_files))]))
+        if cfg_fit.get('InclSecPeak'):
+            include_sec_peak = cfg_fit['InclSecPeak'][i_bin] if isinstance(cfg_fit['InclSecPeak'], list) else cfg_fit['InclSecPeak']
+            if include_sec_peak:
+                sgn_funcs[cfg_fit['SgnFuncSecPeakLabel']] = {
+                    'func': cfg_fit['SgnFuncSecPeak'][i_bin] if isinstance(cfg_fit['SgnFuncSecPeak'], list) else cfg_fit['SgnFuncSecPeak'],
+                    'part': 'Dplus' if cfg['Dmeson'] == 'Ds' else 'Dstar',
+                }
+                histos_avgs[f"h_ry_{cfg_fit['SgnFuncSecPeakLabel']}"] = ROOT.TH1F(f"h_ry_{cfg_fit['SgnFuncSecPeakLabel']}",
+                                                                                  f"h_ry_{cfg_fit['SgnFuncSecPeakLabel']}",
+                                                                                  len(cutset_files)-1, 
+                                                                                  array.array('d', [i for i in range(len(cutset_files))]))
 
-            out_dir_pt = f"{out_file_path.replace('.root', '')}/pt_{int(pt_min*10)}_{int(pt_max*10)}"
-            logger(f"Processing pt bin: {pt_min} - {pt_max} of cutset file: {cutset_file}, output directory: {out_dir_pt}", level="INFO")
+        # Initialize fitter
+        fitter = RawYieldFitter(cfg['Dmeson'], pt_min, pt_max, pt_str, minimizer)
+        fitter.set_fit_range(cfg_fit['MassFitRanges'][i_bin][0], cfg_fit['MassFitRanges'][i_bin][1])
 
-            os.makedirs(out_dir_pt, exist_ok=True)
-            os.makedirs(out_dir_pt + "/fits", exist_ok=True)
-            os.makedirs(out_dir_pt + "/vars", exist_ok=True)
+        for i_cutset, cutset_file in enumerate(cutset_files):
+            if i_cutset == 0:
+                continue
+            with open(cutset_file, 'r') as cs_file:
+                cutset_cfg = yaml.safe_load(cs_file)
+            logger(f"Processing cutset file {cutset_file} ... ", level="INFO")
+            cutset_suffix = os.path.basename(cutset_file).replace('.yml', '').split('_')[-1]
+
+            # Setup fitter
+            fitter.add_bkg_func(cfg_fit['BkgFunc'][i_bin] if isinstance(cfg_fit['BkgFunc'], list) else cfg_fit['BkgFunc'], "Comb. bkg")
+            for i_sgn, (label, sgn_func) in enumerate(sgn_funcs.items()):
+                print(f"Adding signal function: {sgn_func}, {label} ... ")
+                fitter.add_sgn_func(sgn_func['func'], label, sgn_func['part'])
+
+            score_bkg_min = cutset_cfg["ScoreBkg"]["min"][i_bin]
+            score_bkg_max = cutset_cfg["ScoreBkg"]["max"][i_bin]
+            score_fd_min = cutset_cfg["ScoreFD"]["min"][i_bin]
+            score_fd_max = cutset_cfg["ScoreFD"]["max"][i_bin]
 
             # Query the dataframe
             mass_min, mass_max = cfg_fit["MassFitRanges"][i_bin]
-            sel_string = f"{pt_min} <= fPt < {pt_max} and " \
-                         f"{score_bkg_min} <= fMlScore0 < {score_bkg_max} and " \
-                         f"{score_fd_min} <= fMlScore1 < {score_fd_max} and " \
-                         f"{mass_min} <= fM <= {mass_max}"
-            sel_string_corr_bkgs = f"fMlScore0 < {score_bkg_max} && " \
-                                   f"fMlScore0 >= {score_bkg_min} && " \
-                                   f"fMlScore1 < {score_fd_max} && " \
-                                   f"fMlScore1 >= {score_fd_min} && " \
-                                   f"fM >= {mass_min} && fM < {mass_max}"
+            sel_string = f"fPt >= {pt_min} and fPt < {pt_max} and " \
+                         f"fMlScore0 >= {score_bkg_min} and fMlScore0 < {score_bkg_max} and " \
+                         f"fMlScore1 >= {score_fd_min} and fMlScore1 < {score_fd_max} and " \
+                         f"fM >= {mass_min} and fM < {mass_max}"
             sel_df = df.query(sel_string).reset_index(drop=True)
+            fitter.set_name(f"{pt_str}_{cutset_suffix}")
+            fitter.set_data_to_fit_df(sel_df)
+            if cfg_fit.get('Rebin'):
+                fitter.set_rebin(cfg_fit['Rebin'][i_bin]) if isinstance(cfg_fit['Rebin'], list) else fitter.set_rebin(cfg_fit['Rebin'])
+
+            # Add correlated background if specified
+            if cfg.get('corr_bkgs'):
+                fitter.add_corr_bkgs(cfg['corr_bkgs'], sel_string.replace(' and ', ' && '), pt_min, pt_max)
+
             fig, ax = plt.subplots(1, 1, figsize=(12, 10))
             sel_df['fM'].hist(bins=100, alpha=0.5, range=(mass_min, mass_max))
             ax.set_xlabel('fM')
             ax.set_ylabel('Counts')
-            if not os.path.exists(out_dir_pt):
-                os.makedirs(out_dir_pt)
-            fig.savefig(
-                os.path.join(
-                        out_dir_pt,
-                        f'fits/fM_raw.png'
-                ),
-                dpi=300, bbox_inches="tight"
-            )
+            fig.savefig(f"{out_dir_pt}/fits/fM_raw_{cutset_suffix}.pdf", dpi=300, bbox_inches="tight")
 
-            s_weights = fit_control_var(sel_df, i_bin, pt_min, pt_max, cfg, cfg_fit, out_dir_pt, sel_string_corr_bkgs)
+            fitter.setup()
+
+            if cfg_fit.get('InitPars'):
+                fitter.set_fit_pars(cfg_fit['InitPars'], pt_min, pt_max)
+
+            # Prefit the MC prompt enhanced cut to fix the tails, binned fit
+            if cfg_fit.get('FixSgnFromMC'):
+                fitter.set_fix_sgn_to_mc_prefit(True)
+                if i_cutset == 1:
+                    fitter.prefit_mc(f"{cfg['outdir']}/corr_bkgs/templs_{pt_str}.root")
+                    fitter.plot_mc_prefit(False, True, loc=["lower left", "upper left"],
+                                          path=f"{out_dir_pt}/", out_file=out_file)
+                    fitter.plot_raw_residuals_mc_prefit(path=f"{out_dir_pt}/fM_mc_prefit_residuals_{cutset_suffix}.pdf")
+
+            status, converged = fitter.fit()
+            s_weights_sgn = fitter.get_sweights_sgn(cfg_fit['SgnFuncLabel'])
+            s_weights_sec_peak = fitter.get_sweights_sgn(cfg_fit['SgnFuncSecPeakLabel']) if cfg_fit.get('InclSecPeak') else None
+            with open(f"{out_dir_pt}/fits_status.txt", "a") as f:
+                computed_sweights = True if s_weights_sgn is not None else False
+                f.write(
+                        f"{fitter.get_name()}: "
+                        f"fit_res.status -> {status}, "
+                        f"fit_res.converged -> {converged}, "
+                        f"sweights computed -> {computed_sweights} \n"
+                        )
+
+            fitter.plot_fit(False, True, loc=["lower left", "upper left"], \
+                            path=f"{out_dir_pt}/fits/fM_fit_{cutset_suffix}.pdf",
+                            out_file=out_file) # (log, show_extra_info)
+            # quit()
+
             for var in infer_vars:
                 print(f"    Drawing {var}")
 
-                # Create figure with two subplots (distros and ratio)
-                fig, ax = plt.subplots(figsize=(8, 8))
+                # # Create figure with two subplots (distros and ratio)
+                # fig, ax = plt.subplots(figsize=(8, 8))
 
-                bins = 200
-                var_range = (min(sel_df[var]), max(sel_df[var]))
-                sgn_vals, bin_edges = np.histogram(sel_df[var], bins=bins, range=var_range, weights=s_weights, density=True)
-                bkg_vals, _ = np.histogram(sel_df[var], bins=bins, range=var_range, weights=(1 - s_weights), density=True)
-                bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+                # bins = 200
+                # var_range = (min(sel_df[var]), max(sel_df[var]))
+                # sgn_vals, bin_edges = np.histogram(sel_df[var], bins=bins, range=var_range, weights=s_weights_sgn, density=True)
+                # if s_weights_sec_peak is not None:
+                #     bkg_sweights = np.ones(len(s_weights_sgn)) - np.asarray(s_weights_sgn) - np.asarray(s_weights_sec_peak)
+                # else:
+                #     bkg_sweights = np.ones(len(s_weights_sgn)) - np.asarray(s_weights_sgn)
+                # bkg_vals, _ = np.histogram(sel_df[var], bins=bins, range=var_range, weights=bkg_sweights, density=True)
+                # bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
 
-                # Plot signal and background
-                ax.hist(bin_centers, bins=bins, weights=sgn_vals, label="Signal", color="#1f77b4", alpha=0.5, histtype='step', log=True)
-                ax.hist(bin_centers, bins=bins, weights=bkg_vals, label="Bkg", color="#ff7f0e", alpha=0.5, histtype='step', log=True)
+                # # Plot signal and background
+                # ax.hist(bin_centers, bins=bins, weights=sgn_vals, label="Signal", color="#1f77b4", alpha=0.5, histtype='step', log=True)
+                # ax.hist(bin_centers, bins=bins, weights=bkg_vals, label="Bkg", color="#ff7f0e", alpha=0.5, histtype='step', log=True)
 
-                ax.set_ylabel("Entries")
-                ax.set_xlabel(var)
-                ax.set_title(var)
-                ax.legend()
+                # ax.set_ylabel("Entries")
+                # ax.set_xlabel(var)
+                # ax.set_title(var)
+                # ax.legend()
 
-                # Save figure
-                fig.tight_layout()
-                fig.savefig(
-                    os.path.join(out_dir_pt, f'vars/{var}.png'),
-                    dpi=300, bbox_inches="tight"
-                )
-                plt.close(fig)
-                
-                # Fill histograms for averages
-                histos_avgs[f"h_{var}_sgn"].SetBinContent(i_bin + 1, np.average(sgn_vals))
-                histos_avgs[f"h_{var}_sgn"].SetBinError(i_bin + 1, np.std(sgn_vals))
-                histos_avgs[f"h_{var}_bkg"].SetBinContent(i_bin + 1, np.average(bkg_vals))
-                histos_avgs[f"h_{var}_bkg"].SetBinError(i_bin + 1, np.std(bkg_vals))
-        
+                # # Save figure
+                # fig.tight_layout()
+                # fig.savefig(
+                #     os.path.join(out_dir_pt, f'vars/{var}_{cutset_suffix}.pdf'),
+                #     dpi=300, bbox_inches="tight"
+                # )
+                # plt.close(fig)
+
+                # # Fill histograms for averages
+                # histos_avgs[f"h_{var}_sgn"].SetBinContent(i_cutset + 1, np.average(sel_df[var], weights=s_weights_sgn))
+                # histos_avgs[f"h_{var}_sgn"].SetBinError(i_cutset + 1, np.std(sgn_vals))
+                # histos_avgs[f"h_{var}_bkg"].SetBinContent(i_cutset + 1, np.average(sel_df[var], weights=bkg_sweights))
+                # histos_avgs[f"h_{var}_bkg"].SetBinError(i_cutset + 1, np.std(bkg_vals))
+
+                fit_info, _, _, _, _ = fitter.get_fit_info()
+                for label in sgn_funcs.keys():
+                    histos_avgs[f"h_ry_{label}"].SetBinContent(i_cutset + 1, fit_info[label]["ry"])
+                    histos_avgs[f"h_ry_{label}"].SetBinError(i_cutset + 1, fit_info[label]["ry_unc"])
+
+            # Reset fitter for new cutset: correlated bkg fracs will change
+            fitter.reset()
+
+        # Compute average pt
+        histos_avgs["h_avg_pt"] = ROOT.TH1F("h_avg_pt", "h_avg_pt", 1, 0, 1)
+        avg_pt = 0
+        for i_bin in range(len(cutset_files)-1):
+            avg_pt += (histos_avgs["h_fPt_sgn"].GetBinContent(i_bin + 1) * \
+                       histos_avgs[f"h_ry_{cfg_fit['SgnFuncLabel']}"].GetBinContent(i_bin + 1)) / \
+                       histos_avgs[f"h_ry_{cfg_fit['SgnFuncLabel']}"].Integral()
+
+        histos_avgs["h_avg_pt"].SetBinContent(1, avg_pt)
+
         # Write histograms to output ROOT file
         out_file.cd()
         for hist in histos_avgs.values():
@@ -235,9 +254,10 @@ def eval_pt_center(cfg_file_name, workers=1):
         out_file.Close()
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Evaluate pt-centering with sPlot and FlareFly')
+    parser = argparse.ArgumentParser(description='Evaluate pt-centering with sPlot and flarefly/roofit')
     parser.add_argument('config_file', help='Path to the input configuration file')
+    parser.add_argument("--minimizer", "-m", type=str, default="flarefly", help="minimizer to use")
     parser.add_argument("--workers", "-w", type=int, default=1, help="number of workers")
     args = parser.parse_args()
 
-    eval_pt_center(args.config_file, args.workers)
+    eval_pt_center(args.config_file, args.minimizer, args.workers)

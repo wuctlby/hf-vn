@@ -21,7 +21,7 @@ from raw_yield_fitter import RawYieldFitter
 mp.set_start_method("spawn", force=True)
 msg_service = ROOT.RooMsgService.instance()
 
-def process_pt_bin(i_pt, config, summary, rebin_factor, sp_edges, pt_label, hist_mass_sp_int, reso, outdir):
+def process_pt_bin(i_pt, config, summary, rebin_factor, sp_edges, pt_label, hist_mass_sp_int, reso, outdir, sel_string):
     hist_mass_int = hist_mass_sp_int.ProjectionX()
     fit_cfg = config['v2extraction']
 
@@ -38,6 +38,10 @@ def process_pt_bin(i_pt, config, summary, rebin_factor, sp_edges, pt_label, hist
     sgn_funcs = fit_cfg['SgnFunc'][i_pt] if isinstance(fit_cfg['SgnFunc'], list) else [fit_cfg['SgnFunc']]
     for i_sgn, sgn_func in enumerate(sgn_funcs):
         fitter.add_sgn_func(sgn_func, f"signal_{i_sgn}")
+
+    # Add correlated background if specified
+    if config.get('corr_bkgs'):
+        fitter.add_corr_bkgs(config['corr_bkgs'], sel_string, config['ptbins'][i_pt], config['ptbins'][i_pt + 1])
 
     fitter.setup()
     fitter.fit()
@@ -216,23 +220,34 @@ if __name__ == "__main__":
     # Retrieve number of cutset
     _, cutset_str = os.path.splitext(os.path.basename(args.infile))[0].split('_')
     i_cutset = int(cutset_str)
+    with open((args.infile).replace('proj', 'cutset').replace('.root', '.yml'), 'r') as CfgFlow:
+        cfg_cutset = yaml.safe_load(CfgFlow)
+
     rebin_factors = cfg_flow['V2ExtractionByYield']['RebinCutsets'][i_cutset]
 
     proj_file = TFile.Open(args.infile, "READ")
     h_resolution = proj_file.Get("hResolution")
     reso = h_resolution.GetBinContent(1)
     outfile = TFile.Open(out_file_name, 'RECREATE')
-    for i_pt, (pt_min, pt_max, mass_range, rebin_factor) in enumerate(zip(pt_bins[:-1], pt_bins[1:], cfg_flow['MassFitRanges'], rebin_factors)):
+    for i_pt, (pt_min, pt_max, mass_range, rebin_factor) in enumerate(zip(pt_bins[:-1], pt_bins[1:], \
+                                                                          cfg_flow['v2extraction']['MassFitRanges'], \
+                                                                          rebin_factors)):
         logger(f"\nProcessing pt bin {i_pt+1}/{len(pt_bins)-1}: {pt_min} - {pt_max} GeV/c", "INFO")
         pt_label = f"pt_{int(pt_min*10)}_{int(pt_max*10)}"
         hist_mass_sp_int = proj_file.Get(f"{pt_label}/hMassSpData")
         hist_mass_sp_int.SetDirectory(0)
         sp_edges = get_sp_bin_edges(hist_mass_sp_int.GetYaxis(), cfg_flow['V2ExtractionByYield'], i_cutset, i_pt)
+        sel_string_corr_bkgs = f"fMlScore0 < {cfg_cutset['ScoreBkg']['max'][i_pt]} && " \
+                               f"fMlScore0 >= {cfg_cutset['ScoreBkg']['min'][i_pt]} && " \
+                               f"fMlScore1 < {cfg_cutset['ScoreFD']['max'][i_pt]} && " \
+                               f"fMlScore1 >= {cfg_cutset['ScoreFD']['min'][i_pt]} && " \
+                               f"fM >= {mass_range[0]} && fM < {mass_range[1]}"
         hists_stats, weighted_avg, weighted_avg_unc = process_pt_bin(i_pt, cfg_flow, \
                                                                      hists_summary, \
                                                                      rebin_factor, sp_edges, \
                                                                      pt_label, hist_mass_sp_int, reso, \
-                                                                     f"{os.path.dirname(out_file_name)}/scan_{cutset_str}/")
+                                                                     f"{os.path.dirname(out_file_name)}/scan_{cutset_str}/", \
+                                                                     sel_string_corr_bkgs)
 
         outfile.mkdir(f"{pt_label}/sp_bins")
         for hist_name, hist in hists_stats.items():

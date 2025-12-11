@@ -19,12 +19,12 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""  # pylint: disable=wrong-import-position
 
 class RawYieldFitter:
     """ 
-    Fitter of invariant mass spectra to extract raw yields using the flarefly package
+    Fitter of invariant mass spectra to extract raw yields using the FlareFly package
     """
 
     def __init__(self, particle, pt_min, pt_max, label, minimizer):
         logger("\nInitializing RawYieldFitter")
-        if minimizer == 'flarefly':
+        if minimizer == 'FlareFly':
             self.minimize_flarefly = True
             self.minimize_roofit = False
         else:
@@ -58,16 +58,12 @@ class RawYieldFitter:
         self.n_pdfs_bkg = 0
         self.n_pdfs_sgn = 0
         self.model = None
-        self.sweights_yields = []
         self.pt_min = pt_min
         self.pt_max = pt_max
         self.sweights = None
-        self.sweights_model = None
-        self.sweights_pdfs = []
-        self.sweights_ext_pdfs = None
+        self.yields = ROOT.RooArgList()
+        self.yields_splot = ROOT.RooArgList()
         self.pdfs = ROOT.RooArgList()
-        self.sweights_yields = ROOT.RooArgList()
-        self.sweights_single_yields = []
 
     def set_particle(self, particle_name):
         logger(f"\nSetting particle to fit: {particle_name}")
@@ -105,7 +101,7 @@ class RawYieldFitter:
 
     def set_data_to_fit_hist(self, data):
         logger(f"\nSetting data to fit from histogram with limits {self.fit_range_min} - {self.fit_range_max} GeV/c"
-              f" for fitter with name {self.fit_name}")
+               f" for fitter with name {self.fit_name}")
         self.hist = data
         self.data = DataHandler(data, limits=[self.fit_range_min, self.fit_range_max], rebin=self.rebin)
 
@@ -320,8 +316,7 @@ class RawYieldFitter:
 
         self.fitter = F2MassFitter(self.data, name=self.fit_name,
                                    label_signal_pdf=self.sgn_pdfs_labels, name_signal_pdf=self.sgn_pdfs,
-                                   name_background_pdf=self.bkg_pdfs, label_bkg_pdf=self.bkg_pdfs_labels,
-                                   extended=True)
+                                   name_background_pdf=self.bkg_pdfs, label_bkg_pdf=self.bkg_pdfs_labels)
 
         # Set particle mass and sigma initial par for the main signal
         # function here, so they can be overridden later if needed
@@ -519,35 +514,26 @@ class RawYieldFitter:
             for i_sgn_func, (name, pdf_dict) in enumerate(self.fit_model.items()):
                 label = pdf_dict['label']
                 print(f"Plotting component {label} of type {pdf_dict['type']}")
-                # Print yield of this component
-                if self.fit_model[name].get('yieldRooFormulaVar'):
-                    yield_var = self.fit_model[name]['yieldRooFormulaVar']
-                    logger(f"Yield of component {label}: {yield_var.getVal()}", "INFO")
-                else:
-                    yield_var = self.fit_model[name]['yield']
-                    logger(f"Yield of component {label}: {yield_var.getVal()} +/- {yield_var.getError()}", "INFO")
-                if pdf_dict['type'] == 'bkg' and pdf_dict.get('data') is None:self.model.
-                    self.model.plotOn(frame, ROOT.RooFit.Components(f"ext_{label}"),
+                if pdf_dict['type'] == 'bkg' and pdf_dict.get('data') is None:
+                    print(f"Plotting bkg component {label}")
+                    self.model.plotOn(frame, ROOT.RooFit.Components(label),
                                       ROOT.RooFit.LineColor(ROOT.kBlue + 2*pdf_dict['idx']),
                                       ROOT.RooFit.Range("fit"))
                 elif pdf_dict['type'] == 'bkg' and pdf_dict.get('data') is not None:
-                    self.model.plotOn(frame, ROOT.RooFit.Components(f"ext_{label}"),
+                    print(f"Plotting bkg component {label}")
+                    self.model.plotOn(frame, ROOT.RooFit.Components(label),
                                       ROOT.RooFit.LineColor(ROOT.kGreen + 2*pdf_dict['idx']),
                                       ROOT.RooFit.Range("fit"))
                 else:
-                    self.model.plotOn(frame, ROOT.RooFit.Components(f"ext_{label}"),
+                    print(f"Plotting signal component {label}")
+                    self.model.plotOn(frame, ROOT.RooFit.Components(label),
                                       ROOT.RooFit.LineColor(ROOT.kMagenta + 2*pdf_dict['idx']),
                                       ROOT.RooFit.Range("fit"))
             canvas = ROOT.TCanvas("fit_canvas", "Fit Canvas", 800, 600)
             frame.Draw()
             canvas.Update()
             canvas.SaveAs(path)
-            debug_file = TFile.Open(f"debug_fit_{self.fit_name}.root", "RECREATE")
-            debug_file.cd()
-            frame.Write("fit_frame")
-            debug_file.Close()
             out_file.cd()
-            print(f"Writing fit canvas to output file with name fit_canvas_{self.fit_name}")
             canvas.Write(f"fit_canvas_{self.fit_name}")
 
         logger(f"Plot saved to {path}", "INFO")
@@ -565,120 +551,32 @@ class RawYieldFitter:
         return fig_pulls
 
     def get_sweights_sgn(self, label):
+        # Count corr bkgs before main signal
+        for i_sgn_func, (name, pdf_dict) in enumerate(self.fit_model.items()):
+            if pdf_dict['type'] != 'sgn':
+                continue
+            print(f"Checking signal function {name} with label {pdf_dict['label']} vs requested {label}")
+            if self.fit_model[name]['label'] == label:
+                sgn_sw_col = f"{self.fit_model[name]['yield'].GetName()}_sw"
+                sgn_sw_idx = self.fit_model[name]['idx']
 
         if self.minimize_flarefly:
-            for i_sgn_func, (name, pdf_dict) in enumerate(self.fit_model.items()):
-                if pdf_dict['type'] != 'sgn':
-                    continue
-                print(f"Checking signal function {name} with label {pdf_dict['label']} vs requested {label}")
-                if self.fit_model[name]['label'] == label:
-                    sgn_sw_idx = self.fit_model[name]['idx']
-
             return self.fitter.get_sweights()[f"signal{func_idx}"]
         else:
-            for i_sgn_func, (name, pdf_dict) in enumerate(self.fit_model.items()):
-                if pdf_dict['type'] != 'sgn':
-                    continue
-                print(f"Checking signal function {name} with label {pdf_dict['label']} vs requested {label}")
-                if self.fit_model[name]['label'] == label:
-                    sgn_sw_col = f"{self.fit_model[name]['yield'].GetName()}_sw"
-                    sgn_sw_idx = self.fit_model[name]['idx']
-
             if self.sweights is None:
                 logger(f"\nCreating SPlot object for RooDataSet", "INFO")
-
-                self.sweights_single_yields = []
-                self.sweights_yields = ROOT.RooArgList()
-                self.sweights_ext_pdfs = ROOT.RooArgList()
-
-                for i, (name, comp_model) in enumerate(self.fit_model.items()):
-                    print(f"comp_model['label']: {comp_model['label']}")
-
-                    # Find the matching extended PDF in the fitted model
-                    matched_pdf = None
-                    for model_pdf in self.model.pdfList():
-                        if model_pdf.GetName() == f"ext_{comp_model['label']}":
-                            print(f"Matched model_pdf name: {model_pdf.GetName()}")
-                            matched_pdf = model_pdf
-                            break
-                    if matched_pdf is None:
-                        raise RuntimeError(f"Could not find matching extended PDF for {comp_model['label']}")
-
-                    # Create a new yield variable
-                    self.sweights_single_yields.append(ROOT.RooRealVar(f"yield_{name}_splot", f"yield_{name}_splot", matched_pdf.expectedEvents(ROOT.RooArgSet())))
-                    # self.sweights_single_yields.append(ROOT.RooRealVar(f"yield_{name}_splot", f"yield_{name}_splot", matched_pdf.expectedEvents(obs)))
-                    self.sweights_yields.add(self.sweights_single_yields[-1])
-
-                    # Clone the PDF for safety
-                    self.sweights_pdfs.append(comp_model['pdf'].Clone(f"{comp_model['label']}_splot_pdf"))
-
-                    # Wrap cloned PDF with the same yield variable
-                    ext_pdf_splot = ROOT.RooExtendPdf(f"ext_{name}_splot", f"ext_{name}_splot", self.sweights_pdfs[-1], self.sweights_single_yields[-1])
-                    self.sweights_ext_pdfs.add(ext_pdf_splot)
-
-                    print(f"Added component {comp_model['label']} with yield {self.sweights_single_yields[-1].getVal()} to SPlot lists")
-
-                print("ended loop")
-                print(f"self.sweights_ext_pdfs: {self.sweights_ext_pdfs}, type: {type(self.sweights_ext_pdfs)}")
-                # Debug sweights ext pdfs
-                for i in range(self.sweights_ext_pdfs.getSize()):
-                    ext_pdf = self.sweights_ext_pdfs.at(i)
-                    print(f"SWeights extended PDF {i}: {ext_pdf.GetName()} with expected events {ext_pdf.expectedEvents(obs)}")
-
-                # Build RooAddPdf from extended PDFs only
-                self.sweights_model = ROOT.RooAddPdf(
-                    f"sw_model_{' + '.join([comp['label'] for comp in self.fit_model.values()])}",
-                    f"sw_model_{' + '.join([comp['label'] for comp in self.fit_model.values()])}",
-                    self.sweights_ext_pdfs
-                )
-
-                print(f"SWeights model: {self.sweights_model}")
-
-                # Finally, create the SPlot object
-                self.sweights = ROOT.RooStats.SPlot(
-                    f"{self.fit_name}_splot",
-                    f"{self.fit_name}_splot",
-                    self.data,
-                    self.sweights_model,
-                    self.sweights_yields
-                )
-                quit()
-
-            # if self.sweights is None:
-            #     obs = ROOT.RooArgSet(self.roofit_fit_var)
-            #     # Create a copy of the fitted model, setting the yields to RooRealVars
-            #     logger(f"\nCreating SPlot object for RooDataSet", "INFO")
-            #     self.sweights_yields = ROOT.RooArgList()
-            #     self.sweights_ext_pdfs = ROOT.RooArgList()
-
-            #     for i, (name, comp_model) in enumerate(self.fit_model.items()):
-            #         print(f"comp_model['label']: {comp_model['label']}")
-
-            #         # Find the matching extended PDF in the fitted model
-            #         matched_pdf = None
-            #         for model_pdf in self.model.pdfList():
-            #             if model_pdf.GetName() == f"ext_{comp_model['label']}":
-            #                 print(f"Matched model_pdf name: {model_pdf.GetName()}")
-            #                 matched_pdf = model_pdf
-            #                 break
-
-            #         # Create a new yield variable and pdf for each component
-            #         y = ROOT.RooRealVar(f"yield_{name}_splot", f"yield_{name}_splot", matched_pdf.expectedEvents(obs))
-            #         self.sweights_yields.add(y)
-            #         self.sweights_pdfs.append(comp_model['pdf'].Clone(f"{comp_model['label']}_splot_pdf"))
-            #         self.sweights_ext_pdfs.add(ROOT.RooExtendPdf(f"ext_{name}_splot", f"ext_{name}_splot", self.sweights_pdfs[-1],
-            #                                                      ROOT.RooRealVar(f"yield_{name}_splot", f"yield_{name}_splot", matched_pdf.expectedEvents(obs))))
-            #         print(f"Added component {comp_model['label']} with yield {y.getVal()} to SPlot lists")
-
-            #     print(f"Yields for SPlot: {self.sweights_yields}, type: {type(self.sweights_yields)}")
-            #     print(f"PDFs for SPlot: {self.sweights_ext_pdfs}, type: {type(self.sweights_ext_pdfs)}")
-            #     self.sweights_model = ROOT.RooAddPdf(f"sw_model_{' + '.join([comp['label'] for comp in self.fit_model.values()])}",
-            #                                          f"sw_model_{' + '.join([comp['label'] for comp in self.fit_model.values()])}",
-            #                                          self.sweights_ext_pdfs) #, self.sweights_yields)
-            #     print(f"SWeights model: {self.sweights_model}")
-            #     self.sweights = ROOT.RooStats.SPlot(f"{self.fit_name}_splot", f"{self.fit_name}_splot", self.data, self.sweights_model, self.sweights_yields)
-                quit()
-                # self.sweights = ROOT.RooStats.SPlot("splot", "splot", self.data, self.model, self.sweights_yields)
+                self.yields_splot = ROOT.RooArgList()
+                for comp in self.fit_model.values():
+                    # MUST be a RooRealVar used in RooAddPdf
+                    print(f"\n\nComponent in fit model: {comp}\n\n")
+                    if comp.get('yieldRooFormulaVar'):
+                        print(f"Skipping yieldRooFormulaVar for component {comp['label']} in SPlot yields")
+                        continue
+                    print(f"Adding yield for component {comp['label']} in SPlot yields: {comp['yield']}")
+                    self.yields_splot.add(comp['yield'])
+                print(f"Yields for SPlot: {self.yields_splot}")
+                self.sweights = ROOT.RooStats.SPlot(f"{self.fit_name}_splot", f"{self.fit_name}_splot", self.data, self.model, self.yields_splot)
+                # self.sweights = ROOT.RooStats.SPlot("splot", "splot", self.data, self.model, self.yields_splot)
 
             signal_sweights = []
             for i in range(self.data.numEntries()):
@@ -794,11 +692,10 @@ class RawYieldFitter:
         self.n_pdfs_bkg = 0
         self.n_pdfs_sgn = 0
         self.model = None
-        self.sweights_yields = []
         self.sweights = None
-        self.sweights_model = None
-        self.sweights_pdfs = []
-        self.sweights_ext_pdfs = None
+        self.yields = ROOT.RooArgList()
+        self.yields_splot = ROOT.RooArgList()
+        self.pdfs = ROOT.RooArgList()
 
     def setup_roofit(self):
         
@@ -825,7 +722,7 @@ class RawYieldFitter:
                 if anchor_mode == "anchor_fix":
                     logger(f"Fixing fraction of component {comp['label']} to value {frac}", "WARNING")
                     comp['frac'].setConstant(True)
-                comp['yieldRooFormulaVar'] = ROOT.RooFormulaVar(f"yield_{name}_formula", "@0*@1", ROOT.RooArgList(comp['frac'],
+                comp['yieldRooFormulaVar'] = ROOT.RooFormulaVar(f"NcompBkg{i_comp}", "@0*@1", ROOT.RooArgList(comp['frac'],
                                                                 self.fit_model[anchor_func]['yield']))
 
             logger(f"Creating extended RooFit PDFs for component: {comp}", "INFO")
@@ -841,97 +738,168 @@ class RawYieldFitter:
                     continue
                 for par in self.fit_model[name]['mcpars']:
                     par_name = par.GetName().split("_")[0]
-                    if "mu" in par_name or "sigma" in par_name:
-                        continue
+                    # if "mu" in par_name or "sigma" in par_name:
+                    #     continue
                     par_val = par.getVal()
                     logger(f"Fixing parameter {par_name} of last signal pdf to MC prefit value {par_val}", "WARNING")
                     self.fit_model[name][f"par_{par_name}"].setConstant(True)
 
-        self.model = ROOT.RooAddPdf(" + ".join([comp['label'] for comp in self.fit_model.values()]),
-                                    " + ".join([comp['label'] for comp in self.fit_model.values()]),
-                                    ROOT.RooArgList([comp['ext_pdf'] for comp in self.fit_model.values()]))
-
-        # Check the number of arguments in the RooAddPdf
-        n_args = self.model.getComponents().getSize()
-        logger(f"Number of components in RooAddPdf: {n_args}", "INFO")
-
-        # Check the yield vars of the single components
-        logger("\n=== Yield variables of the fit components ===", "WARNING")
+        pdfs_names = {}
         for comp in self.fit_model.values():
-            yield_var = comp.get('yieldRooFormulaVar', comp['yield'])
-            logger(f"Component {comp['label']}: yield variable = {yield_var.GetName()}, value = {yield_var.getVal()}", "INFO")
+            self.pdfs.add(comp['pdf'])
+            self.yields.add(comp.get('yieldRooFormulaVar', comp['yield']))
+            pdfs_names[comp['label']] = comp['pdf'].GetName()
 
-        # Fit
-        self.roofit_fit_var.setRange("fit", self.fit_range_min, self.fit_range_max)
+        self.model = ROOT.RooAddPdf("model", "model", self.pdfs, self.yields)
+
+        total_yield = 0
+        for label, comp in self.fit_model.items():
+            yvar = comp.get('yieldRooFormulaVar', comp['yield'])
+            yval = yvar.getVal()
+            total_yield += yval
+            logger(f"Component '{label}' type: {comp['type']}, PDF name: {comp['pdf'].GetName()}, Yield: {yval}", "WARNING")
+        logger(f"Total expected yield from components: {total_yield}", "WARNING")
+
         fit_result = self.model.fitTo(
             self.data,
-            # ROOT.RooFit.Extended(True),
-            ROOT.RooFit.Range("fit"),
             ROOT.RooFit.Save(True),
             ROOT.RooFit.PrintLevel(1)
         )
+        
+        fitted_total = 0
+        for label, comp in self.fit_model.items():
+            yvar = comp.get('yieldRooFormulaVar', comp['yield'])
+            yval = yvar.getVal()
+            fitted_total += yval
+            logger(f"Fitted yield for '{label}' = {yval}", "WARNING")
+        logger(f"Fitted total yield = {fitted_total}", "WARNING")
 
+        logger(f"Fit status: {fit_result.status()}", "INFO")
+        logger(f"Covariance quality: {fit_result.covQual()}", "INFO")
+        logger(f"EDM: {fit_result.edm()}", "INFO")
+
+        logger(f"Fit variable range: {self.fit_range_min} - {self.fit_range_max} GeV/c", "WARNING")
+        logger(f"Number of data entries: {self.data.numEntries()}", "WARNING")
+        logger(f"Sum of weights (sumEntries): {self.data.sumEntries()}", "WARNING")
+
+        frame = self.roofit_fit_var.frame(ROOT.RooFit.Title("Invariant mass fit"))
+        self.data.plotOn(frame, ROOT.RooFit.Range("fit"))
+        # Plot total model
+        self.model.plotOn(frame, ROOT.RooFit.LineColor(ROOT.kRed),
+                        ROOT.RooFit.Normalization(1.0, ROOT.RooAbsReal.RelativeExpected))
+
+        # Plot individual components
+        for label, comp in self.fit_model.items():
+            frame_line_color = ROOT.kBlue if comp['type']=='bkg' else ROOT.kMagenta
+            self.model.plotOn(frame,
+                            ROOT.RooFit.Components(comp['pdf']), 
+                            ROOT.RooFit.LineColor(frame_line_color),
+                            ROOT.RooFit.LineStyle(ROOT.kDashed),
+                            ROOT.RooFit.Normalization(1.0, ROOT.RooAbsReal.RelativeExpected))
+
+        # Open a ROOT file
+        f = ROOT.TFile("fit_model.root", "RECREATE")
+
+        # Write the total model
+        self.model.Write("total_model")
+
+        # Write individual PDFs
+        for label, comp in self.fit_model.items():
+            pdf = comp['pdf']
+            pdf.Write(f"pdf_{label}")
+
+        # Optionally, write RooRealVars or yields used in PDFs
+        for label, comp in self.fit_model.items():
+            for par_name, par_obj in comp.items():
+                if par_name.startswith("par_"):
+                    par_obj.Write(f"{label}_{par_name}")
+
+        f.Close()
+
+        # self.model.plotOn(frame, ROOT.RooFit.Range("fit"),
+        #                   ROOT.RooFit.LineColor(ROOT.kRed),
+        #                   ROOT.RooFit.Normalization(1.0, ROOT.RooAbsReal.RelativeExpected)) #,
+        #                 #   ROOT.RooFit.Extended(True))
+        # for i_sgn_func, (name, pdf_dict) in enumerate(self.fit_model.items()):
+        #     label = pdf_dict['label']
+        #     print(f"Plotting component {label} of type {pdf_dict['type']}")
+        #     if pdf_dict['type'] == 'bkg' and pdf_dict.get('data') is None:
+        #         print(f"Plotting bkg component {label}")
+        #         self.model.plotOn(frame, ROOT.RooFit.Components(pdfs_names[label]),
+        #                           ROOT.RooFit.LineColor(ROOT.kBlue + 2*pdf_dict['idx']),
+        #                           ROOT.RooFit.Range("fit"),
+        #                           ROOT.RooFit.Extended(True))
+        #     elif pdf_dict['type'] == 'bkg' and pdf_dict.get('data') is not None:
+        #         print(f"Plotting bkg component {label}")
+        #         self.model.plotOn(frame, ROOT.RooFit.Components(pdfs_names[label]),
+        #                           ROOT.RooFit.LineColor(ROOT.kGreen + 2*pdf_dict['idx']),
+        #                           ROOT.RooFit.Range("fit"),
+        #                           ROOT.RooFit.Extended(True))
+        #     else:
+        #         print(f"Plotting signal component {label}")
+        #         self.model.plotOn(frame, ROOT.RooFit.Components(pdfs_names[label]),
+        #                           ROOT.RooFit.LineColor(ROOT.kMagenta + 2*pdf_dict['idx']),
+        #                           ROOT.RooFit.Range("fit"),
+        #                           ROOT.RooFit.Extended(True))
+        canvas = ROOT.TCanvas("fit_canvas", "Fit Canvas", 800, 600)
+        frame.Draw()
+        canvas.Update()
+        canvas.SaveAs(f"debug_fit_canvas_{self.fit_name}.pdf")
+        quit()
+
+        # self.pdfs = ROOT.RooArgList()
+        # for comp in self.fit_model.values():
+        #     self.pdfs.add(comp['ext_pdf'])
+        # self.model = ROOT.RooAddPdf(" + ".join([comp['label'] for comp in self.fit_model.values()]),
+        #                             " + ".join([comp['label'] for comp in self.fit_model.values()]),
+        #                             self.pdfs)
+
+        # # self.model = ROOT.RooAddPdf(" + ".join([comp['label'] for comp in self.fit_model.values()]),
+        # #                             " + ".join([comp['label'] for comp in self.fit_model.values()]),
+        # #                             ROOT.RooArgList([comp['pdf'] for comp in self.fit_model.values()]),
+        # #                             ROOT.RooArgList([comp.get('yieldRooFormulaVar', comp['yield']) for comp in self.fit_model.values()]))
+        # #                             # ROOT.RooArgList([comp['ext_pdf'] for comp in self.fit_model.values()]))
+
+        # # Fit
+        # self.roofit_fit_var.setRange("fit", self.fit_range_min, self.fit_range_max)
+        # fit_result = self.model.fitTo(
+        #     self.data,
+        #     ROOT.RooFit.Extended(True),
+        #     ROOT.RooFit.Range("fit"),
+        #     ROOT.RooFit.Save(True),
+        #     ROOT.RooFit.PrintLevel(1)
+        # )
+        
+        # Compute integral of model
+        integral = self.model.createIntegral(self.roofit_fit_var, ROOT.RooFit.Range("fit"))
+        n_expected = integral.getVal() * self.data.sumEntries()
+        logger(f"Number of expected events from fit model in fit range: {n_expected}", "INFO")
+        
+        # Compute integral of signal comp
+        for i_sgn_func, (name, sgn_func) in enumerate(self.fit_model.items()):
+            if sgn_func['type'] != 'sgn':
+                continue
+            integral_sgn = sgn_func['pdf'].createIntegral(self.roofit_fit_var, ROOT.RooFit.Range("fit"))
+            n_expected_sgn = integral_sgn.getVal() * self.data.sumEntries()
+            logger(f"Number of expected events from signal component {name} in fit range: {n_expected_sgn}", "INFO")
+        
         logger("=== Fit status ===", "WARNING")
         logger(f"status      = {fit_result.status()}", "INFO")
         logger(f"covQual     = {fit_result.covQual()}", "INFO")
         logger(f"edm         = {fit_result.edm()}", "INFO")
         logger(f"minNll      = {fit_result.minNll()}", "INFO")
+
         logger("=== Floating parameters ===", "WARNING")
         fit_result.floatParsFinal().Print("v")
+
         logger("=== Constant parameters ===", "WARNING")
         fit_result.constPars().Print("v")
+
         logger("=== Correlation matrix ===", "WARNING")
         fit_result.correlationMatrix().Print()
 
-        # Keep references alive
-        self.sweights_pdfs = []
-        self.sweights_ext_pdfs = ROOT.RooArgList()
-        self.sweights_yields = ROOT.RooArgList()
-
-        # Build RooAddPdf from extended PDFs only
-        print("Building SWeights RooAddPdf from extended PDFs")
-        self.sweights_ext_pdfs = ROOT.RooArgList()
-        # self.sweights_ext_pdfs.add(ROOT.RooExtendPdf(f"ext_Comb. bkg_splot", f"ext_Comb. bkg_splot", self.fit_model['Comb. bkg']['pdf'], ROOT.RooRealVar(f"yield_Comb. bkg", f"yield_Comb. bkg", 11.5599)))
-        # self.sweights_ext_pdfs.add(ROOT.RooExtendPdf(f"ext_DplusToPiKPi_splot", f"ext_DplusToPiKPi_splot", self.fit_model['DplusToPiKPi']['pdf'], ROOT.RooRealVar(f"yield_DplusToPiKPi", f"yield_DplusToPiKPi", 0.396451)))
-        # self.sweights_ext_pdfs.add(ROOT.RooExtendPdf(f"ext_DplusToPiKK_splot", f"ext_DplusToPiKK_splot", self.fit_model['DplusToPiKK']['pdf'], ROOT.RooRealVar(f"yield_DplusToPiKK_formula", f"yield_DplusToPiKK_formula", 0.006201553806422008)))
-        # self.sweights_ext_pdfs.add(ROOT.RooExtendPdf(f"ext_DsToPiKK_splot", f"ext_DsToPiKK_splot", self.fit_model['DsToPiKK']['pdf'], ROOT.RooRealVar(f"yield_DsToPiKK_formula", f"yield_DsToPiKK_formula", 0.029484430132018447)))
-        self.sweights_model = ROOT.RooAddPdf(
-            f"sw_model ({' + '.join([comp['label'] for comp in self.fit_model.values()])})",
-            f"sw_model ({' + '.join([comp['label'] for comp in self.fit_model.values()])})",
-            # self.sweights_ext_pdfs
-            ROOT.RooArgList(
-                ROOT.RooExtendPdf(f"ext_Comb. bkg_splot", f"ext_Comb. bkg_splot", self.fit_model['Comb. bkg']['pdf'], ROOT.RooRealVar(f"yield_Comb. bkg", f"yield_Comb. bkg", 11.5599)),
-                ROOT.RooExtendPdf(f"ext_DplusToPiKPi_splot", f"ext_DplusToPiKPi_splot", self.fit_model['DplusToPiKPi']['pdf'], ROOT.RooRealVar(f"yield_DplusToPiKPi", f"yield_DplusToPiKPi", 0.396451)),
-                ROOT.RooExtendPdf(f"ext_DplusToPiKK_splot", f"ext_DplusToPiKK_splot", self.fit_model['DplusToPiKK']['pdf'], ROOT.RooRealVar(f"yield_DplusToPiKK_formula", f"yield_DplusToPiKK_formula", 0.006201553806422008)),
-                ROOT.RooExtendPdf(f"ext_DsToPiKK_splot", f"ext_DsToPiKK_splot", self.fit_model['DsToPiKK']['pdf'], ROOT.RooRealVar(f"yield_DsToPiKK_formula", f"yield_DsToPiKK_formula", 0.029484430132018447))
-            )
-        )
-
-        print(f"SWeights model: {self.sweights_model}")
-        self.sweights = ROOT.RooStats.SPlot(f"{self.fit_name}_splot", f"{self.fit_name}_splot",
-                                            self.data, self.sweights_model, self.sweights_yields)
-
-        # Print all column names
-        print("Columns in the dataset (including sWeights):")
-        print("\nFirst 5 events yield_DplusToPiKPi_splot:")
-        for comp in self.sweights_model.pdfList():
-            print(f"Component PDF: {comp.GetName()}")
-            print(f"yield var col: {comp.GetName().replace('ext_', 'yield_')}_sw")
-            for i in range(5):
-                print(self.data.get(i).getRealValue(f"{comp.GetName().replace('yield_', '')}_sw"))
-
-        quit()
-        
+        # 3 indicates the best quality for the covariance matrix
         return fit_result.status(), fit_result.covQual()
-
-        # pdfs_names = {}
-        # for comp in self.fit_model.values():
-        #     self.pdfs.add(comp['pdf'])
-        #     self.sweights_yields.add(comp.get('yieldRooFormulaVar', comp['yield']))
-        #     pdfs_names[comp['label']] = comp['pdf'].GetName()
-
-        # self.model = ROOT.RooAddPdf("model", "model", self.pdfs, self.sweights_yields)
-
 
     def add_func_to_model(self, sgn_or_bkg, func, label, particle=None):
 
@@ -1031,131 +999,3 @@ class RawYieldFitter:
             self.n_pdfs_sgn += 1
         else:
             self.n_pdfs_bkg += 1
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        # for i, (name, comp_model) in enumerate(self.fit_model.items()):
-        #     # Clone the original PDF
-        #     pdf_clone = comp_model['pdf'].Clone(f"{name}_splot_pdf")
-        #     self.sweights_pdfs.append(pdf_clone)  # keep Python reference alive
-        #     yield_clone = comp_model.get('yieldRooFormulaVar', comp_model['yield'])
-        #     yield_var = ROOT.RooRealVar(f"yield_{name}_splot", f"yield_{name}_splot", yield_clone.getVal())
-        #     # Wrap with extended PDF
-        #     print(f"yield_var.GetName(): {yield_var.GetName()} with value {yield_var.getVal()}")
-        #     ext_pdf = ROOT.RooExtendPdf(f"ext_{name}_splot", f"ext_{name}_splot", comp_model['pdf'],
-        #                                 ROOT.RooRealVar(f"yield_{name}_splot", f"yield_{name}_splot",
-        #                                                 comp_model.get('yieldRooFormulaVar', comp_model['yield']).getVal()))
-        #     # ext_pdf = ROOT.RooExtendPdf(f"ext_{name}_splot", f"ext_{name}_splot", pdf_clone, yield_var)
-        #     # self.sweights_ext_pdfs.add(ext_pdf)  # add to RooArgList
-        #     self.sweights_ext_pdfs.add(ROOT.RooExtendPdf(f"ext_{name}_splot", f"ext_{name}_splot", comp_model['pdf'],
-        #                                 comp_model.get('yieldRooFormulaVar', comp_model['yield']).getVal()))
-        #     self.sweights_ext_pdfs._ext_pdfs_refs = getattr(self.sweights_ext_pdfs, "_ext_pdfs_refs", [])
-        #     self.sweights_ext_pdfs._ext_pdfs_refs.append(ext_pdf)  # keep Python reference alive
-        #     # Do the same with sweights_yields
-        #     self.sweights_yields.add(yield_var)
-        #     self.sweights_yields._yields_refs = getattr(self.sweights_yields, "_yields_refs", [])
-        #     self.sweights_yields._yields_refs.append(yield_var)
-
-        # # Now safe to inspect
-        # for i in range(self.sweights_yields.getSize()):
-        #     y_var = self.sweights_yields.at(i)
-        #     print(f"SWeights yield variable {i}: {y_var.GetName()} with value {y_var.getVal()}")
-        # # QA
-        # for i in range(self.sweights_ext_pdfs.getSize()):
-        #     ext_pdf = self.sweights_ext_pdfs.at(i)
-        #     print(f"SWeights extended PDF {i}: {ext_pdf.GetName()} with expected events {ext_pdf.expectedEvents(ROOT.RooArgSet(self.roofit_fit_var))}")
-
-
-
-
-
-
-
-        # self.sweights_single_yields = []
-        # self.sweights_yields = ROOT.RooArgList()
-        # self.sweights_ext_pdfs = ROOT.RooArgList()
-
-        # for i, (name, comp_model) in enumerate(self.fit_model.items()):
-        #     print(f"comp_model['label']: {comp_model['label']}")
-
-        #     # Find the matching extended PDF in the fitted model
-        #     matched_pdf = None
-        #     for model_pdf in self.model.pdfList():
-        #         if model_pdf.GetName() == f"ext_{comp_model['label']}":
-        #             print(f"Matched model_pdf name: {model_pdf.GetName()}")
-        #             matched_pdf = model_pdf
-        #             break
-        #     if matched_pdf is None:
-        #         raise RuntimeError(f"Could not find matching extended PDF for {comp_model['label']}")
-
-        #     # Create a new yield variable
-        #     self.sweights_single_yields.append(ROOT.RooRealVar(f"yield_{name}_splot", f"yield_{name}_splot", matched_pdf.expectedEvents(ROOT.RooArgSet())))
-        #     # self.sweights_single_yields.append(ROOT.RooRealVar(f"yield_{name}_splot", f"yield_{name}_splot", matched_pdf.expectedEvents(obs)))
-        #     self.sweights_yields.add(self.sweights_single_yields[-1])
-
-        #     # Clone the PDF for safety
-        #     self.sweights_pdfs.append(comp_model['pdf'].Clone(f"{comp_model['label']}_splot_pdf"))
-
-        #     # Wrap cloned PDF with the same yield variable
-        #     ext_pdf_splot = ROOT.RooExtendPdf(f"ext_{name}_splot", f"ext_{name}_splot", self.sweights_pdfs[-1], self.sweights_single_yields[-1])
-        #     self.sweights_ext_pdfs.add(ext_pdf_splot)
-
-        #     print(f"Added component {comp_model['label']} with yield {self.sweights_single_yields[-1].getVal()} to SPlot lists")
-
-        # print("ended loop")
-        # print(f"self.sweights_ext_pdfs: {self.sweights_ext_pdfs}, type: {type(self.sweights_ext_pdfs)}")
-        # print(f"self.sweights_ext_pdfs.at(0): {self.sweights_ext_pdfs.at(0)}, type: {type(self.sweights_ext_pdfs.at(0))}")
-        # # Debug sweights ext pdfs
-        # for i in range(self.sweights_ext_pdfs.getSize()):
-        #     ext_pdf = self.sweights_ext_pdfs.at(i)
-        #     print(f"SWeights extended PDF {i}: {ext_pdf.GetName()} with expected events {ext_pdf.expectedEvents(obs)}")
-
-        # # Build RooAddPdf from extended PDFs only
-        # self.sweights_model = ROOT.RooAddPdf(
-        #     f"sw_model_{' + '.join([comp['label'] for comp in self.fit_model.values()])}",
-        #     f"sw_model_{' + '.join([comp['label'] for comp in self.fit_model.values()])}",
-        #     self.sweights_ext_pdfs
-        # )
-
-        # print(f"SWeights model: {self.sweights_model}")
-
-        # # Finally, create the SPlot object
-        # self.sweights = ROOT.RooStats.SPlot(
-        #     f"{self.fit_name}_splot",
-        #     f"{self.fit_name}_splot",
-        #     self.data,
-        #     self.sweights_model,
-        #     self.sweights_yields
-        # )
-        # quit()
