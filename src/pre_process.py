@@ -237,7 +237,8 @@ def process_tree(i_file, infile_path, full_cfg, trees_cfg, prep_out_dir, input_o
 
 def get_input_paths(input_cfg, input_type):
     print(f"input_cfg: {input_cfg}")
-    # print(f"input_cfg['files']: {input_cfg['files']}")
+    if isinstance(input_cfg, str) and input_cfg.endswith(".txt"):
+        return input_cfg
     if isinstance(input_cfg, str):
         dir_path = input_cfg
         file_paths = [f"{dir_path}/{file}" for file in os.listdir(dir_path) \
@@ -262,9 +263,14 @@ if __name__ == "__main__":
     output_dir = full_cfg['outdirPrep'] if full_cfg.get("outdirPrep") else full_cfg['outdir']
 
     for input_cfg in full_cfg['preprocess']['inputs']:
-        if isinstance(input_cfg['files'], str):
+        if isinstance(input_cfg['files'], str) and not input_cfg['files'].endswith(".txt"):
             dir_path = input_cfg['files']
             file_paths = [f"{dir_path}/{file}" for file in os.listdir(dir_path) if file.endswith(".root")]
+        elif isinstance(input_cfg['files'], str) and input_cfg['files'].endswith(".txt"):
+            with open(input_cfg['files'], 'r') as f:
+                file_paths = [line.strip() for line in f if line.strip()]
+                print(f"Loaded {len(file_paths)} file paths from {input_cfg['files']}")
+                # print(f"file_paths: {file_paths}")
         elif isinstance(input_cfg['files'], list):
             file_paths = input_cfg['files']
         else:
@@ -272,7 +278,10 @@ if __name__ == "__main__":
             continue
 
         if input_cfg.get('sparses'):
-            file_paths = get_input_paths(input_cfg['files'], "AnalysisResults")
+            if not input_cfg['files'].endswith(".txt"):
+                file_paths = get_input_paths(input_cfg['files'], "AnalysisResults")
+            # print(f"file_paths: {file_paths}")
+            # quit()
             for sparse_cfg in input_cfg['sparses']:
                 logger(f"##### Skimming {sparse_cfg['name']} #####", "WARNING")
                 with concurrent.futures.ThreadPoolExecutor(args.workers) as executor:

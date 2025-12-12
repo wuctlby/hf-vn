@@ -584,7 +584,6 @@ class RawYieldFitter:
                 weight = self.sweights.GetSWeight(i, sgn_sw_col)
                 signal_sweights.append(weight)
             # print(f"Signal sWeights for component {label}: {signal_sweights}")
-            # quit()
             return signal_sweights
 
             # evt = self.data.get(0)
@@ -845,7 +844,6 @@ class RawYieldFitter:
         frame.Draw()
         canvas.Update()
         canvas.SaveAs(f"debug_fit_canvas_{self.fit_name}.pdf")
-        quit()
 
         # self.pdfs = ROOT.RooArgList()
         # for comp in self.fit_model.values():

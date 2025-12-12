@@ -87,7 +87,6 @@ def eval_pt_center(cfg_file_name, minimizer, workers=1):
         os.makedirs(out_dir_pt + "/vars", exist_ok=True)
 
         out_file = TFile.Open(f"{out_dir_pt}/pt_center.root", "recreate")
-        print(f"Output ROOT file: {out_file.GetName()}")
         histos_avgs = {}
         for var in infer_vars:
             histos_avgs[f"h_{var}_sgn"] = ROOT.TH1F(f"h_{var}_sgn", f"h_{var}_sgn", len(cutset_files)-1, array.array('d', [i for i in range(len(cutset_files))]))
@@ -98,13 +97,18 @@ def eval_pt_center(cfg_file_name, minimizer, workers=1):
             'func': cfg_fit['SgnFunc'][i_bin] if isinstance(cfg_fit['SgnFunc'], list) else cfg_fit['SgnFunc'],
             'part': cfg['Dmeson']
         }
+
         histos_avgs[f"h_ry_{cfg_fit['SgnFuncLabel']}"] = ROOT.TH1F(f"h_ry_{cfg_fit['SgnFuncLabel']}",
                                                                    f"h_ry_{cfg_fit['SgnFuncLabel']}",
                                                                    len(cutset_files)-1,
                                                                    array.array('d', [i for i in range(len(cutset_files))]))
+        print(f"Adding signal function: {sgn_funcs[cfg_fit['SgnFuncLabel']]}, {cfg_fit['SgnFuncLabel']} ... ")
         if cfg_fit.get('InclSecPeak'):
+            print("Including secondary peak signal function ... ")
             include_sec_peak = cfg_fit['InclSecPeak'][i_bin] if isinstance(cfg_fit['InclSecPeak'], list) else cfg_fit['InclSecPeak']
+            print(f"include_sec_peak = {include_sec_peak}")
             if include_sec_peak:
+                print(f"Adding secondary peak signal function: {cfg_fit['SgnFuncSecPeak'][i_bin]} ... ")
                 sgn_funcs[cfg_fit['SgnFuncSecPeakLabel']] = {
                     'func': cfg_fit['SgnFuncSecPeak'][i_bin] if isinstance(cfg_fit['SgnFuncSecPeak'], list) else cfg_fit['SgnFuncSecPeak'],
                     'part': 'Dplus' if cfg['Dmeson'] == 'Ds' else 'Dstar',
@@ -114,13 +118,13 @@ def eval_pt_center(cfg_file_name, minimizer, workers=1):
                                                                                   len(cutset_files)-1, 
                                                                                   array.array('d', [i for i in range(len(cutset_files))]))
 
+        print(f"\n\n sgn_funcs = {sgn_funcs}\n\n")
+
         # Initialize fitter
         fitter = RawYieldFitter(cfg['Dmeson'], pt_min, pt_max, pt_str, minimizer)
         fitter.set_fit_range(cfg_fit['MassFitRanges'][i_bin][0], cfg_fit['MassFitRanges'][i_bin][1])
 
         for i_cutset, cutset_file in enumerate(cutset_files):
-            if i_cutset == 0:
-                continue
             with open(cutset_file, 'r') as cs_file:
                 cutset_cfg = yaml.safe_load(cs_file)
             logger(f"Processing cutset file {cutset_file} ... ", level="INFO")
@@ -167,13 +171,27 @@ def eval_pt_center(cfg_file_name, minimizer, workers=1):
             # Prefit the MC prompt enhanced cut to fix the tails, binned fit
             if cfg_fit.get('FixSgnFromMC'):
                 fitter.set_fix_sgn_to_mc_prefit(True)
-                if i_cutset == 1:
+                if i_cutset == 0:
                     fitter.prefit_mc(f"{cfg['outdir']}/corr_bkgs/templs_{pt_str}.root")
                     fitter.plot_mc_prefit(False, True, loc=["lower left", "upper left"],
                                           path=f"{out_dir_pt}/", out_file=out_file)
                     fitter.plot_raw_residuals_mc_prefit(path=f"{out_dir_pt}/fM_mc_prefit_residuals_{cutset_suffix}.pdf")
 
             status, converged = fitter.fit()
+
+            fitter.plot_fit(False, True, loc=["lower left", "upper left"], \
+                            path=f"{out_dir_pt}/fits/fM_fit_{cutset_suffix}.pdf",
+                            out_file=out_file) # (log, show_extra_info)
+
+            fit_info, _, _, _, _ = fitter.get_fit_info()
+            for label in sgn_funcs.keys():
+                histos_avgs[f"h_ry_{label}"].SetBinContent(i_cutset + 1, fit_info[label]["ry"])
+                histos_avgs[f"h_ry_{label}"].SetBinError(i_cutset + 1, fit_info[label]["ry_unc"])
+
+            if minimizer != "flarefly":
+                logger("Skipping sWeights computation: not using flarefly minimizer", level="WARNING")
+                continue
+
             s_weights_sgn = fitter.get_sweights_sgn(cfg_fit['SgnFuncLabel'])
             s_weights_sec_peak = fitter.get_sweights_sgn(cfg_fit['SgnFuncSecPeakLabel']) if cfg_fit.get('InclSecPeak') else None
             with open(f"{out_dir_pt}/fits_status.txt", "a") as f:
@@ -185,54 +203,44 @@ def eval_pt_center(cfg_file_name, minimizer, workers=1):
                         f"sweights computed -> {computed_sweights} \n"
                         )
 
-            fitter.plot_fit(False, True, loc=["lower left", "upper left"], \
-                            path=f"{out_dir_pt}/fits/fM_fit_{cutset_suffix}.pdf",
-                            out_file=out_file) # (log, show_extra_info)
-            # quit()
-
             for var in infer_vars:
                 print(f"    Drawing {var}")
 
-                # # Create figure with two subplots (distros and ratio)
-                # fig, ax = plt.subplots(figsize=(8, 8))
+                # Create figure with two subplots (distros and ratio)
+                fig, ax = plt.subplots(figsize=(8, 8))
 
-                # bins = 200
-                # var_range = (min(sel_df[var]), max(sel_df[var]))
-                # sgn_vals, bin_edges = np.histogram(sel_df[var], bins=bins, range=var_range, weights=s_weights_sgn, density=True)
-                # if s_weights_sec_peak is not None:
-                #     bkg_sweights = np.ones(len(s_weights_sgn)) - np.asarray(s_weights_sgn) - np.asarray(s_weights_sec_peak)
-                # else:
-                #     bkg_sweights = np.ones(len(s_weights_sgn)) - np.asarray(s_weights_sgn)
-                # bkg_vals, _ = np.histogram(sel_df[var], bins=bins, range=var_range, weights=bkg_sweights, density=True)
-                # bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+                bins = 200
+                var_range = (min(sel_df[var]), max(sel_df[var]))
+                sgn_vals, bin_edges = np.histogram(sel_df[var], bins=bins, range=var_range, weights=s_weights_sgn, density=True)
+                if s_weights_sec_peak is not None:
+                    bkg_sweights = np.ones(len(s_weights_sgn)) - np.asarray(s_weights_sgn) - np.asarray(s_weights_sec_peak)
+                else:
+                    bkg_sweights = np.ones(len(s_weights_sgn)) - np.asarray(s_weights_sgn)
+                bkg_vals, _ = np.histogram(sel_df[var], bins=bins, range=var_range, weights=bkg_sweights, density=True)
+                bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
 
-                # # Plot signal and background
-                # ax.hist(bin_centers, bins=bins, weights=sgn_vals, label="Signal", color="#1f77b4", alpha=0.5, histtype='step', log=True)
-                # ax.hist(bin_centers, bins=bins, weights=bkg_vals, label="Bkg", color="#ff7f0e", alpha=0.5, histtype='step', log=True)
+                # Plot signal and background
+                ax.hist(bin_centers, bins=bins, weights=sgn_vals, label="Signal", color="#1f77b4", alpha=0.5, histtype='step', log=True)
+                ax.hist(bin_centers, bins=bins, weights=bkg_vals, label="Bkg", color="#ff7f0e", alpha=0.5, histtype='step', log=True)
 
-                # ax.set_ylabel("Entries")
-                # ax.set_xlabel(var)
-                # ax.set_title(var)
-                # ax.legend()
+                ax.set_ylabel("Entries")
+                ax.set_xlabel(var)
+                ax.set_title(var)
+                ax.legend()
 
-                # # Save figure
-                # fig.tight_layout()
-                # fig.savefig(
-                #     os.path.join(out_dir_pt, f'vars/{var}_{cutset_suffix}.pdf'),
-                #     dpi=300, bbox_inches="tight"
-                # )
-                # plt.close(fig)
+                # Save figure
+                fig.tight_layout()
+                fig.savefig(
+                    os.path.join(out_dir_pt, f'vars/{var}_{cutset_suffix}.pdf'),
+                    dpi=300, bbox_inches="tight"
+                )
+                plt.close(fig)
 
-                # # Fill histograms for averages
-                # histos_avgs[f"h_{var}_sgn"].SetBinContent(i_cutset + 1, np.average(sel_df[var], weights=s_weights_sgn))
-                # histos_avgs[f"h_{var}_sgn"].SetBinError(i_cutset + 1, np.std(sgn_vals))
-                # histos_avgs[f"h_{var}_bkg"].SetBinContent(i_cutset + 1, np.average(sel_df[var], weights=bkg_sweights))
-                # histos_avgs[f"h_{var}_bkg"].SetBinError(i_cutset + 1, np.std(bkg_vals))
-
-                fit_info, _, _, _, _ = fitter.get_fit_info()
-                for label in sgn_funcs.keys():
-                    histos_avgs[f"h_ry_{label}"].SetBinContent(i_cutset + 1, fit_info[label]["ry"])
-                    histos_avgs[f"h_ry_{label}"].SetBinError(i_cutset + 1, fit_info[label]["ry_unc"])
+                # Fill histograms for averages
+                histos_avgs[f"h_{var}_sgn"].SetBinContent(i_cutset + 1, np.average(sel_df[var], weights=s_weights_sgn))
+                histos_avgs[f"h_{var}_sgn"].SetBinError(i_cutset + 1, np.std(sgn_vals))
+                histos_avgs[f"h_{var}_bkg"].SetBinContent(i_cutset + 1, np.average(sel_df[var], weights=bkg_sweights))
+                histos_avgs[f"h_{var}_bkg"].SetBinError(i_cutset + 1, np.std(bkg_vals))
 
             # Reset fitter for new cutset: correlated bkg fracs will change
             fitter.reset()

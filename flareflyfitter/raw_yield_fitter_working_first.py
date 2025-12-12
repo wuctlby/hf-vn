@@ -579,7 +579,6 @@ class RawYieldFitter:
                 weight = self.sweights.GetSWeight(i, sgn_sw_col)
                 signal_sweights.append(weight)
             # print(f"Signal sWeights for component {label}: {signal_sweights}")
-            # quit()
             return signal_sweights
 
             # evt = self.data.get(0)
