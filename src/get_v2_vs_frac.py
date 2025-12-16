@@ -158,13 +158,13 @@ def v2_vs_frac(Dmeson, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multit
         gFracVsV2[iPt].Draw("same pZ")
 
         cFrac[-1].Update()
-        cFrac[-1].Write()
 
         cFrac[iPt].SaveAs(f"{outputDir}/v2VsFrac.pdf{suffix_pdf}")
         cFrac[iPt].SaveAs(f"{outputDir}/v2VsFrac_pt{ptMin}_{ptMax}.png")
 
         outFile.mkdir(f"pt_{int(ptMin*10)}_{int(ptMax*10)}")
         outFile.cd(f"pt_{int(ptMin*10)}_{int(ptMax*10)}")
+        cFrac[-1].Write()
         gFracVsV2[iPt].Write('gV2VsFrac')
         hV2VsFrac[iPt].Write('hV2VsFrac')
 
@@ -273,7 +273,7 @@ def main_v2_vs_frac(flow_config, ry_input_dir, frac_input_dir, correlated=False,
     # Use ry_input_dir, not frac_input_dir, to define output dir
     # because in multitrial frac_input_dir is constant and the
     # reference results would be overwritten
-    outputDir = os.path.join(os.path.dirname(ry_input_dir), '..', 'v2')
+    outputDir = os.path.join(os.path.dirname(ry_input_dir), 'v2')
     v2_vs_frac(
         config['Dmeson'],
         ptMins,

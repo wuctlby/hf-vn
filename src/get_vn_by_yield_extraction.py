@@ -11,6 +11,7 @@ from ROOT import TFile, TH1F, TGraphAsymmErrors, kBlack, kFullCircle
 script_dir = os.path.dirname(os.path.realpath(__file__))
 os.sys.path.append(os.path.join(script_dir, '..', 'utils'))
 from utils import logger
+from load_utils import load_aod_file
 from StyleFormatter import SetGlobalStyle, SetObjectStyle
 from matplotlib import gridspec
 ROOT.gROOT.SetBatch(True)
@@ -21,34 +22,68 @@ from raw_yield_fitter import RawYieldFitter
 mp.set_start_method("spawn", force=True)
 msg_service = ROOT.RooMsgService.instance()
 
-def process_pt_bin(i_pt, config, summary, rebin_factor, sp_edges, pt_label, hist_mass_sp_int, reso, outdir):
-    hist_mass_int = hist_mass_sp_int.ProjectionX()
-    fit_cfg = config['v2extraction']
+def process_pt_bin(i_cutset, i_pt, config, summary, rebin_factor, sp_edges, pt_label, data, reso, outdir, sel_string):
 
     # Initialize the fitter for sp-integrated yield extraction
-    fitter = RawYieldFitter(config['Dmeson'], f"sp_integrated_{pt_label}_fit", config['V2ExtractionByYield']['UseFlareFly'])
+    fit_cfg = config['v2extraction']
+    fitter = RawYieldFitter(config['Dmeson'], config['ptbins'][i_pt], config['ptbins'][i_pt + 1],
+                            f"sp_integrated_{pt_label}_fit", config['V2ExtractionByYield']['Minimizer'])
     fitter.set_rebin(fit_cfg['Rebin'][i_pt] if fit_cfg.get('Rebin') else 1)
     fitter.set_fit_range(fit_cfg['MassFitRanges'][i_pt][0], fit_cfg['MassFitRanges'][i_pt][1])
-    fitter.set_data_to_fit_hist(hist_mass_int)
+    if isinstance(data, ROOT.TH2):
+        data_mass_int = data.ProjectionX()
+        data_mass_int = data
+        fitter.set_data_to_fit_hist(data_mass_int)
+    else:
+        data = data.query(sel_string.replace(" && ", " and "))
+        fitter.set_data_to_fit_df(data, 'fM')
 
-    bkg_funcs = fit_cfg['BkgFunc'][i_pt] if isinstance(fit_cfg['BkgFunc'], list) else [fit_cfg['BkgFunc']]
-    for bkg_func in bkg_funcs:
-        fitter.add_bkg_func(bkg_func, "Comb. bkg")
+    # Add model components
+    fitter.add_bkg_func(fit_cfg['BkgFunc'][i_pt] if isinstance(fit_cfg['BkgFunc'], list) else fit_cfg['BkgFunc'], "Comb. bkg")
+    sgn_funcs = {} # More info for signal functions, a dictionary is better
+    sgn_funcs[fit_cfg['SgnFuncLabel']] = {
+        'func': fit_cfg['SgnFunc'][i_pt] if isinstance(fit_cfg['SgnFunc'], list) else fit_cfg['SgnFunc'],
+        'part': config['Dmeson']
+    }
+    if fit_cfg.get('InclSecPeak'):
+        include_sec_peak = fit_cfg['InclSecPeak'][i_pt] if isinstance(fit_cfg['InclSecPeak'], list) else fit_cfg['InclSecPeak']
+        if include_sec_peak:
+            sgn_funcs[fit_cfg['SgnFuncSecPeakLabel']] = {
+                'func': fit_cfg['SgnFuncSecPeak'][i_pt] if isinstance(fit_cfg['SgnFuncSecPeak'], list) else fit_cfg['SgnFuncSecPeak'],
+                'part': 'Dplus' if config['Dmeson'] == 'Ds' else 'Dstar',
+            }
+    for i_sgn, (label, sgn_func) in enumerate(sgn_funcs.items()):
+        fitter.add_sgn_func(sgn_func['func'], label, sgn_func['part'])
 
-    sgn_funcs = fit_cfg['SgnFunc'][i_pt] if isinstance(fit_cfg['SgnFunc'], list) else [fit_cfg['SgnFunc']]
-    for i_sgn, sgn_func in enumerate(sgn_funcs):
-        fitter.add_sgn_func(sgn_func, f"signal_{i_sgn}")
+    # Add correlated background if specified
+    if config.get('corr_bkgs'):
+        fitter.add_corr_bkgs(config['corr_bkgs'], sel_string, config['ptbins'][i_pt], config['ptbins'][i_pt + 1])
 
     fitter.setup()
-    fitter.fit()
-    fig, _ = fitter.plot_fit(False, True, loc=["lower left", "upper left"]) # (log, show_extra_info)
-    fig_int_fit_path = f"{outdir}/fit_int_{pt_label}.png"
-    os.makedirs(os.path.dirname(fig_int_fit_path), exist_ok=True)
-    fig.savefig(fig_int_fit_path, dpi=300, bbox_inches="tight")
+    if fit_cfg.get('InitPars'):
+        fitter.set_fit_pars(fit_cfg['InitPars'], pt_min, pt_max)
 
-    raw_yield, raw_yield_unc = fitter.get_fitter().get_raw_yield()
-    mean_int, mean_unc = fitter.get_fitter().get_mass()
-    sigma_int, sigma_unc = fitter.get_fitter().get_sigma()
+    # Prefit the MC prompt enhanced cut to fix the tails, binned fit
+    if fit_cfg.get('FixSgnFromMC'):
+        fitter.set_fix_sgn_to_mc_prefit(True)
+        fitter.prefit_mc(f"{config['outdir']}/corrbkgs/templs_{pt_label}.root")
+        fitter.plot_mc_prefit(False, True, loc=["lower left", "upper left"],
+                              path=f"{outdir}/")
+        fitter.plot_raw_residuals_mc_prefit(path=f"{outdir}/fM_mc_prefit_residuals_{i_cutset}_{pt_label}.pdf")
+
+    if config['V2ExtractionByYield'].get('FixParsToIntFit'):  # Fix mean to results of sp-integrated fit
+        logger(f"Will fix all parameters of signal functions to sp-integrated fit result", "WARNING")
+        fitter.fix_sgn_pars_to_first_fit()
+    status, converged = fitter.fit()
+    fig_int_fit_path = f"{outdir}/fit_int_{pt_label}.pdf"
+    fitter.plot_fit(False, True, loc=["lower left", "upper left"],  # (log, show_extra_info)
+                    path=fig_int_fit_path)
+
+    fit_info, sgn_pars, sgn_pars_uncs, _, _ = fitter.get_fit_info()
+    label = list(sgn_funcs.keys())[0]       # Take only the first signal function, which is the peak of interest
+    raw_yield, raw_yield_unc = fit_info[label]["ry"], fit_info[label]["ry_unc"]
+    mean_int, mean_unc = sgn_pars[f"mu_{label}"], sgn_pars_uncs[f"mu_{label}"]
+    sigma_int, sigma_unc = sgn_pars[f"sigma_{label}"], sgn_pars_uncs[f"sigma_{label}"]
 
     summary['hRawYieldsSimFit'].SetBinContent(i_pt + 1, raw_yield)
     summary['hRawYieldsSimFit'].SetBinError(i_pt + 1, raw_yield_unc)
@@ -57,7 +92,7 @@ def process_pt_bin(i_pt, config, summary, rebin_factor, sp_edges, pt_label, hist
     summary['hSigmaSimFit'].SetBinContent(i_pt + 1, sigma_int)
     summary['hSigmaSimFit'].SetBinError(i_pt + 1, sigma_unc)
 
-    # Extract raw yields in each sp bin in parallel
+    # Extract raw yields in each sp bin
     stats = [
         'means', 'means_unc',
         'sigmas', 'sigmas_unc',
@@ -70,43 +105,42 @@ def process_pt_bin(i_pt, config, summary, rebin_factor, sp_edges, pt_label, hist
         hist_stats[stat].SetDirectory(0)
         vals_stats[stat] = [0] * (len(sp_edges['bins']) - 1)
     vals_stats['sp_center'] = [0] * (len(sp_edges['bins']) - 1)
-    hist_stats['sp_histos'] = [None] * (len(sp_edges['bins']) - 1)
+    if isinstance(data, ROOT.TH2):
+        hist_stats['sp_histos'] = [None] * (len(sp_edges['bins']) - 1)
 
-    for isp, (sp_left_bin, sp_right_bin) in enumerate(zip(sp_edges['bins'][:-1], sp_edges['bins'][1:])):
-        sp_min = hist_mass_sp_int.GetYaxis().GetBinLowEdge(sp_left_bin)
-        sp_max = hist_mass_sp_int.GetYaxis().GetBinUpEdge(sp_right_bin-1)
+    for isp, (sp_left_bin, sp_right_bin, sp_min, sp_max) in enumerate(zip(sp_edges['bins'][:-1], sp_edges['bins'][1:], \
+                                                                          sp_edges['sp_mins'][:-1], sp_edges['sp_maxs'][:-1])):
         sp_center = (sp_min + sp_max) / 2
         sp_label = f"sp_bins_{sp_left_bin}_{sp_right_bin-1}_range_{sp_min:.2f}_{sp_max:.2f}"
         logger(f"Processing sp_label {sp_label}", "INFO")
 
-        hist_mass_sp_int.GetYaxis().SetRange(sp_left_bin, sp_right_bin)
-        histo_sp = hist_mass_sp_int.ProjectionX(f"h_mass_{sp_label}")
-        histo_sp.SetDirectory(0)
-
         # For each sp bin, update fitter changing the histogram to fit, name and rebin
-        fitter.set_rebin(rebin_factor)
-        fitter.set_data_to_fit_hist(histo_sp)
+        if isinstance(data, ROOT.TH2):
+            data.GetYaxis().SetRange(sp_left_bin, sp_right_bin)
+            data_sp = data.ProjectionX(f"h_mass_{sp_label}")
+            data_sp.SetDirectory(0)
+            fitter.set_rebin(rebin_factor)
+            fitter.set_data_to_fit_hist(data_sp)
+        else:
+            data_sp = data.query(f"fScalarProd >= {sp_min} and fScalarProd < {sp_max}")
+            fitter.set_data_to_fit_df(data_sp, 'fM')
+
         fitter.set_name(sp_label)
         fitter.setup()
-        if config['V2ExtractionByYield'].get('FixMeanToInt'):  # Fix mean to results of sp-integrated fit
-            logger(f"Fixing mean to sp-integrated fit result: {mean_int}", "WARNING")
-            fitter.fix_sgn_par(len(sgn_funcs)-1, "mu", mean_int)
-        if config['V2ExtractionByYield'].get('FixSigmaToInt'): # Fix mean to results of sp-integrated fit
-            logger(f"Fixing sigma to sp-integrated fit result: {sigma_int}", "WARNING")
-            fitter.fix_sgn_par(len(sgn_funcs)-1, "sigma", sigma_int)
-        hist_stats['sp_histos'][isp] = histo_sp
+        if isinstance(data, ROOT.TH2):
+            hist_stats['sp_histos'][isp] = histo_sp
         vals_stats['sp_center'][isp] = sp_center
         try:
-            fitter.fit()
+            status, converged = fitter.fit()
 
-            fig, _ = fitter.plot_fit(False, True, loc=["lower left", "upper left"]) # (log, show_extra_info)
-            fig_sp_pt_path = f"{outdir}/{pt_label}/{sp_label}.png"
-            os.makedirs(os.path.dirname(fig_sp_pt_path), exist_ok=True)
-            fig.savefig(fig_sp_pt_path, dpi=300, bbox_inches="tight")
-
-            vals_stats['sp_ry'][isp], vals_stats['sp_ry_unc'][isp] = fitter.get_fitter().get_raw_yield()
-            vals_stats['means'][isp], vals_stats['means_unc'][isp] = fitter.get_fitter().get_mass()
-            vals_stats['sigmas'][isp], vals_stats['sigmas_unc'][isp] = fitter.get_fitter().get_sigma()
+            fig_sp_pt_path = f"{outdir}/{pt_label}/{sp_label}.pdf"
+            fitter.plot_fit(False, True, loc=["lower left", "upper left"], # (log, show_extra_info)
+                            path=fig_sp_pt_path)
+            fit_info, sgn_pars, sgn_pars_uncs, _, _ = fitter.get_fit_info()
+            label = list(sgn_funcs.keys())[0]
+            vals_stats['sp_ry'][isp], vals_stats['sp_ry_unc'][isp] = fit_info[label]["ry"], fit_info[label]["ry_unc"]
+            vals_stats['means'][isp], vals_stats['means_unc'][isp] = sgn_pars[f"mu_{label}"], sgn_pars_uncs[f"mu_{label}"]
+            vals_stats['sigmas'][isp], vals_stats['sigmas_unc'][isp] = sgn_pars[f"sigma_{label}"], sgn_pars_uncs[f"sigma_{label}"]
         except Exception as e:
             logger(f"Error fitting sp {sp_min:.2f} - {sp_max:.2f}: {e}", "ERROR")
             vals_stats['sp_ry'][isp], vals_stats['sp_ry_unc'][isp] = 0, 0
@@ -195,7 +229,9 @@ if __name__ == "__main__":
         cfg_flow = yaml.safe_load(CfgFlow)
 
     # Set outfile name
-    out_file_name = os.path.join(args.infile.replace('proj', 'raw_yield'))
+    out_file_name = os.path.join(os.path.dirname(os.path.dirname(args.infile)),
+                                 'raw_yields',
+                                 os.path.basename(args.infile).replace('proj', 'raw_yields'))
     os.makedirs(os.path.dirname(out_file_name), exist_ok=True)
 
     pt_bins = cfg_flow['ptbins']
@@ -216,23 +252,39 @@ if __name__ == "__main__":
     # Retrieve number of cutset
     _, cutset_str = os.path.splitext(os.path.basename(args.infile))[0].split('_')
     i_cutset = int(cutset_str)
-    rebin_factors = cfg_flow['V2ExtractionByYield']['RebinCutsets'][i_cutset]
+    with open((args.infile).replace('proj', 'cutset').replace('.root', '.yml'), 'r') as CfgFlow:
+        cfg_cutset = yaml.safe_load(CfgFlow)
+
+    rebin_factors = cfg_flow['V2ExtractionByYield']['RebinCutsets'][i_cutset] if cfg_flow['V2ExtractionByYield'].get('RebinCutsets') else [1]*(len(pt_bins)-1)
 
     proj_file = TFile.Open(args.infile, "READ")
     h_resolution = proj_file.Get("hResolution")
     reso = h_resolution.GetBinContent(1)
     outfile = TFile.Open(out_file_name, 'RECREATE')
-    for i_pt, (pt_min, pt_max, mass_range, rebin_factor) in enumerate(zip(pt_bins[:-1], pt_bins[1:], cfg_flow['MassFitRanges'], rebin_factors)):
+    for i_pt, (pt_min, pt_max, mass_range, rebin_factor) in enumerate(zip(pt_bins[:-1], pt_bins[1:], \
+                                                                          cfg_flow['v2extraction']['MassFitRanges'], \
+                                                                          rebin_factors)):
         logger(f"\nProcessing pt bin {i_pt+1}/{len(pt_bins)-1}: {pt_min} - {pt_max} GeV/c", "INFO")
         pt_label = f"pt_{int(pt_min*10)}_{int(pt_max*10)}"
-        hist_mass_sp_int = proj_file.Get(f"{pt_label}/hMassSpData")
-        hist_mass_sp_int.SetDirectory(0)
-        sp_edges = get_sp_bin_edges(hist_mass_sp_int.GetYaxis(), cfg_flow['V2ExtractionByYield'], i_cutset, i_pt)
-        hists_stats, weighted_avg, weighted_avg_unc = process_pt_bin(i_pt, cfg_flow, \
+        hist_mass_sp = proj_file.Get(f"{pt_label}/hMassSpData")
+        hist_mass_sp.SetDirectory(0)
+        sp_edges = get_sp_bin_edges(hist_mass_sp.GetYaxis(), cfg_flow['V2ExtractionByYield'], i_cutset, i_pt)
+        if cfg_flow['V2ExtractionByYield'].get('UseTree'):
+            data = load_aod_file(f"{cfg_flow['outdir']}/preprocess/{pt_label}/TreesPtCenterSp/AO2D_{pt_label}.root", True)
+        else:
+            data = hist_mass_sp
+
+        sel_string_cutset = f"fMlScore0 < {cfg_cutset['ScoreBkg']['max'][i_pt]} && " \
+                            f"fMlScore0 >= {cfg_cutset['ScoreBkg']['min'][i_pt]} && " \
+                            f"fMlScore1 < {cfg_cutset['ScoreFD']['max'][i_pt]} && " \
+                            f"fMlScore1 >= {cfg_cutset['ScoreFD']['min'][i_pt]} && " \
+                            f"fM >= {mass_range[0]} && fM < {mass_range[1]}"
+        hists_stats, weighted_avg, weighted_avg_unc = process_pt_bin(i_cutset, i_pt, cfg_flow, \
                                                                      hists_summary, \
                                                                      rebin_factor, sp_edges, \
-                                                                     pt_label, hist_mass_sp_int, reso, \
-                                                                     f"{os.path.dirname(out_file_name)}/scan_{cutset_str}/")
+                                                                     pt_label, data, reso, \
+                                                                     f"{os.path.dirname(out_file_name)}/scan_{cutset_str}/", \
+                                                                     sel_string_cutset)
 
         outfile.mkdir(f"{pt_label}/sp_bins")
         for hist_name, hist in hists_stats.items():

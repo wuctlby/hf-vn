@@ -16,7 +16,7 @@ from ROOT import TFile, TObject
 from alive_progress import alive_bar
 from scipy.interpolate import make_interp_spline
 sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/../utils")
-from sparse_dicts import get_pt_preprocessed_sparses
+from data_model import get_pt_preprocessed_sparses
 from utils import reweight_histo_1D, reweight_histo_2D, reweight_histo_3D, get_vn_versus_mass, profile_mass_sp, make_dir_root_file, logger
 
 ROOT.TH1.AddDirectory(False)
@@ -134,7 +134,7 @@ def proj_mc_reco(sparses_reco, sPtWeightsD, sPtWeightsB, Bspeciesweights, writeo
     else:
         hPtFD = sparses_reco['RecoFD'].Projection(axes['RecoFD']['Pt'])
 
-    ## write the output 
+    ## write the output
     hMassPrompt.Write('hPromptMass', writeopt)
     hMassFD.Write('hFDMass', writeopt)
     hPtPrompt.Write('hPromptPt', writeopt)
@@ -299,7 +299,7 @@ if __name__ == "__main__":
                 sparse_flow["FlowSP"].GetAxis(axes['FlowSP']['ScoreFD']).SetRangeUser(fd_min, fd_max)
                 sparse_flow["FlowSP"].GetAxis(axes['FlowSP']['ScoreBkg']).SetRangeUser(bkg_min, bkg_max)
                 proj_data(i_pt, sparse_flow["FlowSP"], axes, resolution, config["projections"], write_opt_data)
-                logger(f"Projected data!")
+                logger("Projected data!")
 
             if operations.get("proj_mc"):
                 for key, i_sparse in sparses_reco.items():

@@ -1,5 +1,4 @@
 import sys
-from alive_progress import alive_bar
 import os
 from ROOT import TFile # pyright: ignore # type: ignore
 sys.path.append("./")
@@ -22,6 +21,9 @@ def get_pt_preprocessed_sparses(config, pt_label):
 
     # Find preprocess config of sparse with name "FlowSP" (this is the one to be projected)
     for input_cfg in pre_cfg['inputs']:
+        # print(f"input_cfg: {input_cfg}")
+        if not 'sparses' in input_cfg:
+            continue
         for sparse_cfg in input_cfg['sparses']:
             if sparse_cfg['name'] == 'FlowSP':
                 sparse_proj_data_cfg = sparse_cfg
@@ -49,6 +51,8 @@ def get_pt_preprocessed_sparses(config, pt_label):
             # Retrieve axes
             sparse_proj_mc_cfg = None
             for input_cfg in pre_cfg['inputs']:
+                if not 'sparses' in input_cfg:
+                    continue
                 for sparse_cfg in input_cfg['sparses']:
                     if sparse_cfg['name'] == key_name:
                         sparse_proj_mc_cfg = sparse_cfg
@@ -57,6 +61,38 @@ def get_pt_preprocessed_sparses(config, pt_label):
         infile_prep_mc.Close()
 
     return sparses_data, sparses_reco, sparses_gen, axes
+
+def get_tree_dict(tree_name):
+
+    if tree_name == "O2hfcandflowinfo":
+        return {
+            'Mass': 'fM',
+            'Pt': 'fPt',
+            'ScoreBkg': 'fMlScore0',
+            'ScoreFD': 'fMlScore1',
+            'Sp': 'fScalarProd',
+            'Cent': 'fCent',
+        }
+    if tree_name == "O2hfcandmptinfo":
+        return {
+            'Mass': 'fM',
+            'Pt': 'fPt',
+            'ScoreBkg': 'fScoreBkg',
+            'ScoreFD': 'fScoreFD',
+        }
+    if tree_name == "O2hfcanddplite":
+        return {
+            'Mass': 'fM',
+            'Pt': 'fPt',
+            'Cent': 'fCentrality',
+            'FlagMcMatchRec': 'fFlagMcMatchRec',
+            'FlagOriginMcRec': 'fOriginMcRec',
+        }
+    if tree_name == "O2hfcanddpml":
+        return {
+            'ScoreBkg': 'fMlScore0',
+            'ScoreFD': 'fMlScore1',
+        }
 
 def get_sparse_dict(sparse_name, dmeson):
     """ Get dictionary mapping variable names to their respective axis indices in the sparse.
@@ -170,8 +206,8 @@ def get_sparse_dict(sparse_name, dmeson):
                     'Pt': 1,
                     'Cent': 2,
                     'ScoreBkg': 3,
-                    'ScoreFD': 5,
                     'ScorePrompt': 4,
+                    'ScoreFD': 5,
                     'NPvContr': 6
                 }
             elif sparse_name == "RecoFD":
@@ -180,11 +216,11 @@ def get_sparse_dict(sparse_name, dmeson):
                     'Pt': 1,
                     'Cent': 2,
                     'ScoreBkg': 3,
-                    'ScoreFD': 5,
                     'ScorePrompt': 4,
+                    'ScoreFD': 5,
                     'NPvContr': 6,
                     'PtBMoth': 7,
-                    'FlagBHad': 8,
+                    'FlagBHad': 8
                 }
             elif sparse_name == "GenPrompt":
                 return {
@@ -205,4 +241,4 @@ def get_sparse_dict(sparse_name, dmeson):
             else:
                 logger(f"Unknown sparse type for Ds {sparse_name}", level='ERROR')
         else:
-            logger(f"Sparse dictionary not defined for Dmeson type {dmeson}", level='ERROR')
+            logger(f"Sparse dictionary {data_type} not defined for Dmeson type {dmeson}", level='ERROR')

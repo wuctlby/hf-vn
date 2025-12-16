@@ -598,12 +598,12 @@ def reweight_histo_2D(histo, weights, binned=False):
     for iBinX in range(1, histo.GetXaxis().GetNbins()+1):
         for iBinY in range(1, histo.GetYaxis().GetNbins()+1):
             if binned:
-                weight = weights[iBinY-1]
+                weight = weights[iBinY-1] if weights[iBinY-1] > 0 else 0
             else:
                 binCentVal = histo.GetYaxis().GetBinCenter(iBinY)
                 weight = weights(binCentVal) if weights(binCentVal) > 0 else 0
             weighted_content = histo.GetBinContent(iBinX, iBinY) * weight
-            weighted_error = histo.GetBinError(iBinX, iBinY) * weight if weight > 0 else 0
+            weighted_error = histo.GetBinError(iBinX, iBinY) * weight
             histo.SetBinContent(iBinX, iBinY, weighted_content)
             histo.SetBinError(iBinX, iBinY, weighted_error)
     proj_hist = histo.ProjectionX(histo.GetName(), 0, histo.GetYaxis().GetNbins()+1, 'e')

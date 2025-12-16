@@ -20,7 +20,7 @@ from utils import logger, get_centrality_bins, make_dir_root_file
 from corr_bkgs_brs import final_states
 from ROOT import RooRealVar, RooDataSet, RooArgSet, RooKeysPdf, TFile, TH3F, TH1F
 
-def get_corr_bkg(i_pt, cfg_cutset, corr_bkg_file, corr_bkg_chn, fit_range, pt_label, templ_type, output_type, sgn_d_meson='Dplus', corr_abundances=False):
+def get_corr_bkg(corr_bkg_file, corr_bkg_chn, sel_string, pt_label, templ_type, output_type, get_smoothed=True, sgn_d_meson='Dplus', corr_abundances=False):
     '''
     Get correlated background template and normalization factor
     '''
@@ -40,28 +40,25 @@ def get_corr_bkg(i_pt, cfg_cutset, corr_bkg_file, corr_bkg_chn, fit_range, pt_la
         logger(f"Could not retrieve treeMass from {input_folder}/{templ_type} in file {corr_bkg_file}", "ERROR")
         sys.exit(1)
     templ_tree_mass.SetDirectory(0)
-    templ_histo_mass = corr_bkg_file.Get(f"{input_folder}/{templ_type}/hMassSmooth")
+    templ_histo_mass = corr_bkg_file.Get(f"{input_folder}/{templ_type}/hMass{'Smooth' if get_smoothed else 'Raw'}")
     templ_histo_mass.SetDirectory(0)
     full_tree = corr_bkg_file.Get(f"{input_folder}/{templ_type}/treeFracMassScoresBkgFD")
     templ_rdataframe_full = ROOT.RDataFrame(full_tree)
-    n_entries = (
-        templ_rdataframe_full.Filter(
-            f"fMlScore0 < {cfg_cutset['ScoreBkg']['max'][i_pt]} && "
-            f"fMlScore1 >= {cfg_cutset['ScoreFD']['min'][i_pt]} && "
-            f"fMlScore1 < {cfg_cutset['ScoreFD']['max'][i_pt]} && "
-            f"fM >= {fit_range[0]} && fM < {fit_range[1]}"
-        ).Count().GetValue()
-    )
-
+    n_entries = templ_rdataframe_full.Filter(sel_string).Count().GetValue()
     corr_abundance = 1 if not corr_abundances else final_states[corr_bkg_chn].get(f"abundance_to_{sgn_d_meson}", 1)
     if corr_abundance != 1:
         logger(f"Applying abundance correction factor of {corr_abundance} for correlated bkg source {corr_bkg_chn}", "WARNING")
     frac = (br_pdg / br_mc) * n_entries * corr_abundance
     logger(f"Returning frac {frac} for correlated bkg source {corr_bkg_chn}", "INFO")
+    logger(f"Returning {output_type} for correlated bkg source {corr_bkg_chn}", "WARNING")
     if output_type == "hist":
         return templ_histo_mass, frac
     elif output_type == "tree":
         return templ_tree_mass, frac
+    elif output_type == "df":
+        rdf_mass = ROOT.RDataFrame(f"{input_folder}/{templ_type}/treeMass", corr_bkg_file.GetName())
+        df_mass = pd.DataFrame(ROOT.RDataFrame(rdf_mass).AsNumpy())
+        return df_mass, frac
     else:
         logger(f"Output type {output_type} not recognized. Choose between 'hist' or 'tree'.", "ERROR")
         sys.exit(1)
@@ -247,10 +244,9 @@ def produce_corr_bkgs_templs(cfg):
 
         # Loop over final states using precomputed masks
         for fin_state, decay_mask_full in decay_masks.items():
-            if fin_state.startswith("Dplus"):
-                continue
+
             decay_pt_mask = decay_mask_full[pt_mask].reset_index(drop=True)
-            
+
             # Apply pt mask
             mask = pt_mask & decay_pt_mask
             n_candidates = mask.sum()

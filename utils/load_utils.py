@@ -2,8 +2,53 @@ import os
 from utils import logger
 from ROOT import TFile, TH1
 from itertools import combinations
+import time
+import uproot
+import pandas as pd
+import numpy as np
 
 TH1.AddDirectory(False)
+
+def load_aod_file(aod_file, has_sp_cent, num_workers=16, chunk_size=1_000_000, downsample_frac=None):
+    """
+    Load AOD file using uproot with parallel decompression and chunking.
+    
+    Args:
+        aod_file (str): Path to the AOD file.
+        has_sp_cent (bool): Whether the file contains SP centrality information.
+        num_workers (int): Number of workers for parallel decompression.
+        chunk_size (int): Number of entries to read per chunk.
+        downsample_frac (float, optional): Fraction of data to downsample. If None, no downsampling is applied.
+    Returns:
+        pd.DataFrame: DataFrame containing the loaded data.
+    """
+    start_total = time.time()
+    rng = np.random.default_rng(42)
+    branches = ["fPt", "fM", "fMlScore0", "fMlScore1", "fScalarProd", "fCent"] \
+               if has_sp_cent else ["fPt", "fM", "fMlScore0", "fMlScore1"]
+    key = "ptcentersp" if has_sp_cent else "ptcenter"
+
+    # Open with parallel decompression
+    t0 = time.time()
+    f = uproot.open(aod_file, num_workers=8)
+    entries = f[key].num_entries
+    logger(f"Opened file in {time.time()-t0:.2f}s using {num_workers} workers, total entries: {entries}", level="INFO")
+
+    # Iterate in chunks
+    dfs = []
+    logger(f"Downsampling fraction {downsample_frac}", level="INFO")
+    for df_chunk in f[key].iterate(filter_name=branches, step_size=chunk_size, library="np"):
+        if downsample_frac is not None:
+            n = len(df_chunk[branches[0]])
+            mask = rng.random(n) < downsample_frac
+            df_chunk = {k: v[mask] for k, v in df_chunk.items()}
+        dfs.append(pd.DataFrame(df_chunk))
+
+    # Concatenate
+    t2 = time.time()
+    df = pd.concat(dfs, ignore_index=True)
+    logger(f"TOTAL time: {time.time()-start_total:.2f}s", level="INFO")
+    return df
 
 def load_root_files(inputPath, prefix: str, suffix='.root') -> list[str]:
     """

@@ -19,7 +19,7 @@ from StyleFormatter import SetGlobalStyle, SetObjectStyle
 
 TH1.AddDirectory(False)
 
-def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputPath, systematics):
+def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputPath, cutsetFiles, systematics):
 
     hRawYieldsVsCut, hRawYieldsVsCutReSum, hRawYieldPromptVsCut, hRawYieldFDVsCut = [], [], [], []
     hEffPromptVsCut, hEffFDVsCut = [], []
@@ -45,12 +45,23 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
             colName  = '#it{N}_{prompt}' if iCol == 0   else '#it{N}_{non-prompt}'
             hCov.SetTitle(f';#it{{p}}_{{T}} (GeV/#it{{c}}); #sigma({rowName}, {colName})')
 
-    oCuts = []
     for iPt, (ptMin, ptMax) in enumerate(zip(ptmins, ptmaxs)):
         listRawYield, listRawYieldUnc, listEffPrompt,\
         listEffPromptUnc, listEffFD, listEffFDUnc = ([] for i in range(6))
 
-        for iCut, (hRaw, hEffP, hEffF) in enumerate(zip(hRawYields, hEffPrompt, hEffFD)):
+        oCuts = []
+        last_FD_score_cut = None
+        for iCut, (hRaw, hEffP, hEffF, cutsetFile) in enumerate(zip(hRawYields, hEffPrompt, hEffFD, cutsetFiles)):
+            with open(cutsetFile, 'r') as csFile:
+                cutsetConfig = yaml.safe_load(csFile)
+                if last_FD_score_cut is None:
+                    last_FD_score_cut = cutsetConfig['ScoreFD']['min'][iPt]
+                else:
+                    if last_FD_score_cut == cutsetConfig['ScoreFD']['min'][iPt]:
+                        logger(f'Cut set {iCut} has the same FD score cut as the previous one for pt {ptMin:.1f}-{ptMax:.1f}, skipping it.', level='WARNING')
+                        continue
+                    last_FD_score_cut = cutsetConfig['ScoreFD']['min'][iPt]
+
             # if skip_cuts is defined check if the cut number is present for that pt
             if config.get('minimisation') and config['minimisation'].get('skip_cuts'):
                 if iCut in config['minimisation']['skip_cuts'][iPt]:
@@ -125,7 +136,7 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
                 listEffFDUnc     = [x for i, x in enumerate(listEffFDUnc) if i % 4 == 0]
 
         nSets = len(listRawYield)
-        logger(f'Pt: {ptMin:.1f}-{ptMax:.1f}, iPt: {iPt+1}', level='INFO')
+        logger(f'Pt: {ptMin:.1f}-{ptMax:.1f}, iPt: {iPt+1}, number of eff files: {len(listEffPrompt)}', level='INFO')
         for i in range(len(listEffPrompt)):
             logger(f'({oCuts[i]}) Eff Prompt: {listEffPrompt[i]:.6f}    Eff FD: {listEffFD[i]:.6f}    Raw Yield: {listRawYield[i]:.2f}', level='DEBUG')
 
@@ -311,7 +322,7 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
         if iPt == hRawYields[0].GetNbinsX() - 1:
             cFinalResPt[iPt].SaveAs(f'{outDir}/FinalResPt.pdf]')
         cFinalResPt[iPt].SaveAs(f'{outDir}/FinalResPt_pt{ptmins[iPt]}_{ptmaxs[iPt]}.png')
-    
+
 
 def compute_frac_cut_var(config_flow, inputPathRy, inputPathEff, batch=False):
 
@@ -326,11 +337,10 @@ def compute_frac_cut_var(config_flow, inputPathRy, inputPathEff, batch=False):
 
     rawYieldFiles = load_root_files(inputPathRy, 'raw_yields_')
     effFiles = load_root_files(inputPathEff, 'eff_')
-    
     if len(effFiles) != len(rawYieldFiles):
         logger(f'Number of efficiency files ({len(effFiles)}) does not match number of raw yield files ({len(rawYieldFiles)}).', level='ERROR')
         raise ValueError(f'Number of efficiency files ({len(effFiles)}) does not match number of raw yield files ({len(rawYieldFiles)}).')
-    
+
     effFiles.sort()
     rawYieldFiles.sort()
 
@@ -374,12 +384,13 @@ def compute_frac_cut_var(config_flow, inputPathRy, inputPathEff, batch=False):
     latInfo.SetTextFont(42)
     latInfo.SetTextColor(1)
 
-    minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD,  inputPathEff, None)
-    if 'systematics' in config['minimisation']:
+    cutsetFiles = [f.replace('eff', 'cutset').replace('.root', '.yml') for f in effFiles]
+    minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD,  inputPathEff, cutsetFiles, None)
+    if 'systematics' in config.get('minimisation', {}):
         logger('Starting systematics variations', level='WARNING')
         for syst in config['minimisation']['systematics']:
             logger(f'Running systematics: {syst}', level='WARNING')
-            minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD,  inputPathEff, syst)
+            minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD,  inputPathEff, cutsetFiles, syst)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Arguments')
