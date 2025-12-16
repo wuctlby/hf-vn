@@ -60,6 +60,8 @@ class RawYieldFitter:
         self.pdfs = ROOT.RooArgList()
         self.mc_pars = {}
         self.fit_counter = 0
+        self.fix_sgn_to_first_fit = False
+        self.first_fit_pars = None
 
     def set_particle(self, particle_name):
         logger(f"\nSetting particle to fit: {particle_name}")
@@ -99,7 +101,10 @@ class RawYieldFitter:
         logger(f"\nSetting data to fit from histogram with limits {self.fit_range_min} - {self.fit_range_max} GeV/c"
               f" for fitter with name {self.fit_name}")
         self.hist = data
-        self.data = DataHandler(data, limits=[self.fit_range_min, self.fit_range_max], rebin=self.rebin)
+        if self.minimize_flarefly:
+            self.data = DataHandler(data, limits=[self.fit_range_min, self.fit_range_max], rebin=self.rebin)
+        else:
+            self.data = ROOT.RooDataHist("data_hist", "data_hist", ROOT.RooArgList(self.roofit_fit_var), data)
 
     def set_fix_sgn_to_mc_prefit(self, fix):
         logger(f"\nSetting fix signal to MC prefit: {fix}")
@@ -142,7 +147,7 @@ class RawYieldFitter:
                 self.mc_pars[name] = self.fit_model[name]['pdf'].getParameters(self.fit_model[name]['mchist'])
 
     def set_data_to_fit_df(self, data_df, var_name='fM'):
-        logger(f"\nSetting data to fit from dataframe with variable {var_name} and limits {self.fit_range_min} - {self.fit_range_max} GeV/c")
+        logger(f"\nSetting data to fit from dataframe of length {len(data_df)} with variable {var_name} and limits {self.fit_range_min} - {self.fit_range_max} GeV/c")
         if self.minimize_flarefly:
             self.data = DataHandler(data_df, var_name=var_name, limits=[self.fit_range_min, self.fit_range_max])
         else:
@@ -257,6 +262,9 @@ class RawYieldFitter:
         else:
             return 1.869  # default D+ mass
 
+    def fix_sgn_pars_to_first_fit(self):
+        self.fix_sgn_to_first_fit = True
+
     def fix_sgn_par(self, sgn_func_idx, par_name, par_val):
         logger(f"\nFixing signal parameter {par_name} of function index {sgn_func_idx} to value {par_val}")
         self.fitter.set_signal_initpar(sgn_func_idx, par_name, par_val, fix=True)
@@ -287,7 +295,6 @@ class RawYieldFitter:
             self.setup_roofit()
 
     def fit(self):
-        self.fit_counter += 1
         if self.minimize_flarefly:
             return self.perform_fit_flarefly()
         else:
@@ -314,7 +321,7 @@ class RawYieldFitter:
         self.fitter = F2MassFitter(self.data, name=self.fit_name,
                                    label_signal_pdf=self.sgn_pdfs_labels, name_signal_pdf=self.sgn_pdfs,
                                    name_background_pdf=self.bkg_pdfs, label_bkg_pdf=self.bkg_pdfs_labels,
-                                   extended=True)
+                                   extended=True if not self.data.get_is_binned() else False)
 
         # Set particle mass and sigma initial par for the main signal
         # function here, so they can be overridden later if needed
@@ -419,10 +426,10 @@ class RawYieldFitter:
                 par_file.Close()
 
     def perform_fit_flarefly(self):
-        logger(f"\nPerforming fit on data with fit range {self.fit_range_min} - {self.fit_range_max} GeV/c", "INFO")
+        logger(f"\nPerforming flarefly fit on data with fit range {self.fit_range_min} - {self.fit_range_max} GeV/c", "INFO")
 
         for i_sgn_func, (name, sgn_func) in enumerate(self.fit_model.items()):
-            if sgn_func['type'] != 'sgn' or 'mcpars' not in sgn_func:
+            if name not in self.mc_pars:
                 continue
             for par_name, par_val in self.mc_pars[name].items():
                 if par_name == "mu" or par_name == "sigma" or par_name == "frac":
@@ -437,10 +444,33 @@ class RawYieldFitter:
         if self.cfg_pars_init is not None:
             self.set_fit_pars_flarefly()
 
+        if self.fit_counter > 0 and self.fix_sgn_to_first_fit:
+            for i_sgn_func, sgn_pars_dict in enumerate(self.first_fit_pars):
+                for par_name, par_val in sgn_pars_dict.items():
+                    if "frac" in par_name:
+                        if i_sgn_func == 0:
+                            continue
+                        else:
+                            frac_first = self.first_fit_pars[0]['frac']
+                            frac_this = par_val
+                            frac_ratio = frac_this / frac_first
+                            logger(f"Fixing fraction of signal function index {i_sgn_func} to first signal function with ratio {frac_ratio}")
+                            self.fitter.fix_signal_frac_to_signal_pdf(i_sgn_func, 0, frac_ratio)
+                            continue
+                    logger(f"\nFixing signal parameter {par_name} of function index {i_sgn_func} to first fit value {par_val}")
+                    self.fitter.set_signal_initpar(i_sgn_func, par_name, par_val, fix=True)
+
         self.fit_result = self.fitter.mass_zfit()
+
+        if self.fit_counter <= 0 and self.fix_sgn_to_first_fit:
+            self.first_fit_pars = copy.deepcopy(self.fitter.get_signal_pars())
+            logger(f"Stored signal params of the first fit!\n", "WARNING")
+
+        self.fit_counter += 1
         return self.fit_result.status, self.fit_result.converged
 
     def plot_mc_prefit(self, logy, show_extra_info, loc=None, path=None, out_file=None):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         for i_sgn_func, (name, sgn_func) in enumerate(self.fit_model.items()):
             if sgn_func['type'] != 'sgn':
                 continue
@@ -469,8 +499,9 @@ class RawYieldFitter:
                 frame.Draw()
                 canvas.Update()
                 canvas.SaveAs(f"{path}/{self.fit_model[name]['label']}_mc_prefit.pdf")
-                out_file.cd()
-                canvas.Write(f"{self.fit_model[name]['label']}_mc_prefit")
+                if out_file is not None:
+                    out_file.cd()
+                    canvas.Write(f"{self.fit_model[name]['label']}_mc_prefit")
 
     def plot_raw_residuals_mc_prefit(self, path):
         for i_sgn_func, (name, sgn_func) in enumerate(self.fit_model.items()):
@@ -481,8 +512,8 @@ class RawYieldFitter:
                                                         figsize=(8, 8),
                                                         axis_title=self.x_axis_label)
                 fig_res.savefig(path, dpi=300, bbox_inches="tight")
-        else:
-            logger("Raw residuals plot for RooFit MC prefit not implemented yet", "WARNING")
+            else:
+                logger("Raw residuals plot for RooFit MC prefit not implemented yet", "WARNING")
 
     def plot_std_residuals_mc_prefit(self, path):
         if self.minimize_flarefly:
@@ -495,6 +526,7 @@ class RawYieldFitter:
 
     def plot_fit(self, logy, show_extra_info, loc=None, path=None, out_file=None):
         logger(f"\nPlotting fit to {path}", "INFO")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         if self.minimize_flarefly:
             fig, axs = self.fitter.plot_mass_fit(style="ATLAS",
                                                 figsize=(8, 8),
@@ -535,27 +567,30 @@ class RawYieldFitter:
             frame.Draw()
             canvas.Update()
             canvas.SaveAs(path)
-            debug_file = TFile.Open(f"debug_fit_{self.fit_name}.root", "RECREATE")
-            debug_file.cd()
-            frame.Write("fit_frame")
-            debug_file.Close()
-            out_file.cd()
-            print(f"Writing fit canvas to output file with name fit_canvas_{self.fit_name}")
-            canvas.Write(f"fit_canvas_{self.fit_name}")
+            if out_file is not None:
+                print(f"Writing fit canvas to output file with name fit_canvas_{self.fit_name}")
+                out_file.cd()
+                canvas.Write(f"fit_canvas_{self.fit_name}")
 
         logger(f"Plot saved to {path}", "INFO")
 
     def plot_raw_residuals(self):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         fig_res = self.fitter.plot_raw_residuals(style="ATLAS",
                                                  figsize=(8, 8),
                                                  axis_title=self.x_axis_label)
         return fig_res
 
     def plot_std_residuals(self):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         fig_pulls = self.fitter.plot_std_residuals(style="ATLAS",
                                                    figsize=(8, 8),
                                                    axis_title=self.x_axis_label)
         return fig_pulls
+
+    def get_data(self):
+        if self.minimize_flarefly:
+            return self.data.to_pandas()['fM'].to_numpy()
 
     def get_sweights_sgn(self, label):
 
@@ -566,8 +601,7 @@ class RawYieldFitter:
                 print(f"Checking signal function {name} with label {pdf_dict['label']} vs requested {label}")
                 if self.fit_model[name]['label'] == label:
                     sgn_sw_idx = self.fit_model[name]['idx']
-
-            return self.fitter.get_sweights()[f"signal{func_idx}"]
+            return self.fitter.get_sweights()[f"signal{sgn_sw_idx}"]
         else:
             logger("SWeights extraction for RooFit not implemented yet", "ERROR")
             sys.exit(1)
@@ -626,23 +660,33 @@ class RawYieldFitter:
                 fit_info[name]['chi2_fits'] = -1.
                 fit_info[name]['chi2_over_ndf_fits'] = -1.
 
+            signal_pars = {}
+            signal_pars_uncs = {}
+            bkg_pars = {}
+            bkg_pars_uncs = {}
             if self.minimize_flarefly:
-                signal_pars = self.fitter.get_signal_pars()
-                signal_pars_uncs = self.fitter.get_signal_pars_uncs()
-                bkg_pars = self.fitter.get_bkg_pars()
-                bkg_pars_uncs = self.fitter.get_bkg_pars_uncs()
+                signal_pars_list = self.fitter.get_signal_pars()
+                signal_pars_uncs_list = self.fitter.get_signal_pars_uncs()
+                bkg_pars_list = self.fitter.get_bkg_pars()
+                bkg_pars_uncs_list = self.fitter.get_bkg_pars_uncs()
+                signal_pars
+                for i_comp, (name, comp) in enumerate(self.fit_model.items()):
+                    if comp['type'] == 'sgn':
+                        for par_name, par_val in signal_pars_list[comp['idx']].items():
+                            signal_pars[f"{par_name}_{name}"] = par_val
+                            signal_pars_uncs[f"{par_name}_{name}"] = signal_pars_uncs_list[comp['idx']][par_name]
+                    else:
+                        for par_name, par_val in bkg_pars_list[comp['idx']].items():
+                            bkg_pars[f"{par_name}_{name}"] = par_val
+                            bkg_pars_uncs[f"{par_name}_{name}"] = bkg_pars_uncs_list[comp['idx']][par_name]
             else:
-                signal_pars = {}
-                signal_pars_uncs = {}
-                bkg_pars = {}
-                bkg_pars_uncs = {}
                 for name, comp in self.fit_model.items():
                     if comp['type'] == 'sgn':
-                        for par in comp['pdf'].getParameters(self.data).selectByAttrib("Constant", False):
+                        for par in comp['pdf'].getParameters(self.data):
                             signal_pars[par.GetName()] = par.getVal()
                             signal_pars_uncs[par.GetName()] = par.getError()
                     else:
-                        for par in comp['pdf'].getParameters(self.data).selectByAttrib("Constant", False):
+                        for par in comp['pdf'].getParameters(self.data):
                             bkg_pars[par.GetName()] = par.getVal()
                             bkg_pars_uncs[par.GetName()] = par.getError()
 
@@ -719,15 +763,7 @@ class RawYieldFitter:
                     par_val = par.getVal()
                     logger(f"Fixing parameter {par_name} of last signal pdf to MC prefit value {par_val}", "WARNING")
                     self.fit_model[name][f"par_{par_name}"].setConstant(True)
-                # quit()
-        print(f"Model name: {' + '.join([comp['label'] for comp in self.fit_model.values()])}")
-        # self.model = ROOT.RooAddPdf(
-        #     "model",
-        #     "model",
-        #     ROOT.RooArgList(*(comp['pdf'] for comp in self.fit_model.values())),
-        #     ROOT.RooArgList(*(comp.get('yieldRooLinearVar', comp['yield'])
-        #                     for comp in self.fit_model.values()))
-        # )
+
         self.model = ROOT.RooAddPdf(" + ".join([comp['label'] for comp in self.fit_model.values()]),
                                     " + ".join([comp['label'] for comp in self.fit_model.values()]),
                                     ROOT.RooArgList([comp['pdf'] for comp in self.fit_model.values()]),
@@ -744,7 +780,16 @@ class RawYieldFitter:
             yield_var = comp.get('yieldRooLinearVar', comp['yield'])
             logger(f"Component {comp['label']}: yield variable = {yield_var.GetName()}, value = {yield_var.getVal()}", "INFO")
 
-        # Fit
+        # Rebin the data and fit
+        if self.rebin != 1 and isinstance(self.hist, ROOT.TH1):
+            self.roofit_fit_var.setBins(50)   # new number of bins
+            self.data = ROOT.RooDataHist(
+                "data_rebinned",
+                "data_rebinned",
+                ROOT.RooArgSet(self.roofit_fit_var),
+                self.hist
+            )
+        self.data = self.data.reduce(ROOT.RooFit.Range(self.fit_range_min, self.fit_range_max))
         self.roofit_fit_var.setRange("fit", self.fit_range_min, self.fit_range_max)
         fit_result = self.model.fitTo(
             self.data,
@@ -766,6 +811,17 @@ class RawYieldFitter:
         logger("=== Correlation matrix ===", "WARNING")
         fit_result.correlationMatrix().Print()
 
+        if self.fit_counter <= 0 and self.fix_sgn_to_first_fit:
+            for name, sgn_func in self.fit_model.items():
+                if sgn_func['type'] != 'sgn':
+                    continue
+                logger(f"\nFixing signal parameters of function {name} to first fit results")
+                for par_name, par_var in self.fit_model[name].items():
+                    if not par_name.startswith("par_"):
+                        continue
+                    self.fit_model[name][par_name].setConstant(True)
+
+        self.fit_counter += 1
         return fit_result.status(), fit_result.covQual()
 
     def add_func_to_model(self, sgn_or_bkg, func, label, particle=None):

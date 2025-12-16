@@ -375,7 +375,7 @@ def compute_frac_cut_var(config_flow, inputPathRy, inputPathEff, batch=False):
     latInfo.SetTextColor(1)
 
     minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD,  inputPathEff, None)
-    if 'systematics' in config['minimisation']:
+    if 'systematics' in config.get('minimisation', {}):
         logger('Starting systematics variations', level='WARNING')
         for syst in config['minimisation']['systematics']:
             logger(f'Running systematics: {syst}', level='WARNING')

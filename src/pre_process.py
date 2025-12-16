@@ -269,8 +269,6 @@ if __name__ == "__main__":
         elif isinstance(input_cfg['files'], str) and input_cfg['files'].endswith(".txt"):
             with open(input_cfg['files'], 'r') as f:
                 file_paths = [line.strip() for line in f if line.strip()]
-                print(f"Loaded {len(file_paths)} file paths from {input_cfg['files']}")
-                # print(f"file_paths: {file_paths}")
         elif isinstance(input_cfg['files'], list):
             file_paths = input_cfg['files']
         else:
@@ -278,10 +276,8 @@ if __name__ == "__main__":
             continue
 
         if input_cfg.get('sparses'):
-            if not input_cfg['files'].endswith(".txt"):
+            if isinstance(input_cfg['files'], str) and not input_cfg['files'].endswith(".txt"):
                 file_paths = get_input_paths(input_cfg['files'], "AnalysisResults")
-            # print(f"file_paths: {file_paths}")
-            # quit()
             for sparse_cfg in input_cfg['sparses']:
                 logger(f"##### Skimming {sparse_cfg['name']} #####", "WARNING")
                 with concurrent.futures.ThreadPoolExecutor(args.workers) as executor:

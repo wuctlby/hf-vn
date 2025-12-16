@@ -73,10 +73,10 @@ def compute_pt_weights(cfg):
         for sparse_cfg in sparses_cfg['sparses']:
             if sparse_cfg['name'] == 'GenPrompt':
                 sparse_gen_prompt = sparse_cfg
-                sparse_file_path = get_input_paths(sparses_cfg, "AnalysisResults")[0]
+                sparse_file_path = get_input_paths(sparses_cfg['files'], "AnalysisResults")[0]
             if sparse_cfg['name'] == 'GenFD':
                 sparse_gen_FD = sparse_cfg
-                sparse_file_path = get_input_paths(sparses_cfg, "AnalysisResults")[0]
+                sparse_file_path = get_input_paths(sparses_cfg['files'], "AnalysisResults")[0]
 
     sparse_file = TFile.Open(sparse_file_path, "read")
     sparseGenPromptD, axesPromptD = get_inputs_sparse(sparse_file, cfg, sparse_gen_prompt)
@@ -201,7 +201,7 @@ def compute_pt_weights(cfg):
     #___________________________________________________________________________________________________________________________
     outputDir = f'{work_dir}/weights/{Dspecie}/{cent}/'
     os.makedirs(outputDir, exist_ok=True)
-    outfile = TFile(f'{outputDir}/pTweight_{Dspecie}_{cent}_{suffix}_new.root', 'recreate')
+    outfile = TFile(f'{outputDir}/pTweight_{Dspecie}_{cent}_{suffix}.root', 'recreate')
     hPtGenPromptD.Write()
     if Bspecie:
         hPtGenB.Write()
