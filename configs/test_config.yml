@@ -100,6 +100,25 @@ ptWeights:
     PtShapeFONLL_B: /home/mdicosta/FlowDplus/MLanalysis/PtWeights/fonll_pythia_beautyFFee_charmhadrons_5dot5tev_y0dot5.root
     RaaTAMU_B: /home/mdicosta/alice/DmesonAnalysis/models/tamu/B_TAMU_RAA_5TeV_3050.txt
 
+pt_center:
+    downsample_fracs: [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.5,
+        0.5,
+        0.5,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+    ]
+
 projections:
     # PtWeightsFile: '/home/mdicosta/alice/hf-vn/ptweights/weights/Dplus/k3050/pTweight_Dplus_k3050_test_Dplus.root'
     ApplyPtWeightsD: False
