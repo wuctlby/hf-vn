@@ -108,7 +108,7 @@ def process_sparse(i_file, infile_path, full_cfg, sparse_cfg, prep_out_dir, inpu
         input_out_dir (str): sub-directory for the specific input configuration
     """
     infile = TFile.Open(infile_path, 'read')
-    logger(f'[Data] Processing file {i_file}, {infile.GetName()}')
+    logger(f'Processing file {i_file}, {infile.GetName()}')
     sparse, axes = get_inputs_sparse(infile, full_cfg, sparse_cfg, True)
 
     # Only for flow with SP, not for correlations (applied in O2Physics)

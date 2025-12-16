@@ -299,7 +299,7 @@ if __name__ == "__main__":
                 sparse_flow["FlowSP"].GetAxis(axes['FlowSP']['ScoreFD']).SetRangeUser(fd_min, fd_max)
                 sparse_flow["FlowSP"].GetAxis(axes['FlowSP']['ScoreBkg']).SetRangeUser(bkg_min, bkg_max)
                 proj_data(i_pt, sparse_flow["FlowSP"], axes, resolution, config["projections"], write_opt_data)
-                logger(f"Projected data!")
+                logger("Projected data!")
 
             if operations.get("proj_mc"):
                 for key, i_sparse in sparses_reco.items():
