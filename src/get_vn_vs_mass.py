@@ -8,19 +8,54 @@ import yaml
 import os
 import itertools
 import ctypes
+import subprocess
 from ROOT import TLatex, TFile, TCanvas, TLegend, TH1D, TH1F, TGraphAsymmErrors # pylint: disable=import-error,no-name-in-module
 from ROOT import gROOT, gPad, gInterpreter, kBlack, kRed, kAzure, kOrange, kGreen, kFullCircle, kFullSquare, kOpenCircle # pylint: disable=import-error,no-name-in-module
 script_dir = os.path.dirname(os.path.realpath(__file__))
 import ROOT
 ROOT.gErrorIgnoreLevel = ROOT.kError  # Only show errors and above
 # Only load if not already loaded
+script_dir = os.path.dirname(os.path.realpath(__file__))
+src_dir = os.path.abspath(os.path.join(script_dir, "../invmassfitter"))
+lib = os.path.join(src_dir, "libvnfitter.so")
+
+# Compile only if the shared library is missing
 from ROOT import gSystem
+if not os.path.exists(lib):
+    print("libvnfitter.so not found — compiling...")
+    subprocess.check_call([
+        "rootcling", "-f",
+        os.path.join(src_dir, "vnfitter_dict.cxx"),
+        "-c",
+        os.path.join(src_dir, "InvMassFitter.h"),
+        os.path.join(src_dir, "VnVsMassFitter.h"),
+        os.path.join(src_dir, "LinkDefVnFitter.h"),
+    ])
+
+    cmd = [
+        "g++", "-shared", "-fPIC",
+        *subprocess.check_output(["root-config", "--cflags", "--libs"]).decode().split(),
+        os.path.join(src_dir, "InvMassFitter.cxx"),
+        os.path.join(src_dir, "VnVsMassFitter.cxx"),
+        os.path.join(src_dir, "vnfitter_dict.cxx"),
+        "-o", lib,
+    ]
+
+    subprocess.check_call(cmd)
+    print("Compilation done!")
+
+# Load the library once
 if not hasattr(gSystem, "_vnfitter_loaded"):
     script_dir = os.path.dirname(os.path.realpath(__file__))
     # gSystem.Load(f"{script_dir}/../invmassfitter/libvnfitter.so")
     gSystem.CompileMacro(f"{script_dir}/../invmassfitter/VnVsMassFitter.cxx", "kO")
     gSystem.CompileMacro(f"{script_dir}/../invmassfitter/InvMassFitter.cxx", "kO")
     gSystem._vnfitter_loaded = True
+
+# if not hasattr(gSystem, "_vnfitter_loaded"):
+#     script_dir = os.path.dirname(os.path.realpath(__file__))
+#     gSystem.Load(f"{script_dir}/../invmassfitter/libvnfitter.so")
+#     gSystem._vnfitter_loaded = True
 from ROOT import InvMassFitter, VnVsMassFitter
 os.sys.path.append(os.path.join(script_dir, '..', 'utils'))
 from StyleFormatter import SetGlobalStyle, SetObjectStyle
@@ -140,7 +175,8 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
         elif sgnStr == 'k2GausSigmaRatioPar':
             SgnFunc.append(InvMassFitter.k2GausSigmaRatioPar)
         else:
-            logger('Only kGaus, k2Gaus and k2GausSigmaRatioPar signal functions supported! Exit!', level='ERROR')
+            logger('Only kGaus, k2Gaus and k2GausSigmaRatioPar signal functions supported! Falling back to gaussian!', level='ERROR')
+            SgnFunc.append(InvMassFitter.kGaus)
 
     # Set particle configuration
     partTitle, massAxisTit, decay, massForFit, massSecPeak, secPeakLabel = get_particle_info(particleName)

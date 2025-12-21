@@ -25,7 +25,7 @@ def get_corr_bkg(corr_bkg_file, corr_bkg_chn, sel_string, pt_label, templ_type, 
     Get correlated background template and normalization factor
     '''
     input_folder = f"{pt_label}/{corr_bkg_chn}"
-    logger(f"\nUsing correlated bkg file {corr_bkg_file.GetName()} for correlated bkg source {corr_bkg_chn} from folder {input_folder}\n", "INFO")
+    logger(f"Using correlated bkg file {corr_bkg_file.GetName()} for correlated bkg source {corr_bkg_chn} from folder {input_folder}\n", "INFO")
     try:
         hist_pdg_mc_brs = corr_bkg_file.Get(f"{input_folder}/hBRs")
     except:
@@ -233,7 +233,7 @@ def produce_corr_bkgs_templs(cfg):
         pt_mask = (cent_sel_df.fPt >= pt_min) & (cent_sel_df.fPt < pt_max)
         df_pt = cent_sel_df[pt_mask].reset_index(drop=True)  # pt-selected DataFrame
 
-        logger(f"\nProcessing pt bin: {pt_key}", "INFO")
+        logger(f"Processing pt bin: {pt_key}\n", "INFO")
         os.makedirs(os.path.dirname(cfg['outfile']), exist_ok=True)
         outfile = TFile(f"{cfg['outfile']}_{pt_key}.root", "RECREATE")
 

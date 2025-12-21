@@ -32,7 +32,6 @@ def eval_pt_center(cfg_file_name, minimizer, workers=1):
     # Read the configuration file
     with open(cfg_file_name, 'r') as cfg_file:
         cfg = yaml.safe_load(cfg_file)
-    print(tf.config.threading.get_intra_op_parallelism_threads())
 
     # Retrieve cutsets configs
     try:

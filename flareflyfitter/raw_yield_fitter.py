@@ -64,7 +64,7 @@ class RawYieldFitter:
         self.first_fit_pars = None
 
     def set_particle(self, particle_name):
-        logger(f"\nSetting particle to fit: {particle_name}")
+        logger(f"Setting particle to fit: {particle_name}\n")
         self.particle = particle_name
         if particle_name == "Dplus":
             self.x_axis_label = r"$M(\mathrm{\pi^+ K^- \pi^+})\ \mathrm{(GeV/}c^2)$"
@@ -83,23 +83,23 @@ class RawYieldFitter:
             sys.exit(1)
 
     def set_name(self, fit_name):
-        logger(f"\nSetting fit name: {fit_name}")
+        logger(f"Setting fit name: {fit_name}\n")
         self.fit_name = fit_name
 
     def set_fit_range(self, fit_range_min, fit_range_max):
-        logger(f"\nSetting fit range: {fit_range_min} - {fit_range_max} GeV/c")
+        logger(f"Setting fit range: {fit_range_min} - {fit_range_max} GeV/c\n")
         self.fit_range_min = fit_range_min
         self.fit_range_max = fit_range_max
         if self.minimize_roofit: # Very loose range, to be constrained specifically for each fit
             self.roofit_fit_var = ROOT.RooRealVar("fM", "Invariant Mass", 1.6, 2.5)
 
     def set_rebin(self, rebin):
-        logger(f"\nSetting rebin: {rebin}")
+        logger(f"Setting rebin: {rebin}\n")
         self.rebin = rebin
 
     def set_data_to_fit_hist(self, data):
-        logger(f"\nSetting data to fit from histogram with limits {self.fit_range_min} - {self.fit_range_max} GeV/c"
-              f" for fitter with name {self.fit_name}")
+        logger(f"Setting data to fit from histogram with limits {self.fit_range_min} - {self.fit_range_max} GeV/c"
+               f" for fitter with name {self.fit_name}\n")
         self.hist = data
         if self.minimize_flarefly:
             self.data = DataHandler(data, limits=[self.fit_range_min, self.fit_range_max], rebin=self.rebin)
@@ -107,11 +107,11 @@ class RawYieldFitter:
             self.data = ROOT.RooDataHist("data_hist", "data_hist", ROOT.RooArgList(self.roofit_fit_var), data)
 
     def set_fix_sgn_to_mc_prefit(self, fix):
-        logger(f"\nSetting fix signal to MC prefit: {fix}")
+        logger(f"Setting fix signal to MC prefit: {fix}\n")
         self.fix_sgn_to_mc_prefit = fix
 
     def prefit_mc(self, input_path):
-        logger(f"\nPerforming MC prefit on data with fit range {self.fit_range_min} - {self.fit_range_max} GeV/c")
+        logger(f"Performing MC prefit on data with fit range {self.fit_range_min} - {self.fit_range_max} GeV/c\n")
         # Setup a temporary fitter for the prefit
         for name, sgn_func in self.fit_model.items():
             if sgn_func['type'] != 'sgn':
@@ -147,7 +147,7 @@ class RawYieldFitter:
                 self.mc_pars[name] = self.fit_model[name]['pdf'].getParameters(self.fit_model[name]['mchist'])
 
     def set_data_to_fit_df(self, data_df, var_name='fM'):
-        logger(f"\nSetting data to fit from dataframe of length {len(data_df)} with variable {var_name} and limits {self.fit_range_min} - {self.fit_range_max} GeV/c")
+        logger(f"Setting data to fit from dataframe of length {len(data_df)} with variable {var_name} and limits {self.fit_range_min} - {self.fit_range_max} GeV/c\n")
         if self.minimize_flarefly:
             self.data = DataHandler(data_df, var_name=var_name, limits=[self.fit_range_min, self.fit_range_max])
         else:
@@ -179,7 +179,7 @@ class RawYieldFitter:
             for pt_range in setting['pt_ranges']:
                 pt_center = (pt_range[0] + pt_range[1]) / 2
                 if (pt_center >= pt_min and pt_center < pt_max):
-                    logger(f"\n\nFound init pars fit cfg for pt range {pt_min} - {pt_max} GeV/c", level="INFO")
+                    logger(f"Found init pars fit cfg for pt range {pt_min} - {pt_max} GeV/c\n", level="INFO")
                     self.cfg_pars_init = setting
                     break
 
@@ -207,7 +207,7 @@ class RawYieldFitter:
         count_sgn_templs, count_bkg_templs = 0, 0
         for chn in cocktail_cfg['channels']:
 
-            logger(f"\nSetting correlated bkg source {chn}", "INFO")
+            logger(f"Setting correlated bkg source {chn['name']}\n", "INFO")
             # Correlated bkgs that are functions
             if chn.get('sgn_func'):
                 self.add_func_to_model('sgn', chn['sgn_func'], chn['name'])
@@ -266,23 +266,23 @@ class RawYieldFitter:
         self.fix_sgn_to_first_fit = True
 
     def fix_sgn_par(self, sgn_func_idx, par_name, par_val):
-        logger(f"\nFixing signal parameter {par_name} of function index {sgn_func_idx} to value {par_val}")
+        logger(f"Fixing signal parameter {par_name} of function index {sgn_func_idx} to value {par_val}\n")
         self.fitter.set_signal_initpar(sgn_func_idx, par_name, par_val, fix=True)
 
     def fix_bkg_par(self, bkg_func_idx, par_name, par_val):
-        logger(f"\nFixing background parameter {par_name} of function index {bkg_func_idx} to value {par_val}")
+        logger(f"Fixing background parameter {par_name} of function index {bkg_func_idx} to value {par_val}\n")
         self.fitter.set_background_initpar(bkg_func_idx, par_name, par_val, fix=True)
 
     def set_sgn_par(self, sgn_func_idx, par_name, par_val, lims):
-        logger(f"\nSetting signal parameter {par_name} of function index {sgn_func_idx} to value {par_val}")
+        logger(f"Setting signal parameter {par_name} of function index {sgn_func_idx} to value {par_val}\n")
         self.fitter.set_signal_initpar(sgn_func_idx, par_name, par_val, limits=lims)
 
     def set_bkg_par(self, bkg_func_idx, par_name, par_val, lims):
-        logger(f"\nSetting background parameter {par_name} of function index {bkg_func_idx} to value {par_val}")
+        logger(f"Setting background parameter {par_name} of function index {bkg_func_idx} to value {par_val}\n")
         self.fitter.set_background_initpar(bkg_func_idx, par_name, par_val, limits=lims)
 
     def set_pdf_frac(self, pdf_idx, frac, pdf_type):
-        logger(f"\nSetting fraction of function index {pdf_idx} and type {pdf_type} to {frac}")
+        logger(f"Setting fraction of function index {pdf_idx} and type {pdf_type} to {frac}\n")
         if pdf_type == 'sgn':
             self.fitter.set_signal_initpar(pdf_idx, "frac", frac, limits=[0., 1.])
         else:
@@ -294,11 +294,11 @@ class RawYieldFitter:
         else:
             self.setup_roofit()
 
-    def fit(self):
+    def fit(self, verbose=True):
         if self.minimize_flarefly:
-            return self.perform_fit_flarefly()
+            return self.perform_fit_flarefly(verbose=verbose)
         else:
-            return self.perform_fit_roofit()
+            return self.perform_fit_roofit(verbose=verbose)
 
     def setup_flarefly(self):
 
@@ -335,7 +335,7 @@ class RawYieldFitter:
         for i_templ, (name, templ) in enumerate(self.fit_model.items()):
             if templ.get('data') is None:
                 continue
-            logger(f"\nSetting up template for correlated source {name} with template {templ}", "INFO")
+            logger(f"Setting up template for correlated source {name} with template {templ}\n", "INFO")
 
             # Create data handler
             if self.data.get_is_binned():
@@ -426,7 +426,7 @@ class RawYieldFitter:
                 par_file.Close()
 
     def perform_fit_flarefly(self):
-        logger(f"\nPerforming flarefly fit on data with fit range {self.fit_range_min} - {self.fit_range_max} GeV/c", "INFO")
+        logger(f"Performing flarefly fit on data with fit range {self.fit_range_min} - {self.fit_range_max} GeV/c\n", "INFO")
 
         for i_sgn_func, (name, sgn_func) in enumerate(self.fit_model.items()):
             if name not in self.mc_pars:
@@ -457,7 +457,7 @@ class RawYieldFitter:
                             logger(f"Fixing fraction of signal function index {i_sgn_func} to first signal function with ratio {frac_ratio}")
                             self.fitter.fix_signal_frac_to_signal_pdf(i_sgn_func, 0, frac_ratio)
                             continue
-                    logger(f"\nFixing signal parameter {par_name} of function index {i_sgn_func} to first fit value {par_val}")
+                    logger(f"Fixing signal parameter {par_name} of function index {i_sgn_func} to first fit value {par_val}\n")
                     self.fitter.set_signal_initpar(i_sgn_func, par_name, par_val, fix=True)
 
         self.fit_result = self.fitter.mass_zfit()
@@ -474,6 +474,7 @@ class RawYieldFitter:
         for i_sgn_func, (name, sgn_func) in enumerate(self.fit_model.items()):
             if sgn_func['type'] != 'sgn':
                 continue
+            fig_path = f"{path}/{self.fit_model[name]['label']}_mc_prefit_pt_{int(self.pt_min*10)}_{int(self.pt_max*10)}.pdf"
             if self.minimize_flarefly:
                 fig, axs = self.fit_model[name]['mcfitter'].plot_mass_fit(style="ATLAS",
                                                             figsize=(8, 8),
@@ -482,7 +483,7 @@ class RawYieldFitter:
                                                             logy=logy,
                                                             extra_info_loc=loc if loc is not None else ["lower right", "lower left"]
                                                             )
-                fig.savefig(f"{path}/{self.fit_model[name]['label']}_mc_prefit.pdf", dpi=300, bbox_inches="tight")
+                fig.savefig(fig_path, dpi=300, bbox_inches="tight")
             else:
                 # Set range
                 frame = self.roofit_fit_var.frame(ROOT.RooFit.Title(f"{self.fit_model[name]['label']} MC Prefit"))
@@ -498,7 +499,7 @@ class RawYieldFitter:
                 canvas = ROOT.TCanvas("mc_prefit_canvas", "MC Prefit Canvas", 800, 600)
                 frame.Draw()
                 canvas.Update()
-                canvas.SaveAs(f"{path}/{self.fit_model[name]['label']}_mc_prefit.pdf")
+                canvas.SaveAs(fig_path)
                 if out_file is not None:
                     out_file.cd()
                     canvas.Write(f"{self.fit_model[name]['label']}_mc_prefit")
@@ -525,7 +526,7 @@ class RawYieldFitter:
             logger("Pulls plot for RooFit MC prefit not implemented yet", "WARNING")
 
     def plot_fit(self, logy, show_extra_info, loc=None, path=None, out_file=None):
-        logger(f"\nPlotting fit to {path}", "INFO")
+        logger(f"Plotting fit to {path}\n", "INFO")
         os.makedirs(os.path.dirname(path), exist_ok=True)
         if self.minimize_flarefly:
             fig, axs = self.fitter.plot_mass_fit(style="ATLAS",
@@ -543,7 +544,6 @@ class RawYieldFitter:
                               ROOT.RooFit.LineColor(ROOT.kRed))
             for i_sgn_func, (name, pdf_dict) in enumerate(self.fit_model.items()):
                 label = pdf_dict['label']
-                print(f"Plotting component {label} of type {pdf_dict['type']}")
                 # Print yield of this component
                 if self.fit_model[name].get('yieldRooLinearVar'):
                     yield_var = self.fit_model[name]['yieldRooLinearVar']
@@ -615,6 +615,14 @@ class RawYieldFitter:
     def get_fit_info(self):
 
         fit_info = {}
+        try:
+            fit_info['chi2'] = float(self.fitter.get_chi2())
+            fit_info['chi2_over_ndf'] = float(self.fitter.get_chi2())/self.fitter.get_ndf()
+        except Exception as e:
+            logger(f"Could not get chi2: {e}", "WARNING")
+            fit_info['chi2'] = -1.
+            fit_info['chi2_over_ndf'] = -1.
+
         for i_sgn_func, (name, sgn_func) in enumerate(self.fit_model.items()):
             if sgn_func['type'] != 'sgn':
                 continue
@@ -652,13 +660,6 @@ class RawYieldFitter:
                 logger(f"Could not get signal over background: {e}", "WARNING")
                 fit_info[name]['s_over_b'] = -1.
                 fit_info[name]['s_over_b_unc'] = -1.
-            try:
-                fit_info[name]['chi2_fits'] = float(self.fitter.get_chi2())
-                fit_info[name]['chi2_over_ndf_fits'] = float(self.fitter.get_chi2())/self.fitter.get_ndf()
-            except Exception as e:
-                logger(f"Could not get chi2: {e}", "WARNING")
-                fit_info[name]['chi2_fits'] = -1.
-                fit_info[name]['chi2_over_ndf_fits'] = -1.
 
             signal_pars = {}
             signal_pars_uncs = {}
@@ -743,20 +744,15 @@ class RawYieldFitter:
             comp['ext_pdf'] = ROOT.RooExtendPdf(f"ext_{comp['label']}", f"extended_{comp['label']}",
                                                 comp['pdf'], comp.get('yieldRooLinearVar', comp['yield']))
 
-    def perform_fit_roofit(self):
+    def perform_fit_roofit(self, verbose=True):
         logger(f"Performing RooFit fit on data with fit range {self.fit_range_min} - {self.fit_range_max} GeV/c", "INFO")
 
         if self.fix_sgn_to_mc_prefit:
             for i_sgn_func, (name, sgn_func) in enumerate(self.fit_model.items()):
                 if sgn_func['type'] != 'sgn':
                     continue
-                
-                print(f"Fixing signal parameters of function {name} to MC prefit values: {self.mc_pars}")
-                
+
                 for par in self.mc_pars[name]:
-                    print(f"par: {par}")
-                    print(f"par.GetName().split(\"_\")[0]: {par.GetName().split('_')[0]}, val: {par.getVal()}")
-                    # continue
                     par_name = par.GetName().split("_")[0]
                     if "mu" in par_name or "sigma" in par_name or "yield" in par_name:
                         continue
@@ -799,23 +795,24 @@ class RawYieldFitter:
             ROOT.RooFit.PrintLevel(1)
         )
 
-        logger("=== Fit status ===", "WARNING")
-        logger(f"status      = {fit_result.status()}", "INFO")
-        logger(f"covQual     = {fit_result.covQual()}", "INFO")
-        logger(f"edm         = {fit_result.edm()}", "INFO")
-        logger(f"minNll      = {fit_result.minNll()}", "INFO")
-        logger("=== Floating parameters ===", "WARNING")
-        fit_result.floatParsFinal().Print("v")
-        logger("=== Constant parameters ===", "WARNING")
-        fit_result.constPars().Print("v")
-        logger("=== Correlation matrix ===", "WARNING")
-        fit_result.correlationMatrix().Print()
+        if verbose:
+            logger("=== Fit status ===", "WARNING")
+            logger(f"status      = {fit_result.status()}", "INFO")
+            logger(f"covQual     = {fit_result.covQual()}", "INFO")
+            logger(f"edm         = {fit_result.edm()}", "INFO")
+            logger(f"minNll      = {fit_result.minNll()}", "INFO")
+            logger("=== Floating parameters ===", "WARNING")
+            fit_result.floatParsFinal().Print("v")
+            logger("=== Constant parameters ===", "WARNING")
+            fit_result.constPars().Print("v")
+            logger("=== Correlation matrix ===", "WARNING")
+            fit_result.correlationMatrix().Print()
 
         if self.fit_counter <= 0 and self.fix_sgn_to_first_fit:
             for name, sgn_func in self.fit_model.items():
                 if sgn_func['type'] != 'sgn':
                     continue
-                logger(f"\nFixing signal parameters of function {name} to first fit results")
+                logger(f"Fixing signal parameters of function {name} to first fit results\n")
                 for par_name, par_var in self.fit_model[name].items():
                     if not par_name.startswith("par_"):
                         continue
@@ -888,11 +885,11 @@ class RawYieldFitter:
         elif func == 'kLin':
             logger(f"Adding Chebyshev Polynomial of degree 1 background function", "INFO")
             if self.minimize_roofit:
-                c0 = ROOT.RooRealVar(f"c0_{label}", f"c0_{label}", 0.0, -1.0, 1.0)
+                # c0 = ROOT.RooRealVar(f"c0_{label}", f"c0_{label}", 0.0, -1.0, 1.0)
                 c1 = ROOT.RooRealVar(f"c1_{label}", f"c1_{label}", 0.0, -1.0, 1.0)
-                self.fit_model[label]['par_c0'] = c0
+                # self.fit_model[label]['par_c0'] = c0
                 self.fit_model[label]['par_c1'] = c1
-                self.fit_model[label]['pdf'] = ROOT.RooChebychev(label, label, self.roofit_fit_var, ROOT.RooArgList(c0, c1))
+                self.fit_model[label]['pdf'] = ROOT.RooChebychev(label, label, self.roofit_fit_var, ROOT.RooArgList(c1))
                 self.fit_model[label]['yield'] = ROOT.RooRealVar(f"yield_{label}", f"yield_{label}", 100000, 0, 1e8)
             else:
                 self.fit_model[label]['par_c0'] = 1.0
@@ -901,13 +898,13 @@ class RawYieldFitter:
         elif func == 'kPol2':
             logger(f"Adding Chebyshev Polynomial of degree 2 background function", "INFO")
             if self.minimize_roofit:
-                c0 = ROOT.RooRealVar(f"c0_{label}", f"c0_{label}", 0.0, -1.0, 1.0)
+                # c0 = ROOT.RooRealVar(f"c0_{label}", f"c0_{label}", 0.0, -1.0, 1.0)
                 c1 = ROOT.RooRealVar(f"c1_{label}", f"c1_{label}", 0.0, -1.0, 1.0)
                 c2 = ROOT.RooRealVar(f"c2_{label}", f"c2_{label}", 0.0, -1.0, 1.0)
-                self.fit_model[label]['par_c0'] = c0
+                # self.fit_model[label]['par_c0'] = c0
                 self.fit_model[label]['par_c1'] = c1
                 self.fit_model[label]['par_c2'] = c2
-                self.fit_model[label]['pdf'] = ROOT.RooChebychev(label, label, self.roofit_fit_var, ROOT.RooArgList(c0, c1, c2))
+                self.fit_model[label]['pdf'] = ROOT.RooChebychev(label, label, self.roofit_fit_var, ROOT.RooArgList(c1, c2))
                 self.fit_model[label]['yield'] = ROOT.RooRealVar(f"yield_{label}", f"yield_{label}", 100000, 0, 1e8)
             else:
                 self.fit_model[label]['par_c0'] = 1.0

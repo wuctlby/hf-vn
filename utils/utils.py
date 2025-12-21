@@ -32,6 +32,8 @@ def logger(message, level='INFO'):
 		print(f"\033[33m{message}\033[0m")
 	elif level == 'ERROR':
 		print(f"\033[31m{message}\033[0m")
+	elif level == 'FATAL':
+		print(f"\033[31m{message}\033[0m")
 		sys.exit(1)
 	elif level == 'COMMAND':
 		print(f"\033[35m{message}\033[0m")
@@ -42,12 +44,14 @@ def logger(message, level='INFO'):
 	else:
 		print(f"\033[37m{message}\033[0m")  # Default to white for unknown levels
 
-def make_dir_root_file(directory, file):
+def make_dir_root_file(directory, file, verbose=True):
     if not file.GetDirectory(directory):
         file.mkdir(directory)
-        logger(f"Created directory {directory} in file {file.GetName()}", level='WARNING')
+        if verbose:
+            logger(f"Created directory {directory} in file {file.GetName()}", level='WARNING')
     else:
-        logger(f"Directory {directory} already exists in file {file.GetName()}", level='WARNING')
+        if verbose:
+            logger(f"Directory {directory} already exists in file {file.GetName()}", level='WARNING')
 
 def profile_mass_sp(hist_mass_sp, inv_mass_bins, resolution):
     '''
