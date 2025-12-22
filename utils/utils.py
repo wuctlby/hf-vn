@@ -604,7 +604,7 @@ def suggest_skip_cuts(hRawYields, hEffPrompt, hEffFD, nPtBins):
             ]):
                 logger(f'Suggested to skip cut {iCut} for pt bin {iPt+1} due to zero or negative efficiency/raw yield', level='WARNING')
                 suggested_skipped_cuts.append(iCut)
-            elif iCut == 0 and rys[0] == rys[1]:
+            elif iCut == 0 and nCuts > 1 and rys[0] == rys[1]:
                 logger(f'Suggested to skip cut {iCut} for pt bin {iPt+1} ({rys[iCut]}) due to identical raw yield as next cut', level='WARNING')
                 suggested_skipped_cuts.append(iCut)
             # raw yield differs from previous cut by less than 0.01%
