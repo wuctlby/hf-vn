@@ -325,7 +325,8 @@ if __name__ == "__main__":
 		logger("Preprocess will not be performed", level="WARNING")
 
 	if not args.correlated and not args.combined:
-		logger("No cut variation will be performed, please specify --correlated or --combined", level="ERROR")
+		logger("No cut variation will be performed, please specify --correlated or --combined", level="WARNING")
+		sys.exit(0)
 	if args.correlated:
 		run_correlated_cut_variation(args.flow_config, operations, nworkers, outdir)
 	if args.combined:
