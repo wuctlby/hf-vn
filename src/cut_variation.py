@@ -66,7 +66,7 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
                     last_FD_score_cut = cutsetConfig['ScoreFD']['min'][iPt]
 
             # also skip cuts as suggested by the check
-            if iCut in suggestted_skipped_cuts_pts[iPt]:
+            if iCut in suggested_skipped_cuts_pts[iPt]:
                 logger(f'Skipping cut set {iCut} for pt {ptMin:.1f}-{ptMax:.1f} as suggested by check', level='WARNING')
                 continue
 
