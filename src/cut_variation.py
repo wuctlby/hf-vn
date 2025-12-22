@@ -38,7 +38,7 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
     hCovCorrYields = [[hRawYields[0].Clone('hCovPromptPrompt'), hRawYields[0].Clone('hCovPromptFD')],
                       [hRawYields[0].Clone('hCovFDPrompt'), hRawYields[0].Clone('hCovFDFD')]]
 
-    suggestted_skipped_cuts_pts = suggest_skip_cuts(hRawYields, hEffPrompt, hEffFD, len(ptmins))
+    suggested_skipped_cuts_pts = suggest_skip_cuts(hRawYields, hEffPrompt, hEffFD, len(ptmins))
     skip_cuts_pts = config.get('minimisation', {}).get('skip_cuts', [])
 
     for iRow, row in enumerate(hCovCorrYields):
