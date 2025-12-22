@@ -585,6 +585,40 @@ def get_centrality_bins(centrality):
         print(f"ERROR: cent class \'{centrality}\' is not supported! Exit")
     sys.exit()
 
+def suggest_skip_cuts(hRawYields, hEffPrompt, hEffFD, nPtBins):
+    """Suggest cuts to skip based on zero or negative efficiencies or raw yields"""
+    nCuts = len(hRawYields)
+    suggested_skipped_cuts_pts = []
+    for iPt in range(nPtBins):
+        rys = [hRawYields[iCut].GetBinContent(iPt+1) for iCut in range(nCuts)]
+        effPs = [hEffPrompt[iCut].GetBinContent(iPt+1) for iCut in range(nCuts)]
+        effFs = [hEffFD[iCut].GetBinContent(iPt+1) for iCut in range(nCuts)]
+        suggested_skipped_cuts = []
+
+        for iCut in range(nCuts):
+            # zero or negative efficiencies or raw yields
+            if any([
+                rys[iCut] <= 0,
+                effPs[iCut] <= 0,
+                effFs[iCut] <= 0,
+            ]):
+                logger(f'Suggested to skip cut {iCut} for pt bin {iPt+1} due to zero or negative efficiency/raw yield', level='WARNING')
+                suggested_skipped_cuts.append(iCut)
+            elif iCut == 0 and rys[0] == rys[1]:
+                logger(f'Suggested to skip cut {iCut} for pt bin {iPt+1} ({rys[iCut]}) due to identical raw yield as next cut', level='WARNING')
+                suggested_skipped_cuts.append(iCut)
+            # raw yield differs from previous cut by less than 0.1%
+            elif iCut == nCuts - 1 and abs(rys[iCut] - rys[iCut-1]) / abs(rys[iCut]) < 0.0001:
+                logger(f'Suggested to skip cut {iCut} for pt bin {iPt+1} ({rys[iCut]}) due to negligible change in raw yield', level='WARNING')
+                suggested_skipped_cuts.append(iCut)
+            elif iCut > 0 and iCut < nCuts - 1 and abs(rys[iCut] - rys[iCut-1]) / abs(rys[iCut]) < 0.0001 and abs(rys[iCut] - rys[iCut+1]) / abs(rys[iCut]) < 0.0001: 
+                logger(f'Suggested to skip cut {iCut} for pt bin {iPt+1} ({rys[iCut]}) due to negligible change in raw yield', level='WARNING')
+                suggested_skipped_cuts.append(iCut)
+        suggested_skipped_cuts_pts.append(suggested_skipped_cuts)
+    for iPt, cuts in enumerate(suggested_skipped_cuts_pts):
+        print(f'\t\t{cuts}, # suggested cuts to skip for pt {iPt+1}')
+    return suggested_skipped_cuts_pts
+
 def reweight_histo_1D(histo, weights, binned=False):
     for iBin in range(1, histo.GetNbinsX()+1):
         ptCent = histo.GetBinCenter(iBin)

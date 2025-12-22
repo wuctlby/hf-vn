@@ -134,6 +134,7 @@ def get_sparse_dict(sparse_name, dmeson):
     else:
         if dmeson == 'Dzero':
             if sparse_name == "RecoPrompt" or sparse_name == "RecoFD" or sparse_name == "RecoRefl" or sparse_name == "RecoReflPrompt" or sparse_name == "RecoReflFD":
+                logger(f"Please confirming the axis for ScorePrompt and ScoreFD for D0 mc sparses", level='WARNING')
                 return {
                     'ScoreBkg': 0,
                     'ScorePrompt': 1,

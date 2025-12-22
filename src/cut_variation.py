@@ -12,7 +12,7 @@ from ROOT import kBlack, kRed, kAzure, kGreen, kRainBow # pylint: disable=import
 from ROOT import kFullCircle, kFullSquare, kOpenSquare, kOpenCircle # pylint: disable=import-error,no-name-in-module
 script_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(script_dir, '..', 'utils'))
-from utils import logger
+from utils import logger, suggest_skip_cuts
 from frac_utils import GetMinimisation
 from load_utils import load_root_files
 from StyleFormatter import SetGlobalStyle, SetObjectStyle
@@ -38,6 +38,9 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
     hCovCorrYields = [[hRawYields[0].Clone('hCovPromptPrompt'), hRawYields[0].Clone('hCovPromptFD')],
                       [hRawYields[0].Clone('hCovFDPrompt'), hRawYields[0].Clone('hCovFDFD')]]
 
+    suggestted_skipped_cuts_pts = suggest_skip_cuts(hRawYields, hEffPrompt, hEffFD, len(ptmins))
+    skip_cuts_pts = config.get('minimisation', {}).get('skip_cuts', [])
+
     for iRow, row in enumerate(hCovCorrYields):
         for iCol, hCov in enumerate(row):
             SetObjectStyle(hCov, linecolor=kBlack)
@@ -58,15 +61,20 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
                     last_FD_score_cut = cutsetConfig['ScoreFD']['min'][iPt]
                 else:
                     if last_FD_score_cut == cutsetConfig['ScoreFD']['min'][iPt]:
-                        logger(f'Cut set {iCut} has the same FD score cut as the previous one for pt {ptMin:.1f}-{ptMax:.1f}, skipping it.', level='WARNING')
+                        logger(f'Skipping the duplicate cut set {iCut} for pt {ptMin:.1f}-{ptMax:.1f}', level='WARNING')
                         continue
                     last_FD_score_cut = cutsetConfig['ScoreFD']['min'][iPt]
 
+            # also skip cuts as suggested by the check
+            if iCut in suggestted_skipped_cuts_pts[iPt]:
+                logger(f'Skipping cut set {iCut} for pt {ptMin:.1f}-{ptMax:.1f} as suggested by check', level='WARNING')
+                continue
+
             # if skip_cuts is defined check if the cut number is present for that pt
-            if config.get('minimisation') and config['minimisation'].get('skip_cuts'):
-                if iCut in config['minimisation']['skip_cuts'][iPt]:
-                    logger(f'Skipping cut set {iCut} for pt {ptMin:.1f}-{ptMax:.1f}', level='WARNING')
-                    continue
+            if iPt < len(skip_cuts_pts) and iCut in skip_cuts_pts[iPt]:
+                logger(f'Skipping cut set {iCut} for pt {ptMin:.1f}-{ptMax:.1f}', level='WARNING')
+                continue
+
             listRawYield.append(hRaw.GetBinContent(iPt+1))
             listRawYieldUnc.append(hRaw.GetBinError(iPt+1))
             listEffPrompt.append(hEffP.GetBinContent(iPt+1))
