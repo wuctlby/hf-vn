@@ -75,7 +75,7 @@ def get_inputs_sparse(file, full_cfg, sparse_cfg, debug=False):
             sparse.GetAxis(axes['CandType']).SetRange(3, 4)     # select reflection
         elif sparse_cfg['name'] == "RecoReflPrompt":
             sparse.GetAxis(axes['CandType']).SetRange(3, 4)     # select reflection
-            sparse.GetAxis(axes['Origin']).SetRange(2, 2)       # select prompt   
+            sparse.GetAxis(axes['Origin']).SetRange(2, 2)       # select prompt
         elif sparse_cfg['name'] == "RecoReflFD":
             sparse.GetAxis(axes['CandType']).SetRange(3, 4)     # select reflection
             sparse.GetAxis(axes['Origin']).SetRange(3, 3)       # select FD
