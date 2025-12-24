@@ -597,11 +597,9 @@ def suggest_skip_cuts(hRawYields, hEffPrompt, hEffFD, nPtBins):
 
         for iCut in range(nCuts):
             # zero or negative efficiencies or raw yields
-            if any([
-                rys[iCut] <= 0,
-                effPs[iCut] <= 0,
-                effFs[iCut] <= 0,
-            ]):
+            if any([rys[iCut] < 0, effPs[iCut] < 0, effFs[iCut] < 0]):
+				logger(f'Cut {iCut} for pt bin {iPt+1} has negative value, prompt eff={effPs[iCut]}, FD eff={effFs[iCut]}, ry={rys[iCut]}', level='ERROR')
+			elif any ([rys[iCut] == 0, effPs[iCut] == 0, effFs[iCut] == 0]):
                 logger(f'Suggested to skip cut {iCut} for pt bin {iPt+1} due to zero or negative efficiency/raw yield', level='WARNING')
                 suggested_skipped_cuts.append(iCut)
             elif iCut == 0 and nCuts > 1 and rys[0] == rys[1]:
