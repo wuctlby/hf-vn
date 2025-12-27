@@ -79,7 +79,7 @@ def get_vn(flow_config, outdir, nworkers, mCutSets, extraction_type):
 	if extraction_type != 'simfit':
 		proj_cutset = f"{outdir}/projs/proj_00.root"
 		cmd = (
-			f"python3 {paths['GetVnByYieldExtraction']} {flow_config} {proj_cutset} -b"
+			f"python3 {paths['GetVnByYieldExtraction']} {flow_config} -b"
 		)
 		logger(f"{cmd}", level="COMMAND")
 		os.system(cmd)

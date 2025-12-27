@@ -612,6 +612,52 @@ class RawYieldFitter:
     def get_name(self):
         return self.fit_name
 
+    def get_bkg_yield(self, mass_min, mass_max):
+        if self.minimize_flarefly:
+            logger("Getting background yield with flarefly not implemented yet", "WARNING")
+            return 0.0
+        else:
+            # define the range on the PDF variable
+            self.roofit_fit_var.setRange("subrange", mass_min, mass_max)
+
+            # fraction of PDF in that range
+            frac = self.fit_model['Comb. bkg']['pdf'].createIntegral(
+                ROOT.RooArgSet(self.roofit_fit_var),
+                ROOT.RooFit.NormSet(self.roofit_fit_var),
+                ROOT.RooFit.Range("subrange")
+            ).getVal()
+            nbkg = self.fit_model['Comb. bkg']['yield'].getVal()  # fitted yield
+            bkg_yield = frac * nbkg
+            # Define the formula: fraction * yield
+            bkg_in_range = ROOT.RooFormulaVar(
+                "bkg_in_range",
+                "@0 * @1",                    # formula: fraction * yield
+                ROOT.RooArgList(
+                    ROOT.RooFit.RooConst(frac),   # frac is constant, no error
+                    self.fit_model['Comb. bkg']['yield']  # RooRealVar with fitted error
+                )
+            )
+
+            # propagate uncertainty from the fit
+            if hasattr(self, "fit_result") and self.fit_result:
+                err = bkg_in_range.getPropagatedError(self.fit_result)
+            else:
+                err = 0.0
+
+            # print(f"Background yield in range = {bkg_yield} ± {err}")
+
+            # print('number of events in range =', bkg_yield)
+            # err = 0.0
+            # bkg_ext = self.fit_model['Comb. bkg']['ext_pdf']
+            # bkg_ext.update()  # ensures expectedEvents() uses fitted values
+            # val = bkg_ext.expectedEvents(ROOT.RooArgSet(self.roofit_fit_var), "mass_window")
+            # err = 0.0
+            # if hasattr(self, "fit_result"):
+            #     bkg_in_range = ROOT.RooRealVar("bkg_in_range", "bkg in range", val)
+            #     err = bkg_in_range.getPropagatedError(self.fit_result)
+            # print(f"Bkg yield in range = {val:.1f} ± {err:.1f}")
+            return bkg_yield, err
+
     def get_fit_info(self):
 
         fit_info = {}
@@ -787,7 +833,7 @@ class RawYieldFitter:
             )
         self.data = self.data.reduce(ROOT.RooFit.Range(self.fit_range_min, self.fit_range_max))
         self.roofit_fit_var.setRange("fit", self.fit_range_min, self.fit_range_max)
-        fit_result = self.model.fitTo(
+        self.fit_result = self.model.fitTo(
             self.data,
             ROOT.RooFit.Extended(True),
             ROOT.RooFit.Range("fit"),
@@ -797,16 +843,16 @@ class RawYieldFitter:
 
         if verbose:
             logger("=== Fit status ===", "WARNING")
-            logger(f"status      = {fit_result.status()}", "INFO")
-            logger(f"covQual     = {fit_result.covQual()}", "INFO")
-            logger(f"edm         = {fit_result.edm()}", "INFO")
-            logger(f"minNll      = {fit_result.minNll()}", "INFO")
+            logger(f"status      = {self.fit_result.status()}", "INFO")
+            logger(f"covQual     = {self.fit_result.covQual()}", "INFO")
+            logger(f"edm         = {self.fit_result.edm()}", "INFO")
+            logger(f"minNll      = {self.fit_result.minNll()}", "INFO")
             logger("=== Floating parameters ===", "WARNING")
-            fit_result.floatParsFinal().Print("v")
+            self.fit_result.floatParsFinal().Print("v")
             logger("=== Constant parameters ===", "WARNING")
-            fit_result.constPars().Print("v")
+            self.fit_result.constPars().Print("v")
             logger("=== Correlation matrix ===", "WARNING")
-            fit_result.correlationMatrix().Print()
+            self.fit_result.correlationMatrix().Print()
 
         if self.fit_counter <= 0 and self.fix_sgn_to_first_fit:
             for name, sgn_func in self.fit_model.items():
@@ -819,7 +865,7 @@ class RawYieldFitter:
                     self.fit_model[name][par_name].setConstant(True)
 
         self.fit_counter += 1
-        return fit_result.status(), fit_result.covQual()
+        return self.fit_result.status(), self.fit_result.covQual()
 
     def add_func_to_model(self, sgn_or_bkg, func, label, particle=None):
 

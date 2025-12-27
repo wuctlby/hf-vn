@@ -4,6 +4,7 @@
 **/__pycache__/
 **/resolution/reso*
 ptweights/weights/
+mltraining/models/
 
 # test files to ignore
 test*

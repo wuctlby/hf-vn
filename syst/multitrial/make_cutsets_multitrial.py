@@ -34,7 +34,7 @@ def get_reference_config_pt_bin(config_flow, iPtBin):
     return pt_bin_config
 
 def modify_yaml_bdt(config_flow, config_mod, output_dir):
-    
+
     with open(config_flow, 'r') as CfgFlow:
         cfg_flow = yaml.safe_load(CfgFlow)
     with open(config_mod, 'r') as CfgMod:
@@ -49,76 +49,84 @@ def modify_yaml_bdt(config_flow, config_mod, output_dir):
     with open(os.path.join(f"{multitrial_dir}/config_history/", f"config_modifications.yml"), 'w') as out_file:
         yaml.dump(cfg_mod, out_file, default_flow_style=False)
 
-    for _, pt_bin in enumerate(cfg_mod['ptbins']):
-        ptmin = pt_bin['range'][0]
-        ptmax = pt_bin['range'][1]
-        pt_bin_index = cfg_flow['ptbins'].index(ptmin)
-        ref_config_ptbin = get_reference_config_pt_bin(cfg_flow, pt_bin_index)
-        multitrial_pt_dir = f"{multitrial_dir}/pt_{int(ptmin*10)}_{int(ptmax*10)}/"
-        
-        os.makedirs(multitrial_pt_dir, exist_ok=True)
-        output_file = os.path.join(multitrial_pt_dir, f"config_reference.yml")
-        with open(output_file, 'w') as out_file:
-            yaml.dump(ref_config_ptbin, out_file, default_flow_style=False)
-
-        varied_configs = {}
-        for var in pt_bin["multitrial"]:
-            if var in ref_config_ptbin:
-                varied_configs[var] = list(set(ref_config_ptbin[var] + pt_bin["multitrial"][var]))
-            else:
-                varied_configs[var] = pt_bin["multitrial"][var]
-
-        # Perform itertools.product to get all combinations
-        keys = list(varied_configs.keys())
-        values = list(varied_configs.values())
-        combinations = list(itertools.product(*values))
-        config_variants = [dict(zip(keys, combination)) for combination in combinations] 
-
-        # Print results
-        for idx, variant in enumerate(config_variants):
-            cfg_variant = copy.deepcopy(ref_config_ptbin)
-            cfg_variant["iTrial"] = idx
-
-            cfg_variant["outdir"] = f"{multitrial_dir}trials/"
-            if pt_bin['MaxChi2'] > 10:
-                logger(f"MaxChi2 is set to {pt_bin['MaxChi2']} for pt bin {ptmin}-{ptmax}, please consider a tight selection!", "WARNING")
-            cfg_variant["MaxChi2"] = pt_bin['MaxChi2']
-            if pt_bin['MinSignificance'] < 5:
-                logger(f"MinSignificance is set to {pt_bin['MinSignificance']}, please consider a higher lower limit!", "WARNING")
-            cfg_variant["MinSignificance"] = pt_bin['MinSignificance']
-            if pt_bin['MaxSignificance'] > 300:
-                logger(f"MaxSignificance is set to {pt_bin['MaxSignificance']}, please consider a lower upper limit!", "WARNING")
-            cfg_variant["MaxSignificance"] = pt_bin['MaxSignificance']
-            for varied_var in variant:
-                if ref_config_ptbin.get(varied_var):
-                    if isinstance(ref_config_ptbin[varied_var], list):
-                        cfg_variant[varied_var] = [variant[varied_var]]
-                    else:
-                        cfg_variant[varied_var] = variant[varied_var]
-
-            if variant.get("MassMin") and variant.get("MassMax"):
-                cfg_variant["v2extraction"]["MassFitRanges"] = [[variant["MassMin"], variant["MassMax"]]]
-                cfg_variant["projections"]["inv_mass_bins"] = [np.arange(variant['MassMin'], variant['MassMax'] + variant['inv_mass_bins_steps'], variant['inv_mass_bins_steps']).tolist()]
-                # else the region used for the prefit of the bkg function would be empty, leading to a crash
-                if cfg_flow['Dmeson'] == 'Dplus' and (variant["MassMin"] > 1.75 or variant["MassMax"] < 1.95):
-                    cfg_variant["NSigma4SB"] = [2]
-                    cfg_variant["v2extraction"]["Sigma"] = [0.01]
-            if variant.get("BkgFunc"):
-                cfg_variant["v2extraction"]["BkgFunc"] = [variant["BkgFunc"]]
-            if variant.get("SgnFunc"):
-                cfg_variant["v2extraction"]["SgnFunc"] = [variant["SgnFunc"]]
-            if variant.get("BkgFuncVn"):
-                cfg_variant["v2extraction"]["BkgFuncVn"] = [variant["BkgFuncVn"]]
-
-            os.makedirs(os.path.join(f"{multitrial_pt_dir}/trial_{idx}"), exist_ok=True)
-            output_file = os.path.join(f"{multitrial_pt_dir}/trial_{idx}", f"config_trial_{idx}.yml")
+    for _, setting in enumerate(cfg_mod['ptbins']):
+        print(f"setting: {setting}")
+        # quit()
+        for ptmin, ptmax in setting['ranges']:
+            print(f"Generating multitrial configs for pt bin {ptmin}-{ptmax} GeV/c")
+            # continue
+            pt_bin_index = cfg_flow['ptbins'].index(ptmin)
+            ref_config_ptbin = get_reference_config_pt_bin(cfg_flow, pt_bin_index)
+            multitrial_pt_dir = f"{multitrial_dir}/pt_{int(ptmin*10)}_{int(ptmax*10)}/"
             
-            # No preprocess and operations are controlled in the bash script
-            cfg_variant.pop('operations', None)
-            cfg_variant.pop('preprocess', None)
-
+            os.makedirs(multitrial_pt_dir, exist_ok=True)
+            output_file = os.path.join(multitrial_pt_dir, f"config_reference.yml")
             with open(output_file, 'w') as out_file:
-                yaml.dump(cfg_variant, out_file, default_flow_style=False, sort_keys=False)
+                yaml.dump(ref_config_ptbin, out_file, default_flow_style=False)
+
+            varied_configs = {}
+            for var in setting["multitrial"]:
+                if var in ref_config_ptbin:
+                    varied_configs[var] = list(set(ref_config_ptbin[var] + setting["multitrial"][var]))
+                else:
+                    varied_configs[var] = setting["multitrial"][var]
+
+            # Perform itertools.product to get all combinations
+            keys = list(varied_configs.keys())
+            values = list(varied_configs.values())
+            combinations = list(itertools.product(*values))
+            config_variants = [dict(zip(keys, combination)) for combination in combinations] 
+
+            # Print results
+            for idx, variant in enumerate(config_variants):
+                cfg_variant = copy.deepcopy(ref_config_ptbin)
+                cfg_variant["iTrial"] = idx
+
+                cfg_variant["outdir"] = f"{multitrial_dir}trials/"
+                if setting['MaxChi2'] > 10:
+                    logger(f"MaxChi2 is set to {setting['MaxChi2']} for pt bin {ptmin}-{ptmax}, please consider a tight selection!", "WARNING")
+                cfg_variant["MaxChi2"] = setting['MaxChi2']
+                if setting['MinSignificance'] < 5:
+                    logger(f"MinSignificance is set to {setting['MinSignificance']}, please consider a higher lower limit!", "WARNING")
+                cfg_variant["MinSignificance"] = setting['MinSignificance']
+                if setting['MaxSignificance'] > 300:
+                    logger(f"MaxSignificance is set to {setting['MaxSignificance']}, please consider a lower upper limit!", "WARNING")
+                cfg_variant["MaxSignificance"] = setting['MaxSignificance']
+                for varied_var in variant:
+                    if ref_config_ptbin.get(varied_var):
+                        if isinstance(ref_config_ptbin[varied_var], list):
+                            cfg_variant[varied_var] = [variant[varied_var]]
+                        else:
+                            cfg_variant[varied_var] = variant[varied_var]
+
+                if variant.get("MassMin") and variant.get("MassMax"):
+                    cfg_variant["v2extraction"]["MassFitRanges"] = [[variant["MassMin"], variant["MassMax"]]]
+                    if variant.get("SpWindowWidth"):
+                        cfg_variant["v2extraction"]["SpWindowWidth"] = [variant["SpWindowWidth"]]
+                    if variant.get("inv_mass_bins_steps"): # Not needed for CMS method, only for simfit
+                        cfg_variant["projections"]["inv_mass_bins"] = [np.arange(variant['MassMin'], variant['MassMax'] + variant['inv_mass_bins_steps'], variant['inv_mass_bins_steps']).tolist()]
+                    # else the region used for the prefit of the bkg function would be empty, leading to a crash
+                    if cfg_flow['Dmeson'] == 'Dplus' and (variant["MassMin"] > 1.75 or variant["MassMax"] < 1.95):
+                        cfg_variant["NSigma4SB"] = [2]
+                        cfg_variant["v2extraction"]["Sigma"] = [0.01]
+                if variant.get("BkgFunc"):
+                    cfg_variant["v2extraction"]["BkgFunc"] = [variant["BkgFunc"]]
+                if variant.get("SgnFunc"):
+                    cfg_variant["v2extraction"]["SgnFunc"] = [variant["SgnFunc"]]
+                if variant.get("BkgFuncVn"):
+                    cfg_variant["v2extraction"]["BkgFuncVn"] = [variant["BkgFuncVn"]]
+                if variant.get("SpRanges"):
+                    cfg_variant["v2extraction"]["SpRanges"] = [variant["SpRanges"]]
+
+                os.makedirs(os.path.join(f"{multitrial_pt_dir}/trial_{idx}"), exist_ok=True)
+                output_file = os.path.join(f"{multitrial_pt_dir}/trial_{idx}", f"config_trial_{idx}.yml")
+                
+                # No preprocess and operations are controlled in the bash script
+                cfg_variant.pop('operations', None)
+                cfg_variant.pop('preprocess', None)
+
+                with open(output_file, 'w') as out_file:
+                    yaml.dump(cfg_variant, out_file, default_flow_style=False, sort_keys=False)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Arguments')
