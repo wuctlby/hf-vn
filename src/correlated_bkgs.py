@@ -20,24 +20,29 @@ from utils import logger, get_centrality_bins, make_dir_root_file
 from corr_bkgs_brs import final_states
 from ROOT import RooRealVar, RooDataSet, RooArgSet, RooKeysPdf, TFile, TH3F, TH1F
 
-def get_corr_bkg(corr_bkg_file, corr_bkg_chn, sel_string, pt_label, templ_type, output_type, get_smoothed=True, sgn_d_meson='Dplus', corr_abundances=False):
+def get_corr_bkg(corr_bkg_file, corr_bkg_chn, sel_string, pt_label, templ_type, output_type,
+                 get_smoothed=True, sgn_d_meson='Dplus', corr_abundances=False, **kwargs):
     '''
     Get correlated background template and normalization factor
     '''
     input_folder = f"{pt_label}/{corr_bkg_chn}"
-    logger(f"Using correlated bkg file {corr_bkg_file.GetName()} for correlated bkg source {corr_bkg_chn} from folder {input_folder}\n", "INFO")
+    if kwargs.get("verbose", False):
+        logger(f"Using correlated bkg file {corr_bkg_file.GetName()} for correlated bkg source {corr_bkg_chn} from folder {input_folder}\n", "INFO")
     try:
         hist_pdg_mc_brs = corr_bkg_file.Get(f"{input_folder}/hBRs")
     except:
-        logger(f"Could not retrieve hBRs histogram from {input_folder} in file {corr_bkg_file}", "ERROR")
+        if kwargs.get("verbose", False):
+            logger(f"Could not retrieve hBRs histogram from {input_folder} in file {corr_bkg_file}", "ERROR")
         sys.exit(1)
     br_pdg = hist_pdg_mc_brs.GetBinContent(2)
     br_mc = hist_pdg_mc_brs.GetBinContent(1)
-    logger(f"Branching ratios: PDG = {br_pdg}, MC = {br_mc}", "INFO")
+    if kwargs.get("verbose", False):
+        logger(f"Branching ratios: PDG = {br_pdg}, MC = {br_mc}", "INFO")
     try:
         templ_tree_mass = corr_bkg_file.Get(f"{input_folder}/{templ_type}/treeMass")
     except:
-        logger(f"Could not retrieve treeMass from {input_folder}/{templ_type} in file {corr_bkg_file}", "ERROR")
+        if kwargs.get("verbose", False):
+            logger(f"Could not retrieve treeMass from {input_folder}/{templ_type} in file {corr_bkg_file}", "ERROR")
         sys.exit(1)
     templ_tree_mass.SetDirectory(0)
     templ_histo_mass = corr_bkg_file.Get(f"{input_folder}/{templ_type}/hMass{'Smooth' if get_smoothed else 'Raw'}")
@@ -47,10 +52,13 @@ def get_corr_bkg(corr_bkg_file, corr_bkg_chn, sel_string, pt_label, templ_type, 
     n_entries = templ_rdataframe_full.Filter(sel_string).Count().GetValue()
     corr_abundance = 1 if not corr_abundances else final_states[corr_bkg_chn].get(f"abundance_to_{sgn_d_meson}", 1)
     if corr_abundance != 1:
-        logger(f"Applying abundance correction factor of {corr_abundance} for correlated bkg source {corr_bkg_chn}", "WARNING")
+        if kwargs.get("verbose", False):
+            logger(f"Applying abundance correction factor of {corr_abundance} for correlated bkg source {corr_bkg_chn}", "WARNING")
     frac = (br_pdg / br_mc) * n_entries * corr_abundance
-    logger(f"Returning frac {frac} for correlated bkg source {corr_bkg_chn}", "INFO")
-    logger(f"Returning {output_type} for correlated bkg source {corr_bkg_chn}", "WARNING")
+    if kwargs.get("verbose", False):
+        logger(f"Returning frac {frac} for correlated bkg source {corr_bkg_chn}", "INFO")
+    if kwargs.get("verbose", False):
+        logger(f"Returning {output_type} for correlated bkg source {corr_bkg_chn}", "WARNING")
     if output_type == "hist":
         return templ_histo_mass, frac
     elif output_type == "tree":
@@ -60,7 +68,8 @@ def get_corr_bkg(corr_bkg_file, corr_bkg_chn, sel_string, pt_label, templ_type, 
         df_mass = pd.DataFrame(ROOT.RDataFrame(rdf_mass).AsNumpy())
         return df_mass, frac
     else:
-        logger(f"Output type {output_type} not recognized. Choose between 'hist' or 'tree'.", "ERROR")
+        if kwargs.get("verbose", False):
+            logger(f"Output type {output_type} not recognized. Choose between 'hist' or 'tree'.", "ERROR")
         sys.exit(1)
 
 def fill_smooth_histo(df, histo, n_points_for_sample, n_points_for_kde):

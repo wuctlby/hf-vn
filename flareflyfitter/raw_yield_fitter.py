@@ -22,8 +22,9 @@ class RawYieldFitter:
     Fitter of invariant mass spectra to extract raw yields using the flarefly package
     """
 
-    def __init__(self, particle, pt_min, pt_max, label, minimizer):
-        logger("\nInitializing RawYieldFitter")
+    def __init__(self, particle, pt_min, pt_max, label, minimizer, verbose=True):
+        logger(f"Initializing RawYieldFitter, verbosity: {verbose}", "INFO")
+        self.verbose = verbose
         if minimizer == 'flarefly':
             self.minimize_flarefly = True
             self.minimize_roofit = False
@@ -64,7 +65,8 @@ class RawYieldFitter:
         self.first_fit_pars = None
 
     def set_particle(self, particle_name):
-        logger(f"Setting particle to fit: {particle_name}\n")
+        if self.verbose:
+            logger(f"Setting particle to fit: {particle_name}\n")
         self.particle = particle_name
         if particle_name == "Dplus":
             self.x_axis_label = r"$M(\mathrm{\pi^+ K^- \pi^+})\ \mathrm{(GeV/}c^2)$"
@@ -83,23 +85,27 @@ class RawYieldFitter:
             sys.exit(1)
 
     def set_name(self, fit_name):
-        logger(f"Setting fit name: {fit_name}\n")
+        if self.verbose:
+            logger(f"Setting fit name: {fit_name}\n", "INFO")
         self.fit_name = fit_name
 
     def set_fit_range(self, fit_range_min, fit_range_max):
-        logger(f"Setting fit range: {fit_range_min} - {fit_range_max} GeV/c\n")
+        if self.verbose:
+            logger(f"Setting fit range: {fit_range_min} - {fit_range_max} GeV/c\n", "INFO")
         self.fit_range_min = fit_range_min
         self.fit_range_max = fit_range_max
         if self.minimize_roofit: # Very loose range, to be constrained specifically for each fit
             self.roofit_fit_var = ROOT.RooRealVar("fM", "Invariant Mass", 1.6, 2.5)
 
     def set_rebin(self, rebin):
-        logger(f"Setting rebin: {rebin}\n")
+        if self.verbose:
+            logger(f"Setting rebin: {rebin}\n", "INFO")
         self.rebin = rebin
 
     def set_data_to_fit_hist(self, data):
-        logger(f"Setting data to fit from histogram with limits {self.fit_range_min} - {self.fit_range_max} GeV/c"
-               f" for fitter with name {self.fit_name}\n")
+        if self.verbose:
+            logger(f"Setting data to fit from histogram with limits {self.fit_range_min} - {self.fit_range_max} GeV/c"
+                   f" for fitter with name {self.fit_name}\n", "INFO")
         self.hist = data
         if self.minimize_flarefly:
             self.data = DataHandler(data, limits=[self.fit_range_min, self.fit_range_max], rebin=self.rebin)
@@ -107,11 +113,13 @@ class RawYieldFitter:
             self.data = ROOT.RooDataHist("data_hist", "data_hist", ROOT.RooArgList(self.roofit_fit_var), data)
 
     def set_fix_sgn_to_mc_prefit(self, fix):
-        logger(f"Setting fix signal to MC prefit: {fix}\n")
+        if self.verbose:
+            logger(f"Setting fix signal to MC prefit: {fix}\n", "INFO")
         self.fix_sgn_to_mc_prefit = fix
 
     def prefit_mc(self, input_path):
-        logger(f"Performing MC prefit on data with fit range {self.fit_range_min} - {self.fit_range_max} GeV/c\n")
+        if self.verbose:
+            logger(f"Performing MC prefit on data with fit range {self.fit_range_min} - {self.fit_range_max} GeV/c\n", "INFO")
         # Setup a temporary fitter for the prefit
         for name, sgn_func in self.fit_model.items():
             if sgn_func['type'] != 'sgn':
@@ -119,12 +127,14 @@ class RawYieldFitter:
             try:
                 pt_label = f"pt_{int(self.pt_min*10)}_{int(self.pt_max*10)}"
                 corr_bkg_file = TFile.Open(input_path, "READ")
-                logger(f"Adding correlated backgrounds to the fitter for pt range {self.pt_min} - {self.pt_max} GeV/c", level="INFO")
+                if self.verbose:
+                    logger(f"Adding correlated backgrounds to the fitter for pt range {self.pt_min} - {self.pt_max} GeV/c", level="INFO")
                 sel_string = f"fM >= {self.fit_range_min} && fM < {self.fit_range_max}"
                 hist_mc, _ = get_corr_bkg(corr_bkg_file, name, sel_string, pt_label, "raw", "hist", get_smoothed=False)
                 corr_bkg_file.Close()
             except Exception as e:
-                logger(f"Prefit not available for signal function {name}: {e}", level="ERROR")
+                if self.verbose:
+                    logger(f"Prefit not available for signal function {name}: {e}", level="ERROR")
                 continue
 
             init_mass = self.get_particle_mass(name)
@@ -143,11 +153,15 @@ class RawYieldFitter:
                 self.roofit_fit_var.setRange(f"mc_fit_{name}", init_mass-0.2, init_mass+0.2)
                 self.fit_model[name]['mchist'] = ROOT.RooDataHist(f"mc_dataset_{name}", f"mc_dataset_{name}",
                                                  ROOT.RooArgList(self.roofit_fit_var), hist_mc)
-                fit_result = self.fit_model[name]['pdf'].fitTo(self.fit_model[name]['mchist'], ROOT.RooFit.Range(f"mc_fit_{name}"), ROOT.RooFit.Save())
+                fit_result = self.fit_model[name]['pdf'].fitTo(self.fit_model[name]['mchist'], ROOT.RooFit.Range(f"mc_fit_{name}"),
+                                                               ROOT.RooFit.Save(), ROOT.RooFit.PrintLevel(1 if self.verbose else -1),
+                                                               ROOT.RooFit.PrintEvalErrors(1 if self.verbose else 0))
                 self.mc_pars[name] = self.fit_model[name]['pdf'].getParameters(self.fit_model[name]['mchist'])
 
     def set_data_to_fit_df(self, data_df, var_name='fM'):
-        logger(f"Setting data to fit from dataframe of length {len(data_df)} with variable {var_name} and limits {self.fit_range_min} - {self.fit_range_max} GeV/c\n")
+        if self.verbose:
+            logger(f"Setting data to fit from dataframe of length {len(data_df)} with variable {var_name} "
+                   f"and limits {self.fit_range_min} - {self.fit_range_max} GeV/c\n", "INFO")
         if self.minimize_flarefly:
             self.data = DataHandler(data_df, var_name=var_name, limits=[self.fit_range_min, self.fit_range_max])
         else:
@@ -179,7 +193,8 @@ class RawYieldFitter:
             for pt_range in setting['pt_ranges']:
                 pt_center = (pt_range[0] + pt_range[1]) / 2
                 if (pt_center >= pt_min and pt_center < pt_max):
-                    logger(f"Found init pars fit cfg for pt range {pt_min} - {pt_max} GeV/c\n", level="INFO")
+                    if self.verbose:
+                        logger(f"Found init pars fit cfg for pt range {pt_min} - {pt_max} GeV/c\n", level="INFO")
                     self.cfg_pars_init = setting
                     break
 
@@ -196,18 +211,21 @@ class RawYieldFitter:
                 break
 
         if cocktail_cfg is None:
-            logger(f"No correlated background cocktail found for pt range {pt_min} - {pt_max} GeV/c", level="WARNING")
+            if self.verbose:
+                logger(f"No correlated background cocktail found for pt range {pt_min} - {pt_max} GeV/c", level="WARNING")
             return
 
         pt_label = f"pt_{int(pt_min*10)}_{int(pt_max*10)}"
         corr_bkg_file = TFile.Open(f"{cfg['input_files']}_{pt_label}.root", "READ")
-        logger(f"Adding correlated backgrounds to the fitter for pt range {pt_min} - {pt_max} GeV/c", level="INFO")
+        if self.verbose:
+            logger(f"Adding correlated backgrounds to the fitter for pt range {pt_min} - {pt_max} GeV/c", level="INFO")
         self.sgn_templ_name = cfg['sgn_fin_state']
         _, self.sgn_templ_frac = get_corr_bkg(corr_bkg_file, self.sgn_templ_name, sel_string, pt_label, cfg['templ_type'], cfg['output_type'])
         count_sgn_templs, count_bkg_templs = 0, 0
         for chn in cocktail_cfg['channels']:
 
-            logger(f"Setting correlated bkg source {chn['name']}\n", "INFO")
+            if self.verbose:
+                logger(f"Setting correlated bkg source {chn['name']}\n", "INFO")
             # Correlated bkgs that are functions
             if chn.get('sgn_func'):
                 self.add_func_to_model('sgn', chn['sgn_func'], chn['name'])
@@ -219,7 +237,8 @@ class RawYieldFitter:
                 output_type = 'df'
             templ, frac = get_corr_bkg(corr_bkg_file, name, sel_string, pt_label, cfg['templ_type'], output_type)
             if frac < 1e-10:
-                logger(f"Skipping correlated bkg source {name} with negligible fraction {frac}", level="WARNING")
+                if self.verbose:
+                    logger(f"Skipping correlated bkg source {name} with negligible fraction {frac}", level="WARNING")
                 continue
 
             self.fit_model[name] = {}
@@ -238,7 +257,8 @@ class RawYieldFitter:
             elif chn.get('init_to'):
                 self.fit_model[name]['anchor_init'] = chn.get('init_to', None)
             else:
-                logger(f"Correlated bkg source {self.fit_model[name]['label']} without 'fix_to' or 'init_to' key", level="WARNING")
+                if self.verbose:
+                    logger(f"Correlated bkg source {self.fit_model[name]['label']} without 'fix_to' or 'init_to' key", level="WARNING")
 
             if self.minimize_roofit:
                 self.fit_model[name]['RooDataSet'] = ROOT.RooDataHist(f"dataset_{name}", f"dataset_{name}",
@@ -266,23 +286,28 @@ class RawYieldFitter:
         self.fix_sgn_to_first_fit = True
 
     def fix_sgn_par(self, sgn_func_idx, par_name, par_val):
-        logger(f"Fixing signal parameter {par_name} of function index {sgn_func_idx} to value {par_val}\n")
+        if self.verbose:
+            logger(f"Fixing signal parameter {par_name} of function index {sgn_func_idx} to value {par_val}\n")
         self.fitter.set_signal_initpar(sgn_func_idx, par_name, par_val, fix=True)
 
     def fix_bkg_par(self, bkg_func_idx, par_name, par_val):
-        logger(f"Fixing background parameter {par_name} of function index {bkg_func_idx} to value {par_val}\n")
+        if self.verbose:
+            logger(f"Fixing background parameter {par_name} of function index {bkg_func_idx} to value {par_val}\n")
         self.fitter.set_background_initpar(bkg_func_idx, par_name, par_val, fix=True)
 
     def set_sgn_par(self, sgn_func_idx, par_name, par_val, lims):
-        logger(f"Setting signal parameter {par_name} of function index {sgn_func_idx} to value {par_val}\n")
+        if self.verbose:
+            logger(f"Setting signal parameter {par_name} of function index {sgn_func_idx} to value {par_val}\n")
         self.fitter.set_signal_initpar(sgn_func_idx, par_name, par_val, limits=lims)
 
     def set_bkg_par(self, bkg_func_idx, par_name, par_val, lims):
-        logger(f"Setting background parameter {par_name} of function index {bkg_func_idx} to value {par_val}\n")
+        if self.verbose:
+            logger(f"Setting background parameter {par_name} of function index {bkg_func_idx} to value {par_val}\n")
         self.fitter.set_background_initpar(bkg_func_idx, par_name, par_val, limits=lims)
 
     def set_pdf_frac(self, pdf_idx, frac, pdf_type):
-        logger(f"Setting fraction of function index {pdf_idx} and type {pdf_type} to {frac}\n")
+        if self.verbose:
+            logger(f"Setting fraction of function index {pdf_idx} and type {pdf_type} to {frac}\n")
         if pdf_type == 'sgn':
             self.fitter.set_signal_initpar(pdf_idx, "frac", frac, limits=[0., 1.])
         else:
@@ -294,11 +319,11 @@ class RawYieldFitter:
         else:
             self.setup_roofit()
 
-    def fit(self, verbose=True):
+    def fit(self):
         if self.minimize_flarefly:
-            return self.perform_fit_flarefly(verbose=verbose)
+            return self.perform_fit_flarefly()
         else:
-            return self.perform_fit_roofit(verbose=verbose)
+            return self.perform_fit_roofit()
 
     def setup_flarefly(self):
 
@@ -323,6 +348,93 @@ class RawYieldFitter:
                                    name_background_pdf=self.bkg_pdfs, label_bkg_pdf=self.bkg_pdfs_labels,
                                    extended=True if not self.data.get_is_binned() else False)
 
+        # Setup templates data handlers and fractions
+        for i_templ, (name, templ) in enumerate(self.fit_model.items()):
+            if templ.get('data') is None:
+                continue
+
+            if self.verbose:
+                logger(f"Setting up template for correlated source {name} with template {templ}\n", "INFO")
+
+            # Create data handler
+            if self.data.get_is_binned():
+                if self.verbose:
+                    logger(f"Setting binned template histogram for source {name}")
+                data_hdl = DataHandler(templ['data'], limits=(self.fit_range_min, self.fit_range_max), \
+                                       rebin=self.rebin)
+            else:
+                if self.verbose:
+                    logger(f"Setting unbinned template KDE for source {name}")
+                data_hdl = DataHandler(templ['data'], limits=(self.fit_range_min, self.fit_range_max), \
+                                       nbins=100, var_name="fM")
+
+            # Set template
+            if self.data.get_is_binned():
+                if self.verbose:
+                    logger(f"Setting background template for source {name}, idx {templ['idx']}")
+                self.fitter.set_background_template(templ['idx'], data_hdl)
+            else:
+                if self.verbose:
+                    logger(f"Setting background KDE for source {name}, idx {templ['idx']}")
+                self.fitter.set_background_kde(templ['idx'], data_hdl)
+
+    def set_fit_pars_flarefly(self):
+        # First init, then eventually override with fix
+        if self.cfg_pars_init.get("init_pars_sgn"):
+            for sett in self.cfg_pars_init["init_pars_sgn"]:
+                sgn_func_idx, par_name, par_val, par_lims = sett[0], sett[1], sett[2], sett[3]
+                self.set_sgn_par(sgn_func_idx, par_name, par_val, par_lims)
+                if self.verbose:
+                    logger(f"---> setting sgn par {par_name} to value {par_val}, limits {par_lims}\n", "INFO")
+
+        if self.cfg_pars_init.get("init_pars_bkg"):
+            for sett in self.cfg_pars_init["init_pars_bkg"]:
+                par_name, par_val, par_lims = sett[0], sett[1], sett[2]
+                self.set_bkg_par(len(self.bkg_pdfs)-1, par_name, par_val, par_lims)
+                if self.verbose:
+                    logger(f"---> setting bkg par {par_name} to value {par_val}, limits {par_lims}\n", "INFO")
+
+        if self.cfg_pars_init.get("fix_pars_sgn"):
+            for sett in self.cfg_pars_init["fix_pars_sgn"]:
+                sgn_func_idx, par_name, par_val = sett[0], sett[1], sett[2]
+                self.set_sgn_par(sgn_func_idx, par_name, par_val, fix=True)
+                if self.verbose:
+                    logger(f"---> fixing sgn par {par_name} to value {par_val}", "INFO")
+
+        if self.cfg_pars_init.get("fix_pars_bkg"):
+            for sett in self.cfg_pars_init["fix_pars_bkg"]:
+                par_name, par_val = sett[0], sett[1]
+                self.set_bkg_par(len(self.bkg_pdfs)-1, par_name, par_val, fix=True)
+                if self.verbose:
+                    logger(f"---> fixing bkg par {par_name} to value {par_val}", "INFO")
+
+        if self.cfg_pars_init.get("fix_sgn_from_file"):
+            # Initialization from MC fits from file
+            for sett in self.cfg_pars_init["fix_sgn_from_file"]:
+                sgn_func_idx, par_names, file_pars = sett[0], sett[1], sett[2]
+                if self.verbose:
+                    logger(f"Opening file {file_pars} to fix signal parameters {par_names}", "INFO")
+                par_file = TFile.Open(file_pars, "READ")
+                for par_name in par_names:
+                    try:
+                        histo_par = par_file.Get(f"hist_{par_name}")
+                        for i_bin in range(histo_par.GetNbinsX()+1):
+                            bin_center = histo_par.GetBinCenter(i_bin)
+                            if bin_center > pt_min and bin_center < pt_max:
+                                par_val = histo_par.GetBinContent(i_bin)
+                                break
+                        # TODO: Shift the mean or add smearing to compensate data-MC discrepancies
+                        if self.verbose:
+                            logger(f"---> fixing signal parameter {par_name} to value {par_val}, shift {shift}, smear {smear}", "INFO")
+                        self.fix_sgn_par(sgn_func_idx, par_name, par_val)
+                    except Exception as e:
+                        if self.verbose:
+                            logger(f"        Parameter {par_name} not present!", "WARNING")
+
+                par_file.Close()
+
+    def perform_fit_flarefly(self):
+
         # Set particle mass and sigma initial par for the main signal
         # function here, so they can be overridden later if needed
         self.fitter.set_particle_mass(len(self.sgn_pdfs)-1, pdg_id=self.particle_pdg)
@@ -335,30 +447,12 @@ class RawYieldFitter:
         for i_templ, (name, templ) in enumerate(self.fit_model.items()):
             if templ.get('data') is None:
                 continue
-            logger(f"Setting up template for correlated source {name} with template {templ}\n", "INFO")
-
-            # Create data handler
-            if self.data.get_is_binned():
-                logger(f"Setting binned template histogram for source {name}")
-                data_hdl = DataHandler(templ['data'], limits=(self.fit_range_min, self.fit_range_max), \
-                                       rebin=self.rebin)
-            else:
-                logger(f"Setting unbinned template KDE for source {name}")
-                data_hdl = DataHandler(templ['data'], limits=(self.fit_range_min, self.fit_range_max), \
-                                       nbins=100, var_name="fM")
-
-            # Set template
-            if self.data.get_is_binned():
-                logger(f"Setting background template for source {name}, idx {templ['idx']}")
-                self.fitter.set_background_template(templ['idx'], data_hdl)
-            else:
-                logger(f"Setting background KDE for source {name}, idx {templ['idx']}")
-                self.fitter.set_background_kde(templ['idx'], data_hdl)
 
             # Set fraction
             anchor_mode = 'anchor_fix' if templ.get('anchor_fix') else 'anchor_init' if templ.get('anchor_init') else None
             if anchor_mode is None:
-                logger(f"Correlated bkg source {name} without 'fix_to' or 'init_to' key", level="WARNING")
+                if self.verbose:
+                    logger(f"Correlated bkg source {name} without 'fix_to' or 'init_to' key", level="WARNING")
                 continue
             anchor_func = templ[anchor_mode]
 
@@ -366,8 +460,9 @@ class RawYieldFitter:
             anchor_pdf_frac = self.sgn_templ_frac if anchor_func == "DplusToPiKPi" else self.fit_model[anchor_func]['frac']
             anchor_pdf_idx = self.fit_model[anchor_func]['idx']
             frac = templ['frac'] / anchor_pdf_frac
-            logger(f"frac of chn {name} wrt anchor {templ[anchor_mode]}: " \
-                   f"{templ['frac']} / {anchor_pdf_frac} = {frac}", "INFO")
+            if self.verbose:
+                logger(f"frac of chn {name} wrt anchor {templ[anchor_mode]}: " \
+                    f"{templ['frac']} / {anchor_pdf_frac} = {frac}", "INFO")
 
             if templ.get('anchor_fix'):
                 if self.fit_model[anchor_func]['type'] == 'bkg':
@@ -377,56 +472,8 @@ class RawYieldFitter:
             else:
                 self.set_pdf_frac(templ['idx'], frac, templ['type'])
 
-    def set_fit_pars_flarefly(self):
-        # First init, then eventually override with fix
-        if self.cfg_pars_init.get("init_pars_sgn"):
-            for sett in self.cfg_pars_init["init_pars_sgn"]:
-                sgn_func_idx, par_name, par_val, par_lims = sett[0], sett[1], sett[2], sett[3]
-                self.set_sgn_par(sgn_func_idx, par_name, par_val, par_lims)
-                logger(f"---> setting sgn par {par_name} to value {par_val}, limits {par_lims}\n", "INFO")
-
-        if self.cfg_pars_init.get("init_pars_bkg"):
-            for sett in self.cfg_pars_init["init_pars_bkg"]:
-                par_name, par_val, par_lims = sett[0], sett[1], sett[2]
-                self.set_bkg_par(len(self.bkg_pdfs)-1, par_name, par_val, par_lims)
-                logger(f"---> setting bkg par {par_name} to value {par_val}, limits {par_lims}\n", "INFO")
-
-        if self.cfg_pars_init.get("fix_pars_sgn"):
-            for sett in self.cfg_pars_init["fix_pars_sgn"]:
-                sgn_func_idx, par_name, par_val = sett[0], sett[1], sett[2]
-                self.set_sgn_par(sgn_func_idx, par_name, par_val, fix=True)
-                logger(f"---> fixing sgn par {par_name} to value {par_val}", "INFO")
-
-        if self.cfg_pars_init.get("fix_pars_bkg"):
-            for sett in self.cfg_pars_init["fix_pars_bkg"]:
-                par_name, par_val = sett[0], sett[1]
-                self.set_bkg_par(len(self.bkg_pdfs)-1, par_name, par_val, fix=True)
-                logger(f"---> fixing bkg par {par_name} to value {par_val}", "INFO")
-
-        if self.cfg_pars_init.get("fix_sgn_from_file"):
-            # Initialization from MC fits from file
-            for sett in self.cfg_pars_init["fix_sgn_from_file"]:
-                sgn_func_idx, par_names, file_pars = sett[0], sett[1], sett[2]
-                logger(f"Opening file {file_pars} to fix signal parameters {par_names}", "INFO")
-                par_file = TFile.Open(file_pars, "READ")
-                for par_name in par_names:
-                    try:
-                        histo_par = par_file.Get(f"hist_{par_name}")
-                        for i_bin in range(histo_par.GetNbinsX()+1):
-                            bin_center = histo_par.GetBinCenter(i_bin)
-                            if bin_center > pt_min and bin_center < pt_max:
-                                par_val = histo_par.GetBinContent(i_bin)
-                                break
-                        # TODO: Shift the mean or add smearing to compensate data-MC discrepancies
-                        logger(f"---> fixing signal parameter {par_name} to value {par_val}, shift {shift}, smear {smear}", "INFO")
-                        self.fix_sgn_par(sgn_func_idx, par_name, par_val)
-                    except Exception as e:
-                        logger(f"        Parameter {par_name} not present!", "WARNING")
-
-                par_file.Close()
-
-    def perform_fit_flarefly(self):
-        logger(f"Performing flarefly fit on data with fit range {self.fit_range_min} - {self.fit_range_max} GeV/c\n", "INFO")
+        if self.verbose:
+            logger(f"Performing flarefly fit on data with fit range {self.fit_range_min} - {self.fit_range_max} GeV/c\n", "INFO")
 
         for i_sgn_func, (name, sgn_func) in enumerate(self.fit_model.items()):
             if name not in self.mc_pars:
@@ -435,10 +482,12 @@ class RawYieldFitter:
                 if par_name == "mu" or par_name == "sigma" or par_name == "frac":
                     continue
                 if self.fix_sgn_to_mc_prefit:
-                    logger(f"Fixing prefit MC parameter {par_name} to value {par_val}", "WARNING")
+                    if self.verbose:
+                        logger(f"Fixing prefit MC parameter {par_name} to value {par_val}", "WARNING")
                     self.fix_sgn_par(self.fit_model[name]['idx'], par_name, par_val)
                 else:
-                    logger(f"Setting prefit MC parameter {par_name} to value {par_val}", "WARNING")
+                    if self.verbose:
+                        logger(f"Setting prefit MC parameter {par_name} to value {par_val}", "WARNING")
                     self.set_sgn_par(self.fit_model[name]['idx'], par_name, par_val, lims=[par_val*0.1, par_val*10])
 
         if self.cfg_pars_init is not None:
@@ -454,23 +503,25 @@ class RawYieldFitter:
                             frac_first = self.first_fit_pars[0]['frac']
                             frac_this = par_val
                             frac_ratio = frac_this / frac_first
-                            logger(f"Fixing fraction of signal function index {i_sgn_func} to first signal function with ratio {frac_ratio}")
+                            if self.verbose:
+                                logger(f"Fixing fraction of signal function index {i_sgn_func} to first signal function with ratio {frac_ratio}")
                             self.fitter.fix_signal_frac_to_signal_pdf(i_sgn_func, 0, frac_ratio)
                             continue
-                    logger(f"Fixing signal parameter {par_name} of function index {i_sgn_func} to first fit value {par_val}\n")
+                    if self.verbose:
+                        logger(f"Fixing signal parameter {par_name} of function index {i_sgn_func} to first fit value {par_val}\n")
                     self.fitter.set_signal_initpar(i_sgn_func, par_name, par_val, fix=True)
 
         self.fit_result = self.fitter.mass_zfit()
 
         if self.fit_counter <= 0 and self.fix_sgn_to_first_fit:
             self.first_fit_pars = copy.deepcopy(self.fitter.get_signal_pars())
-            logger(f"Stored signal params of the first fit!\n", "WARNING")
-
+            if self.verbose:
+                logger(f"Stored signal params of the first fit!\n", "WARNING")
         self.fit_counter += 1
         return self.fit_result.status, self.fit_result.converged
 
     def plot_mc_prefit(self, logy, show_extra_info, loc=None, path=None, out_file=None):
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        os.makedirs(path, exist_ok=True)
         for i_sgn_func, (name, sgn_func) in enumerate(self.fit_model.items()):
             if sgn_func['type'] != 'sgn':
                 continue
@@ -514,7 +565,8 @@ class RawYieldFitter:
                                                         axis_title=self.x_axis_label)
                 fig_res.savefig(path, dpi=300, bbox_inches="tight")
             else:
-                logger("Raw residuals plot for RooFit MC prefit not implemented yet", "WARNING")
+                if self.verbose:
+                    logger("Raw residuals plot for RooFit MC prefit not implemented yet", "WARNING")
 
     def plot_std_residuals_mc_prefit(self, path):
         if self.minimize_flarefly:
@@ -523,10 +575,12 @@ class RawYieldFitter:
                                                     axis_title=self.x_axis_label)
             fig_pulls.savefig(path, dpi=300, bbox_inches="tight")
         else:
-            logger("Pulls plot for RooFit MC prefit not implemented yet", "WARNING")
+            if self.verbose:
+                logger("Pulls plot for RooFit MC prefit not implemented yet", "WARNING")
 
     def plot_fit(self, logy, show_extra_info, loc=None, path=None, out_file=None):
-        logger(f"Plotting fit to {path}\n", "INFO")
+        if self.verbose:
+            logger(f"Plotting fit to {path}\n", "INFO")
         os.makedirs(os.path.dirname(path), exist_ok=True)
         if self.minimize_flarefly:
             fig, axs = self.fitter.plot_mass_fit(style="ATLAS",
@@ -547,10 +601,12 @@ class RawYieldFitter:
                 # Print yield of this component
                 if self.fit_model[name].get('yieldRooLinearVar'):
                     yield_var = self.fit_model[name]['yieldRooLinearVar']
-                    logger(f"Yield of component {label}: {yield_var.getVal()}", "INFO")
+                    if self.verbose:
+                        logger(f"Yield of component {label}: {yield_var.getVal()}", "INFO")
                 else:
                     yield_var = self.fit_model[name]['yield']
-                    logger(f"Yield of component {label}: {yield_var.getVal()} +/- {yield_var.getError()}", "INFO")
+                    if self.verbose:
+                        logger(f"Yield of component {label}: {yield_var.getVal()} +/- {yield_var.getError()}", "INFO")
                 if pdf_dict['type'] == 'bkg' and pdf_dict.get('data') is None:
                     self.model.plotOn(frame, ROOT.RooFit.Components(label),
                                       ROOT.RooFit.LineColor(ROOT.kBlue + 2*pdf_dict['idx']),
@@ -568,11 +624,13 @@ class RawYieldFitter:
             canvas.Update()
             canvas.SaveAs(path)
             if out_file is not None:
-                print(f"Writing fit canvas to output file with name fit_canvas_{self.fit_name}")
+                if self.verbose:
+                    logger(f"Writing fit canvas to output file with name fit_canvas_{self.fit_name}", "INFO")
                 out_file.cd()
                 canvas.Write(f"fit_canvas_{self.fit_name}")
 
-        logger(f"Plot saved to {path}", "INFO")
+        if self.verbose:
+            logger(f"Plot saved to {path}", "INFO")
 
     def plot_raw_residuals(self):
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -603,7 +661,8 @@ class RawYieldFitter:
                     sgn_sw_idx = self.fit_model[name]['idx']
             return self.fitter.get_sweights()[f"signal{sgn_sw_idx}"]
         else:
-            logger("SWeights extraction for RooFit not implemented yet", "ERROR")
+            if self.verbose:
+                logger("SWeights extraction for RooFit not implemented yet", "ERROR")
             sys.exit(1)
 
     def get_fitter(self):
@@ -614,7 +673,8 @@ class RawYieldFitter:
 
     def get_bkg_yield(self, mass_min, mass_max):
         if self.minimize_flarefly:
-            logger("Getting background yield with flarefly not implemented yet", "WARNING")
+            if self.verbose:
+                logger("Getting background yield with flarefly not implemented yet", "WARNING")
             return 0.0
         else:
             # define the range on the PDF variable
@@ -665,7 +725,8 @@ class RawYieldFitter:
             fit_info['chi2'] = float(self.fitter.get_chi2())
             fit_info['chi2_over_ndf'] = float(self.fitter.get_chi2())/self.fitter.get_ndf()
         except Exception as e:
-            logger(f"Could not get chi2: {e}", "WARNING")
+            if self.verbose:
+                logger(f"Could not get chi2: {e}", "WARNING")
             fit_info['chi2'] = -1.
             fit_info['chi2_over_ndf'] = -1.
 
@@ -682,28 +743,32 @@ class RawYieldFitter:
                     fit_info[name]['ry'] = self.fit_model[name]['yield'].getVal()
                     fit_info[name]['ry_unc'] = self.fit_model[name]['yield'].getError()
             except Exception as e:
-                logger(f"Could not get raw yield: {e}", "WARNING")
+                if self.verbose:
+                    logger(f"Could not get raw yield: {e}", "WARNING")
                 fit_info[name]['ry'] = -1.
                 fit_info[name]['ry_unc'] = -1.
             try:
                 fit_info[name]['ry_bin_counting'] = self.fitter.get_raw_yield_bincounting(sgn_func_idx, nsigma=5)[0]
                 fit_info[name]['ry_bin_counting_unc'] = self.fitter.get_raw_yield_bincounting(sgn_func_idx, nsigma=5)[1]
             except Exception as e:
-                logger(f"Could not get raw yield from bin counting: {e}", "WARNING")
+                if self.verbose:
+                    logger(f"Could not get raw yield from bin counting: {e}", "WARNING")
                 fit_info[name]['ry_bin_counting'] = -1.
                 fit_info[name]['ry_bin_counting_unc'] = -1.
             try:
                 fit_info[name]['signif'] = self.fitter.get_significance(sgn_func_idx)[0]
                 fit_info[name]['signif_unc'] = self.fitter.get_significance(sgn_func_idx)[1]
             except Exception as e:
-                logger(f"Could not get significance: {e}", "WARNING")
+                if self.verbose:
+                    logger(f"Could not get significance: {e}", "WARNING")
                 fit_info[name]['signif'] = -1.
                 fit_info[name]['signif_unc'] = -1.
             try:
                 fit_info[name]['s_over_b'] = self.fitter.get_signal_over_background(sgn_func_idx)[0]
                 fit_info[name]['s_over_b_unc'] = self.fitter.get_signal_over_background(sgn_func_idx)[1]
             except Exception as e:
-                logger(f"Could not get signal over background: {e}", "WARNING")
+                if self.verbose:
+                    logger(f"Could not get signal over background: {e}", "WARNING")
                 fit_info[name]['s_over_b'] = -1.
                 fit_info[name]['s_over_b_unc'] = -1.
 
@@ -753,8 +818,9 @@ class RawYieldFitter:
         self.model = None
 
     def setup_roofit(self):
-        
-        logger(f"Setting up RooFit PDFs for fit range {self.fit_range_min} - {self.fit_range_max} GeV/c\n", "INFO")
+
+        if self.verbose:
+            logger(f"Setting up RooFit PDFs for fit range {self.fit_range_min} - {self.fit_range_max} GeV/c\n", "INFO")
 
         # Create extended PDFs for signal and background
         for i_comp, (name, comp) in enumerate(self.fit_model.items()):
@@ -764,7 +830,8 @@ class RawYieldFitter:
                 elif comp.get('anchor_init'):
                     anchor_mode = 'anchor_init'
                 else:
-                    logger(f"Correlated bkg source {comp['label']} without 'fix_to' or 'init_to' key", level="WARNING")
+                    if self.verbose:
+                        logger(f"Correlated bkg source {name} without 'fix_to' or 'init_to' key", level="WARNING")
                     continue
                 anchor_func = comp[anchor_mode]
                 anchor_pdf_idx = self.fit_model[anchor_func]['idx']
@@ -775,7 +842,8 @@ class RawYieldFitter:
                 comp['frac'].setMin(0.)
                 comp['frac'].setMax(1.)
                 if anchor_mode == "anchor_fix":
-                    logger(f"Fixing fraction of component {comp['label']} to value {frac}", "WARNING")
+                    if self.verbose:
+                        logger(f"Fixing fraction of component {comp['label']} to value {frac}", "WARNING")
                     comp['frac'].setConstant(True)
                 comp['yieldRooLinearVar'] = ROOT.RooLinearVar(    # a * X + b = frac * anchor_yield + 0
                     f"yield_{name}_lin",
@@ -784,14 +852,18 @@ class RawYieldFitter:
                     ROOT.RooFit.RooConst(comp['frac'].getVal()),  # constant scale
                     ROOT.RooFit.RooConst(0.0)                     # offset
                 )
-                print(f"Created RooLinearVar for yield of component {comp['label']}: {comp['yieldRooLinearVar'].GetName()} with value {comp['yieldRooLinearVar'].getVal()}")
+                if self.verbose:
+                    logger(f"Created RooLinearVar for yield of component {comp['label']}: {comp['yieldRooLinearVar'].GetName()} "
+                           f"with value {comp['yieldRooLinearVar'].getVal()}", "INFO")
 
-            logger(f"Creating extended RooFit PDFs for component: {comp}", "INFO")
+            if self.verbose:
+                logger(f"Creating extended RooFit PDFs for component: {comp}", "INFO")
             comp['ext_pdf'] = ROOT.RooExtendPdf(f"ext_{comp['label']}", f"extended_{comp['label']}",
                                                 comp['pdf'], comp.get('yieldRooLinearVar', comp['yield']))
 
-    def perform_fit_roofit(self, verbose=True):
-        logger(f"Performing RooFit fit on data with fit range {self.fit_range_min} - {self.fit_range_max} GeV/c", "INFO")
+    def perform_fit_roofit(self):
+        if self.verbose:
+            logger(f"Performing RooFit fit on data with fit range {self.fit_range_min} - {self.fit_range_max} GeV/c", "INFO")
 
         if self.fix_sgn_to_mc_prefit:
             for i_sgn_func, (name, sgn_func) in enumerate(self.fit_model.items()):
@@ -803,7 +875,8 @@ class RawYieldFitter:
                     if "mu" in par_name or "sigma" in par_name or "yield" in par_name:
                         continue
                     par_val = par.getVal()
-                    logger(f"Fixing parameter {par_name} of last signal pdf to MC prefit value {par_val}", "WARNING")
+                    if self.verbose:
+                        logger(f"Fixing parameter {par_name} of last signal pdf to MC prefit value {par_val}", "WARNING")
                     self.fit_model[name][f"par_{par_name}"].setConstant(True)
 
         self.model = ROOT.RooAddPdf(" + ".join([comp['label'] for comp in self.fit_model.values()]),
@@ -814,13 +887,13 @@ class RawYieldFitter:
 
         # Check the number of arguments in the RooAddPdf
         n_args = self.model.getComponents().getSize()
-        logger(f"Number of components in RooAddPdf: {n_args}", "INFO")
 
         # Check the yield vars of the single components
-        logger("\n=== Yield variables of the fit components ===", "WARNING")
-        for comp in self.fit_model.values():
-            yield_var = comp.get('yieldRooLinearVar', comp['yield'])
-            logger(f"Component {comp['label']}: yield variable = {yield_var.GetName()}, value = {yield_var.getVal()}", "INFO")
+        if self.verbose:
+            logger("=== Yield variables of the fit components ===", "WARNING")
+            for comp in self.fit_model.values():
+                yield_var = comp.get('yieldRooLinearVar', comp['yield'])
+                logger(f"Component {comp['label']}: yield variable = {yield_var.GetName()}, value = {yield_var.getVal()}", "INFO")
 
         # Rebin the data and fit
         if self.rebin != 1 and isinstance(self.hist, ROOT.TH1):
@@ -838,10 +911,11 @@ class RawYieldFitter:
             ROOT.RooFit.Extended(True),
             ROOT.RooFit.Range("fit"),
             ROOT.RooFit.Save(True),
-            ROOT.RooFit.PrintLevel(1)
+            ROOT.RooFit.PrintLevel(1 if self.verbose else -1),
+            ROOT.RooFit.PrintEvalErrors(1 if self.verbose else 0)
         )
 
-        if verbose:
+        if self.verbose:
             logger("=== Fit status ===", "WARNING")
             logger(f"status      = {self.fit_result.status()}", "INFO")
             logger(f"covQual     = {self.fit_result.covQual()}", "INFO")
@@ -858,7 +932,8 @@ class RawYieldFitter:
             for name, sgn_func in self.fit_model.items():
                 if sgn_func['type'] != 'sgn':
                     continue
-                logger(f"Fixing signal parameters of function {name} to first fit results\n")
+                if self.verbose:
+                    logger(f"Fixing signal parameters of function {name} to first fit results\n")
                 for par_name, par_var in self.fit_model[name].items():
                     if not par_name.startswith("par_"):
                         continue
@@ -881,7 +956,8 @@ class RawYieldFitter:
             init_mass = self.get_particle_mass(particle)
 
         if func == 'kGaus':
-            logger(f"Adding Gaussian signal function", "INFO")
+            if self.verbose:
+                logger(f"Adding Gaussian signal function", "INFO")
             if self.minimize_roofit:
                 mu = ROOT.RooRealVar(f"mu_{label}", f"mean_{label}", init_mass, init_mass - 0.02, init_mass + 0.02)
                 sigma = ROOT.RooRealVar(f"sigma_{label}", f"sigma_{label}", 0.015, 0.005, 0.05)
@@ -894,7 +970,8 @@ class RawYieldFitter:
                 self.fit_model[label]['par_sigma'] = 0.015
                 self.fit_model[label]['pdf'] = "gaussian"
         elif func == 'kDoubleSidedAsymmCB':
-            logger(f"Adding Double-Sided Asymm CB signal function", "INFO")
+            if self.verbose:
+                logger(f"Adding Double-Sided Asymm CB signal function", "INFO")
             if self.minimize_roofit:
                 mu = ROOT.RooRealVar(f"mu_{label}", f"mean_{label}", init_mass, init_mass - 0.02, init_mass + 0.02)
                 sigma = ROOT.RooRealVar(f"sigma_{label}", f"sigma_{label}", 0.015, 0.005, 0.05)
@@ -919,7 +996,8 @@ class RawYieldFitter:
                 self.fit_model[label]['par_nR'] = 8.188
                 self.fit_model[label]['pdf'] = "doublecb"
         elif func == 'kExpo':
-            logger(f"Adding Exponential background function", "INFO")
+            if self.verbose:
+                logger(f"Adding Exponential background function", "INFO")
             if self.minimize_roofit:
                 lambd = ROOT.RooRealVar(f"lambda_{label}", f"exponential lambda_{label}", -1.0, -5.0, 0.0)
                 self.fit_model[label]['par_lambda'] = lambd
@@ -929,7 +1007,8 @@ class RawYieldFitter:
                 self.fit_model[label]['par_lambda'] = 1.0
                 self.fit_model[label]['pdf'] = "expo"
         elif func == 'kLin':
-            logger(f"Adding Chebyshev Polynomial of degree 1 background function", "INFO")
+            if self.verbose:
+                logger(f"Adding Chebyshev Polynomial of degree 1 background function", "INFO")
             if self.minimize_roofit:
                 # c0 = ROOT.RooRealVar(f"c0_{label}", f"c0_{label}", 0.0, -1.0, 1.0)
                 c1 = ROOT.RooRealVar(f"c1_{label}", f"c1_{label}", 0.0, -1.0, 1.0)
@@ -942,7 +1021,8 @@ class RawYieldFitter:
                 self.fit_model[label]['par_c1'] = 0.0
                 self.fit_model[label]['pdf'] = "chebpol1"
         elif func == 'kPol2':
-            logger(f"Adding Chebyshev Polynomial of degree 2 background function", "INFO")
+            if self.verbose:
+                logger(f"Adding Chebyshev Polynomial of degree 2 background function", "INFO")
             if self.minimize_roofit:
                 # c0 = ROOT.RooRealVar(f"c0_{label}", f"c0_{label}", 0.0, -1.0, 1.0)
                 c1 = ROOT.RooRealVar(f"c1_{label}", f"c1_{label}", 0.0, -1.0, 1.0)
@@ -958,7 +1038,8 @@ class RawYieldFitter:
                 self.fit_model[label]['par_c2'] = 0.0
                 self.fit_model[label]['pdf'] = "chebpol2"
         else:
-            logger(f"Function {func} not recognized!", "ERROR")
+            if self.verbose:
+                logger(f"Function {func} not recognized!", "ERROR")
             sys.exit(1)
 
         if sgn_or_bkg == 'sgn':
