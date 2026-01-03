@@ -68,18 +68,19 @@ def sp_scan_pt_bin(fitter, data_cutset, sgn_func_label, pt_label, resolution, sp
         if not is_multitrial:
             logger(f"Processing sp_label {sp_label}", "INFO")
 
-        # For each sp bin, update fitter changing the histogram to fit, name and rebin
-        sp_mask = (data_cutset['fScalarProd'] >= sp_min) & (data_cutset['fScalarProd'] < sp_max)
-        data_cutset_sp = data_cutset.loc[sp_mask]
-        # data_cutset_sp = data_cutset.query(f"fScalarProd >= {sp_min} and fScalarProd < {sp_max}")
-        if len(data_cutset_sp) == 0:
-            logger(f"No entries found in sp bin {sp_label}. Setting all values to 0.", "WARNING")
-            vals_stats['SpRy'][isp], vals_stats['SpRyUnc'][isp] = 0, 0
-            vals_stats['Means'][isp], vals_stats['MeansUnc'][isp] = 0, 0
-            vals_stats['Sigmas'][isp], vals_stats['SigmasUnc'][isp] = 0, 0
-            vals_stats['Chi2'][isp], vals_stats['Chi2OverNdf'][isp] = -1, -1
-            continue
-        fitter.set_data_to_fit_df(data_cutset_sp, 'fM')
+        # For each sp bin, update the fitter name and reduce the dataset to fit
+        fitter.reduce_dataset("fScalarProd", [sp_min, sp_max])
+        # if sp_sel_dataset_size == 0:
+        #     logger(f"No entries found in sp bin {sp_label}. Setting all values to 0.", "WARNING")
+        #     vals_stats['SpRy'][isp], vals_stats['SpRyUnc'][isp] = 0, 0
+        #     vals_stats['Means'][isp], vals_stats['MeansUnc'][isp] = 0, 0
+        #     vals_stats['Sigmas'][isp], vals_stats['SigmasUnc'][isp] = 0, 0
+        #     vals_stats['Chi2'][isp], vals_stats['Chi2OverNdf'][isp] = -1, -1
+        #     continue
+        # sp_mask = (data_cutset['fScalarProd'] >= sp_min) & (data_cutset['fScalarProd'] < sp_max)
+        # data_cutset_sp = data_cutset.loc[sp_mask]
+        # # data_cutset_sp = data_cutset.query(f"fScalarProd >= {sp_min} and fScalarProd < {sp_max}")
+        # fitter.set_data_to_fit_df(data_cutset_sp, 'fM')
 
         fitter.set_name(sp_label)
         # fitter.setup()
@@ -133,134 +134,165 @@ def sp_scan_pt_bin(fitter, data_cutset, sgn_func_label, pt_label, resolution, sp
 
     return vals_stats
 
+def run_trial_worker(data, cfg_trial_path, cfg_cutsets_paths, pt_min, pt_max, i_pt, resolution, is_multitrial):
+
+    with open(cfg_trial_path, 'r') as CfgTrial:
+        cfg_trial = yaml.safe_load(CfgTrial)
+
+    # Monitor time for reading main config
+    t0 = time.perf_counter()
+    # Initialize the fitter for sp-integrated yield extraction
+    pt_label = f"pt_{int(pt_min*10)}_{int(pt_max*10)}"
+    fitter = RawYieldFitter(cfg_trial['Dmeson'], pt_min, pt_max, f"sp_integrated_{pt_label}_fit",
+                            cfg_trial['v2extraction']['Minimizer'], verbose = not is_multitrial)
+
+    stats = {}
+    t1 = time.perf_counter()
+    logger(f"Time to read main config {cfg_trial_path}: {t1 - t0} s", "INFO")
+
+    fit_cfg = cfg_trial['v2extraction']
+    fitter.set_fit_range(fit_cfg['MassFitRanges'][i_pt][0], fit_cfg['MassFitRanges'][i_pt][1])
+    t2 = time.perf_counter()
+
+    # Add model components
+    fitter.add_bkg_func(fit_cfg['BkgFunc'][i_pt] if isinstance(fit_cfg['BkgFunc'], list) else fit_cfg['BkgFunc'], "Comb. bkg")
+    sgn_funcs = {} # More info for signal functions, a dictionary is better
+    sgn_funcs[fit_cfg['SgnFuncLabel']] = {
+        'func': fit_cfg['SgnFunc'][i_pt] if isinstance(fit_cfg['SgnFunc'], list) else fit_cfg['SgnFunc'],
+        'part': cfg_trial['Dmeson']
+    }
+    if fit_cfg.get('InclSecPeak'):
+        include_sec_peak = fit_cfg['InclSecPeak'][i_pt] if isinstance(fit_cfg['InclSecPeak'], list) else fit_cfg['InclSecPeak']
+        if include_sec_peak:
+            sgn_funcs[fit_cfg['SgnFuncSecPeakLabel']] = {
+                'func': fit_cfg['SgnFuncSecPeak'][i_pt] if isinstance(fit_cfg['SgnFuncSecPeak'], list) else fit_cfg['SgnFuncSecPeak'],
+                'part': 'Dplus' if part == 'Ds' else 'Dstar',
+            }
+    for i_sgn, (label, sgn_func) in enumerate(sgn_funcs.items()):
+        fitter.add_sgn_func(sgn_func['func'], label, sgn_func['part'])
+    sgn_func_label = fit_cfg['SgnFuncLabel']
+
+    if fit_cfg.get('FixParsToIntFit'):  # Fix mean to results of sp-integrated fit
+        if not is_multitrial:
+            logger(f"Will fix all parameters of signal functions to sp-integrated fit result", "WARNING")
+        fitter.fix_sgn_pars_to_first_fit()
+
+    t3 = time.perf_counter()
+    logger(f"Time for adding model components: {t3 - t2} s", "INFO")
+    for i_cutset, cutset_file in enumerate(cfg_cutsets_paths):
+        t_start_cutset = time.perf_counter()
+        with open(cutset_file, 'r') as CfgCutset:
+            cfg_cutset = yaml.safe_load(CfgCutset)
+        outdir = os.path.dirname(cutset_file).replace('cutset', "raw_yield")
+        
+        # Create mask and select data
+        cutset_mask = (
+            (data['fMlScore0'] < cfg_cutset['ScoreBkg']['max'][i_pt]) &
+            (data['fMlScore0'] >= cfg_cutset['ScoreBkg']['min'][i_pt]) &
+            (data['fMlScore1'] < cfg_cutset['ScoreFD']['max'][i_pt]) &
+            (data['fMlScore1'] >= cfg_cutset['ScoreFD']['min'][i_pt]) &
+            (data['fM'] >= cfg_trial['v2extraction']['MassFitRanges'][i_pt][0]) &
+            (data['fM'] <= cfg_trial['v2extraction']['MassFitRanges'][i_pt][1])
+        )
+        sel_string_cutset = (
+            f"fMlScore0 < {cfg_cutset['ScoreBkg']['max'][i_pt]} && "
+            f"fMlScore0 >= {cfg_cutset['ScoreBkg']['min'][i_pt]} && "
+            f"fMlScore1 < {cfg_cutset['ScoreFD']['max'][i_pt]} && "
+            f"fMlScore1 >= {cfg_cutset['ScoreFD']['min'][i_pt]} && "
+            f"fM >= {cfg_trial['v2extraction']['MassFitRanges'][i_pt][0]} && "
+            f"fM <= {cfg_trial['v2extraction']['MassFitRanges'][i_pt][1]}"
+        )
+        t4 = time.perf_counter()
+        logger(f"Time to query data for cutset {i_cutset} in pt bin {pt_label}: {t4 - t_start_cutset:.3f} s", "INFO")
+        data_cutset = data[cutset_mask]
+        fitter.set_data_to_fit_df(data_cutset, 'fM')
+        t5 = time.perf_counter()
+        logger(f"Time to set data to fit for cutset {i_cutset} in pt bin {pt_label}: {t5 - t4:.3f} s", "INFO")
+
+        # Add correlated background if specified
+        if cfg_trial.get('corr_bkgs'):
+            fitter.add_corr_bkgs(cfg_trial['corr_bkgs'], sel_string, pt_min, pt_max)
+
+        fitter.setup()
+        if fit_cfg.get('InitPars'):
+            fitter.set_fit_pars(fit_cfg['InitPars'], pt_min, pt_max)
+        t6 = time.perf_counter()
+        logger(f"Time for setting up fitter for cutset {i_cutset} in pt bin {pt_label}: {t6 - t5} s", "INFO")
+        # Prefit the MC prompt enhanced cut to fix the tails, binned fit
+        if fit_cfg.get('FixSgnFromMC'):
+            fitter.set_fix_sgn_to_mc_prefit(True)
+            if i_cutset == 0:
+                fitter.prefit_mc(f"{cfg_trial['outdir'].split('cutvar')[0]}/corrbkgs/templs_{pt_label}.root")
+                fitter.plot_mc_prefit(False, True, loc=["lower left", "upper left"], path=outdir)
+                fitter.plot_raw_residuals_mc_prefit(path=f"{outdir}/fM_mc_prefit_residuals_{pt_label}.pdf")
+        t7 = time.perf_counter()
+        if i_cutset == 0:
+            logger(f"Time for prefit MC for cutset {i_cutset} in pt bin {pt_label}: {t7 - t6} s", "INFO")
+
+        t8 = time.perf_counter()
+        logger(f"Time for fixing signal parameters to sp-integrated fit for cutset {i_cutset} in pt bin {pt_label}: {t8 - t7} s", "INFO")
+        if i_cutset == 0:
+            status, converged = fitter.fit()
+            fig_int_fit_path = f"{outdir}/fit_int_{pt_label}.pdf"
+            fitter.plot_fit(False, True, loc=["lower left", "upper left"],  # (log, show_extra_info)
+                            path=fig_int_fit_path)
+            fit_info_pt_int, sgn_pars_pt_int, sgn_pars_uncs_pt_int, bkg_pars_pt_int, bkg_pars_uncs_pt_int = fitter.get_fit_info()
+
+        step = fit_cfg['SpWindowWidth'][i_pt][i_cutset]
+        sp_abs_val_max = fit_cfg['SpRanges'][i_pt]
+        sp_intervals = np.arange(-sp_abs_val_max, sp_abs_val_max + 0.5 * step, step).tolist()
+        stats[i_cutset] = {}
+        t9 = time.perf_counter()
+        logger(f"Time for performing sp-integrated fit for cutset {i_cutset} in pt bin {pt_label}: {t9 - t8} s", "INFO")
+        stats[i_cutset] = sp_scan_pt_bin(fitter, data_cutset, sgn_func_label, pt_label, resolution, sp_intervals,
+                                         f"{outdir}/scan_{i_cutset:02d}", mass_intervals=cfg_trial['projections']['inv_mass_bins'][i_pt],
+                                         save_plots=True, is_multitrial=is_multitrial)
+                                         # save_plots=not is_multitrial, is_multitrial=is_multitrial)
+        t10 = time.perf_counter()
+        logger(f"Time for sp scan for cutset {i_cutset} in pt bin {pt_label}: {t10 - t9} s", "INFO")
+        stats[i_cutset]['SpIntervals'] = sp_intervals
+        stats[i_cutset]['RawYieldsSimFit'] = fit_info_pt_int[sgn_func_label]["ry"]
+        stats[i_cutset]['RawYieldsSimFitUnc'] = fit_info_pt_int[sgn_func_label]["ry_unc"]
+        stats[i_cutset]['MeanSimFit'] = sgn_pars_pt_int[f"mu_{sgn_func_label}"]
+        stats[i_cutset]['MeanSimFitUnc'] = sgn_pars_uncs_pt_int[f"mu_{sgn_func_label}"]
+        stats[i_cutset]['SigmaSimFit'] = sgn_pars_pt_int[f"sigma_{sgn_func_label}"]
+        stats[i_cutset]['SigmaSimFitUnc'] = sgn_pars_uncs_pt_int[f"sigma_{sgn_func_label}"]
+        # Clear data_cutset to save memory
+        del data_cutset
+        t11 = time.perf_counter()
+        logger(f"Time after sp scan, cutset {i_cutset} completed: {t11 - t_start_cutset} s\n", "INFO")
+
+    del fitter
+    logger(f"Finished config file {os.path.basename(cfg_trial_path)} for pt bin {pt_label}, total time: {time.perf_counter() - t0} s\n\n", "INFO")
+    return stats, cfg_trial_path
+
 def run_pt_bin_worker(cutset_files, i_pt, pt_min, pt_max, cfg_flow, resolution, is_multitrial):
 
     pt_label = f"pt_{int(pt_min*10)}_{int(pt_max*10)}"
-    data = load_aod_file(f"{cfg_flow['outdir']}/preprocess/{pt_label}/TreesPtCenterSp/AO2D_{pt_label}.root", True)
+    data = load_aod_file(f"{cfg_flow['outdir']}/preprocess/{pt_label}/TreesPtCenterSp/AO2D_{pt_label}.root", True) # ,
+                        #  downsample_frac=0.5)
 
-    # Initialize the fitter for sp-integrated yield extraction
-    fitter = RawYieldFitter(cfg_flow['Dmeson'], pt_min, pt_max, f"sp_integrated_{pt_label}_fit",
-                            cfg_flow['v2extraction']['Minimizer'], verbose = not is_multitrial)
+    stats, sp_int_fits_pars = {}, {}
+    cutsets_datasets, df_cutsets = {}, {}
 
-    stats = {}
-    cutsets_fitters = {}
-    for main_cfg_path, cutset_cfgs in cutset_files.items():
-        # Monitor time for reading main config
-        t0 = time.perf_counter()
+    trial_tasks = []
+    # parallelize over cutset files
+    for i_cfg, (cfg_trial, cfg_trial_cutsets) in enumerate(cutset_files.items()):
+        trial_tasks.append((data, cfg_trial, cfg_trial_cutsets, pt_min, pt_max, i_pt, resolution, is_multitrial))
+    with ProcessPoolExecutor(max_workers=cfg_flow.get('TrialWorkers', 1)) as executor:
+        results = [executor.submit(run_trial_worker, *task) for task in trial_tasks]
+        for task in as_completed(results):
+            trial_stats, cfg_trial_path = task.result()
+            stats[cfg_trial_path] = {}
+            stats[cfg_trial_path] = trial_stats
 
-        stats[main_cfg_path] = {}
-        with open(main_cfg_path, 'r') as CfgMain:
-            main_cfg = yaml.safe_load(CfgMain)
-        t1 = time.perf_counter()
-        logger(f"Time to read main config {main_cfg_path}: {t1 - t0} s", "INFO")
+    # Check for exceptions in workers
+    for task in results:
+        if task.exception() is not None:
+            logger(f"Worker generated an exception: {task.exception()}", "ERROR")
+            raise task.exception()
 
-        fit_cfg = main_cfg['v2extraction']
-        fitter.set_fit_range(fit_cfg['MassFitRanges'][i_pt][0], fit_cfg['MassFitRanges'][i_pt][1])
-        t2 = time.perf_counter()
-        logger(f"Time for setting fit range: {t2 - t1} s", "INFO")
-
-        # Add model components
-        fitter.add_bkg_func(fit_cfg['BkgFunc'][i_pt] if isinstance(fit_cfg['BkgFunc'], list) else fit_cfg['BkgFunc'], "Comb. bkg")
-        sgn_funcs = {} # More info for signal functions, a dictionary is better
-        sgn_funcs[fit_cfg['SgnFuncLabel']] = {
-            'func': fit_cfg['SgnFunc'][i_pt] if isinstance(fit_cfg['SgnFunc'], list) else fit_cfg['SgnFunc'],
-            'part': cfg_flow['Dmeson']
-        }
-        if fit_cfg.get('InclSecPeak'):
-            include_sec_peak = fit_cfg['InclSecPeak'][i_pt] if isinstance(fit_cfg['InclSecPeak'], list) else fit_cfg['InclSecPeak']
-            if include_sec_peak:
-                sgn_funcs[fit_cfg['SgnFuncSecPeakLabel']] = {
-                    'func': fit_cfg['SgnFuncSecPeak'][i_pt] if isinstance(fit_cfg['SgnFuncSecPeak'], list) else fit_cfg['SgnFuncSecPeak'],
-                    'part': 'Dplus' if part == 'Ds' else 'Dstar',
-                }
-        for i_sgn, (label, sgn_func) in enumerate(sgn_funcs.items()):
-            fitter.add_sgn_func(sgn_func['func'], label, sgn_func['part'])
-        sgn_func_label = fit_cfg['SgnFuncLabel']
-
-        if fit_cfg.get('FixParsToIntFit'):  # Fix mean to results of sp-integrated fit
-            if not is_multitrial:
-                logger(f"Will fix all parameters of signal functions to sp-integrated fit result", "WARNING")
-            fitter.fix_sgn_pars_to_first_fit()
-
-        t3 = time.perf_counter()
-        logger(f"Time for adding model components: {t3 - t2} s", "INFO")
-        for i_cutset, cutset_file in enumerate(cutset_cfgs):
-            t_start_cutset = time.perf_counter()
-            with open(cutset_file, 'r') as CfgCutset:
-                cfg_cutset = yaml.safe_load(CfgCutset)
-            outdir = os.path.dirname(cutset_file).replace('cutset', "raw_yield")
-            sel_string_cutset = (
-                f"fMlScore0 < {cfg_cutset['ScoreBkg']['max'][i_pt]} && "
-                f"fMlScore0 >= {cfg_cutset['ScoreBkg']['min'][i_pt]} && "
-                f"fMlScore1 < {cfg_cutset['ScoreFD']['max'][i_pt]} && "
-                f"fMlScore1 >= {cfg_cutset['ScoreFD']['min'][i_pt]} && "
-                f"fM >= {main_cfg['v2extraction']['MassFitRanges'][i_pt][0]} && "
-                f"fM <= {main_cfg['v2extraction']['MassFitRanges'][i_pt][1]}"
-            )
-
-            # Monitor time for querying data
-            data_cutset = data.query(sel_string_cutset.replace(" && ", " and "))
-            t4 = time.perf_counter()
-            logger(f"Time to query data for cutset {i_cutset} in pt bin {pt_label}: {t4 - t_start_cutset:.3f} s", "INFO")
-            fitter.set_data_to_fit_df(data_cutset, 'fM')
-            t5 = time.perf_counter()
-            logger(f"Time to set data to fit for cutset {i_cutset} in pt bin {pt_label}: {t5 - t4:.3f} s", "INFO")
-
-            # Add correlated background if specified
-            if main_cfg.get('corr_bkgs'):
-                fitter.add_corr_bkgs(main_cfg['corr_bkgs'], sel_string, pt_min, pt_max)
-
-            fitter.setup()
-            if fit_cfg.get('InitPars'):
-                fitter.set_fit_pars(fit_cfg['InitPars'], pt_min, pt_max)
-            t6 = time.perf_counter()
-            logger(f"Time for setting up fitter for cutset {i_cutset} in pt bin {pt_label}: {t6 - t5} s", "INFO")
-            # Prefit the MC prompt enhanced cut to fix the tails, binned fit
-            if fit_cfg.get('FixSgnFromMC'):
-                fitter.set_fix_sgn_to_mc_prefit(True)
-                if i_cutset == 0:
-                    fitter.prefit_mc(f"{cfg_flow['outdir']}/corrbkgs/templs_{pt_label}.root")
-                    fitter.plot_mc_prefit(False, True, loc=["lower left", "upper left"], path=outdir)
-                    fitter.plot_raw_residuals_mc_prefit(path=f"{outdir}/fM_mc_prefit_residuals_{pt_label}.pdf")
-            t7 = time.perf_counter()
-            logger(f"Time for prefit MC for cutset {i_cutset} in pt bin {pt_label}: {t7 - t6} s", "INFO")
-
-            t8 = time.perf_counter()
-            logger(f"Time for fixing signal parameters to sp-integrated fit for cutset {i_cutset} in pt bin {pt_label}: {t8 - t7} s", "INFO")
-            if i_cutset == 0:
-                status, converged = fitter.fit()
-                fig_int_fit_path = f"{outdir}/fit_int_{pt_label}.pdf"
-                fitter.plot_fit(False, True, loc=["lower left", "upper left"],  # (log, show_extra_info)
-                                path=fig_int_fit_path)
-                fit_info_pt_int, sgn_pars_pt_int, sgn_pars_uncs_pt_int, _, _ = fitter.get_fit_info()
-
-            step = fit_cfg['SpWindowWidth'][i_pt][i_cutset]
-            sp_abs_val_max = fit_cfg['SpRanges'][i_pt]
-            sp_intervals = np.arange(-sp_abs_val_max, sp_abs_val_max + 0.5 * step, step).tolist()
-            stats[main_cfg_path][i_cutset] = {}
-            t9 = time.perf_counter()
-            logger(f"Time for performing sp-integrated fit for cutset {i_cutset} in pt bin {pt_label}: {t9 - t8} s", "INFO")
-            stats[main_cfg_path][i_cutset] = sp_scan_pt_bin(fitter, data_cutset, sgn_func_label, pt_label, resolution, sp_intervals,
-                                                            f"{outdir}/scan_{i_cutset:02d}", mass_intervals=main_cfg['projections']['inv_mass_bins'][i_pt],
-                                                            # save_plots=True, is_multitrial=is_multitrial)
-                                                            save_plots=not is_multitrial, is_multitrial=is_multitrial)
-            t10 = time.perf_counter()
-            logger(f"Time for sp scan for cutset {i_cutset} in pt bin {pt_label}: {t10 - t9} s", "INFO")
-            stats[main_cfg_path][i_cutset]['SpIntervals'] = sp_intervals
-            stats[main_cfg_path][i_cutset]['RawYieldsSimFit'] = fit_info_pt_int[sgn_func_label]["ry"]
-            stats[main_cfg_path][i_cutset]['RawYieldsSimFitUnc'] = fit_info_pt_int[sgn_func_label]["ry_unc"]
-            stats[main_cfg_path][i_cutset]['MeanSimFit'] = sgn_pars_pt_int[f"mu_{sgn_func_label}"]
-            stats[main_cfg_path][i_cutset]['MeanSimFitUnc'] = sgn_pars_uncs_pt_int[f"mu_{sgn_func_label}"]
-            stats[main_cfg_path][i_cutset]['SigmaSimFit'] = sgn_pars_pt_int[f"sigma_{sgn_func_label}"]
-            stats[main_cfg_path][i_cutset]['SigmaSimFitUnc'] = sgn_pars_uncs_pt_int[f"sigma_{sgn_func_label}"]
-            # Clear data_cutset to save memory
-            del data_cutset
-            t11 = time.perf_counter()
-            logger(f"Time for finalizing cutset {i_cutset} in pt bin {pt_label}: {t11 - t_start_cutset} s\n", "INFO")
-
-        logger(f"Finished config file {os.path.basename(main_cfg_path)} for pt bin {pt_label}, total time: {time.perf_counter() - t0} s\n\n", "INFO")
-
-    # IMPORTANT: return ONLY python objects
+    # return ONLY python objects
     return pt_label, i_pt, stats
 
 if __name__ == "__main__":
@@ -315,7 +347,7 @@ if __name__ == "__main__":
     vals_stats = {}
     for i_pt, (pt_min, pt_max) in enumerate(zip(pt_bins[:-1], pt_bins[1:])):
         tasks.append((cutset_files, i_pt, pt_min, pt_max, cfg_flow, resolution, args.multitrial))
-    with ProcessPoolExecutor(max_workers=cfg_flow['v2extraction'].get('Workers', 1)) as executor:
+    with ProcessPoolExecutor(max_workers=cfg_flow['v2extraction'].get('PtWorkers', 1)) as executor:
         results = [executor.submit(run_pt_bin_worker, *task) for task in tasks]
         for task in as_completed(results):
             pt_label, i_pt, stats = task.result()
@@ -326,8 +358,6 @@ if __name__ == "__main__":
         if task.exception() is not None:
             logger(f"Worker generated an exception: {task.exception()}", "ERROR")
             raise task.exception()
-
-    print("Finished all pt bins")
 
     # Sort vals_stats by i_pt
     vals_stats = dict(sorted(vals_stats.items(), key=lambda item: item[1][0]))
@@ -385,7 +415,8 @@ if __name__ == "__main__":
                             summaries[config_path][cutset]['gVnUnc'].SetPoint(i_pt, (pt_min+pt_max)/2, cutset_vals[f"{var}Unc"])
                             summaries[config_path][cutset]['gVnUnc'].SetPointError(i_pt, (pt_max-pt_min)/2, (pt_max-pt_min)/2, 1.e-20, 1.e-20)
 
-    print("Saving results to root files ...")
+    logger("\n\n")
+    logger("Saving results to root files ... ", "INFO")
     for main_cfg, cutset_cfgs in cutset_files.items():
         for i_cutset, cutset in enumerate(cutset_cfgs):
             out_file_name = cutset.replace('cutsets', 'raw_yields').replace('cutset', 'raw_yields').replace('.yml', '.root')
@@ -408,4 +439,233 @@ if __name__ == "__main__":
                     hist.Write(hist_name)
             outfile.Close()
 
-            logger(f"Processed config file {cutset} and saved results to {out_file_name}\n\n", "INFO")
+            logger(f"Processed config file {cutset} and saved results to {out_file_name}", "INFO")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# def run_pt_bin_worker(cutset_files, i_pt, pt_min, pt_max, cfg_flow, resolution, is_multitrial):
+
+#     pt_label = f"pt_{int(pt_min*10)}_{int(pt_max*10)}"
+#     data = load_aod_file(f"{cfg_flow['outdir']}/preprocess/{pt_label}/TreesPtCenterSp/AO2D_{pt_label}.root", True)
+
+#     stats, sp_int_fits_pars = {}, {}
+#     cutsets_datasets, df_cutsets = {}, {}
+
+#     trial_tasks = []
+#     # parallelize over cutset files
+#     for i_cfg, (cfg_trial, cfg_trial_cutsets) in enumerate(cutset_files.items()):
+#         trial_tasks.append((data, cfg_trial, cfg_trial_cutsets, pt_min, pt_max, i_pt, resolution, is_multitrial))
+#     with ProcessPoolExecutor(max_workers=20) as executor:
+#         results = [executor.submit(run_trial_worker, *task) for task in trial_tasks]
+#         for task in as_completed(results):
+#             trial_stats, cfg_trial_path = task.result()
+#             stats[cfg_trial_path] = {}
+#             stats[cfg_trial_path] = trial_stats
+
+#     # Check for exceptions in workers
+#     for task in results:
+#         if task.exception() is not None:
+#             logger(f"Worker generated an exception: {task.exception()}", "ERROR")
+#             raise task.exception()
+
+#     # #    stats[main_cfg_path][i_cutset]['SigmaSimFitUnc'] = sgn_pars_uncs_pt_int[f"sigma_{sgn_func_label}"]
+    
+#     #     # Monitor time for reading main config
+#     #     t0 = time.perf_counter()
+#     #     # Initialize the fitter for sp-integrated yield extraction
+#     #     fitter = RawYieldFitter(cfg_flow['Dmeson'], pt_min, pt_max, f"sp_integrated_{pt_label}_fit",
+#     #                             cfg_flow['v2extraction']['Minimizer'], verbose = not is_multitrial)
+
+#     #     stats[main_cfg_path] = {}
+#     #     with open(main_cfg_path, 'r') as CfgMain:
+#     #         main_cfg = yaml.safe_load(CfgMain)
+#     #     t1 = time.perf_counter()
+#     #     logger(f"Time to read main config {main_cfg_path}: {t1 - t0} s", "INFO")
+
+#     #     fit_cfg = main_cfg['v2extraction']
+#     #     fitter.set_fit_range(fit_cfg['MassFitRanges'][i_pt][0], fit_cfg['MassFitRanges'][i_pt][1])
+#     #     t2 = time.perf_counter()
+
+#     #     # Add model components
+#     #     fitter.add_bkg_func(fit_cfg['BkgFunc'][i_pt] if isinstance(fit_cfg['BkgFunc'], list) else fit_cfg['BkgFunc'], "Comb. bkg")
+#     #     sgn_funcs = {} # More info for signal functions, a dictionary is better
+#     #     sgn_funcs[fit_cfg['SgnFuncLabel']] = {
+#     #         'func': fit_cfg['SgnFunc'][i_pt] if isinstance(fit_cfg['SgnFunc'], list) else fit_cfg['SgnFunc'],
+#     #         'part': cfg_flow['Dmeson']
+#     #     }
+#     #     if fit_cfg.get('InclSecPeak'):
+#     #         include_sec_peak = fit_cfg['InclSecPeak'][i_pt] if isinstance(fit_cfg['InclSecPeak'], list) else fit_cfg['InclSecPeak']
+#     #         if include_sec_peak:
+#     #             sgn_funcs[fit_cfg['SgnFuncSecPeakLabel']] = {
+#     #                 'func': fit_cfg['SgnFuncSecPeak'][i_pt] if isinstance(fit_cfg['SgnFuncSecPeak'], list) else fit_cfg['SgnFuncSecPeak'],
+#     #                 'part': 'Dplus' if part == 'Ds' else 'Dstar',
+#     #             }
+#     #     for i_sgn, (label, sgn_func) in enumerate(sgn_funcs.items()):
+#     #         fitter.add_sgn_func(sgn_func['func'], label, sgn_func['part'])
+#     #     sgn_func_label = fit_cfg['SgnFuncLabel']
+
+#     #     if fit_cfg.get('FixParsToIntFit'):  # Fix mean to results of sp-integrated fit
+#     #         if not is_multitrial:
+#     #             logger(f"Will fix all parameters of signal functions to sp-integrated fit result", "WARNING")
+#     #         fitter.fix_sgn_pars_to_first_fit()
+
+#     #     t3 = time.perf_counter()
+#     #     logger(f"Time for adding model components: {t3 - t2} s", "INFO")
+#     #     for i_cutset, cutset_file in enumerate(cutset_cfgs):
+#     #         t_start_cutset = time.perf_counter()
+#     #         with open(cutset_file, 'r') as CfgCutset:
+#     #             cfg_cutset = yaml.safe_load(CfgCutset)
+#     #         outdir = os.path.dirname(cutset_file).replace('cutset', "raw_yield")
+#     #         sel_string_cutset = (
+#     #             f"fMlScore0 < {cfg_cutset['ScoreBkg']['max'][i_pt]} && "
+#     #             f"fMlScore0 >= {cfg_cutset['ScoreBkg']['min'][i_pt]} && "
+#     #             f"fMlScore1 < {cfg_cutset['ScoreFD']['max'][i_pt]} && "
+#     #             f"fMlScore1 >= {cfg_cutset['ScoreFD']['min'][i_pt]} "
+#     #         )
+#     #         if i_cfg == 0:
+#     #             cutsets_datasets[i_cutset] = create_roodataset_from_df(data, fitter.get_fit_range_var(), sel_string_cutset)
+#     #             # df_cutsets[i_cutset] = data.query(sel_string_cutset.replace(" && ", " and "))
+#     #         data_cutset = data.query(sel_string_cutset.replace(" && ", " and "))
+#     #         t4 = time.perf_counter()
+#     #         logger(f"Time to query data for cutset {i_cutset} in pt bin {pt_label}: {t4 - t_start_cutset:.3f} s", "INFO")
+#     #         if cfg_flow['v2extraction']['Minimizer'] == 'roofit':
+#     #             fitter.set_data_to_fit_roodataset(cutsets_datasets[i_cutset])
+#     #         else:
+#     #             fitter.set_data_to_fit_df(df_cutsets[i_cutset], 'fM')
+#     #         # fitter.set_data_to_fit_df(data_cutset, 'fM')
+#     #         t5 = time.perf_counter()
+#     #         # logger(f"Time to set data to fit for cutset {i_cutset} in pt bin {pt_label}: {t5 - t4:.3f} s", "INFO")
+
+#     #         # Add correlated background if specified
+#     #         if main_cfg.get('corr_bkgs'):
+#     #             sel_string_cutset_with_mass = sel_string_cutset + (
+#     #                 f" && fM >= {main_cfg['v2extraction']['MassFitRanges'][i_pt][0]}"
+#     #                 f" && fM <= {main_cfg['v2extraction']['MassFitRanges'][i_pt][1]}"
+#     #             )
+#     #             fitter.add_corr_bkgs(main_cfg['corr_bkgs'], sel_string, pt_min, pt_max)
+
+#     #         fitter.setup()
+#     #         if fit_cfg.get('InitPars'):
+#     #             fitter.set_fit_pars(fit_cfg['InitPars'], pt_min, pt_max)
+#     #         t6 = time.perf_counter()
+#     #         # logger(f"Time for setting up fitter for cutset {i_cutset} in pt bin {pt_label}: {t6 - t5} s", "INFO")
+#     #         # Prefit the MC prompt enhanced cut to fix the tails, binned fit
+#     #         if fit_cfg.get('FixSgnFromMC'):
+#     #             fitter.set_fix_sgn_to_mc_prefit(True)
+#     #             if i_cutset == 0:
+#     #                 fitter.prefit_mc(f"{cfg_flow['outdir']}/corrbkgs/templs_{pt_label}.root")
+#     #                 fitter.plot_mc_prefit(False, True, loc=["lower left", "upper left"], path=outdir)
+#     #                 fitter.plot_raw_residuals_mc_prefit(path=f"{outdir}/fM_mc_prefit_residuals_{pt_label}.pdf")
+#     #         t7 = time.perf_counter()
+#     #         if i_cutset == 0:
+#     #             logger(f"Time for prefit MC for cutset {i_cutset} in pt bin {pt_label}: {t7 - t6} s", "INFO")
+
+#     #         t8 = time.perf_counter()
+#     #         # logger(f"Time for fixing signal parameters to sp-integrated fit for cutset {i_cutset} in pt bin {pt_label}: {t8 - t7} s", "INFO")
+#     #         if i_cutset == 0:
+#     #             sgn_func_name = fit_cfg['SgnFunc'][i_pt] if isinstance(fit_cfg['SgnFunc'], list) else fit_cfg['SgnFunc']
+#     #             bkg_func_name = fit_cfg['BkgFunc'][i_pt] if isinstance(fit_cfg['BkgFunc'], list) else fit_cfg['BkgFunc']
+#     #             if sgn_func_name in sp_int_fits_pars:
+#     #                 fitter.init_sgn_pars(sp_int_fits_pars[sgn_func_name], sgn_func_label)
+#     #             if bkg_func_name in sp_int_fits_pars:
+#     #                 fitter.init_comb_bkg_pars(sp_int_fits_pars[bkg_func_name])
+#     #             status, converged = fitter.fit()
+#     #             fig_int_fit_path = f"{outdir}/fit_int_{pt_label}.pdf"
+#     #             fitter.plot_fit(False, True, loc=["lower left", "upper left"],  # (log, show_extra_info)
+#     #                             path=fig_int_fit_path)
+#     #             fit_info_pt_int, sgn_pars_pt_int, sgn_pars_uncs_pt_int, bkg_pars_pt_int, bkg_pars_uncs_pt_int = fitter.get_fit_info()
+#     #             # Cache comb bkg and signal fit parameters to be reused as initializations in multitrial
+#     #             if sgn_func_name not in sp_int_fits_pars:
+#     #                 sp_int_fits_pars[sgn_func_name] = {}
+#     #                 sp_int_fits_pars[sgn_func_name]["mu"] = sgn_pars_pt_int[f"mu_{sgn_func_label}"]
+#     #                 sp_int_fits_pars[sgn_func_name]["sigma"] = sgn_pars_pt_int[f"sigma_{sgn_func_label}"]
+#     #             if bkg_func_name not in sp_int_fits_pars:
+#     #                 sp_int_fits_pars[bkg_func_name] = {}
+#     #                 for bkg_par_name in bkg_pars_pt_int:
+#     #                     sp_int_fits_pars[bkg_func_name][bkg_par_name] = bkg_pars_pt_int[bkg_par_name]
+
+#     #         step = fit_cfg['SpWindowWidth'][i_pt][i_cutset]
+#     #         sp_abs_val_max = fit_cfg['SpRanges'][i_pt]
+#     #         sp_intervals = np.arange(-sp_abs_val_max, sp_abs_val_max + 0.5 * step, step).tolist()
+#     #         stats[main_cfg_path][i_cutset] = {}
+#     #         t9 = time.perf_counter()
+#     #         logger(f"Time for performing sp-integrated fit for cutset {i_cutset} in pt bin {pt_label}: {t9 - t8} s", "INFO")
+#     #         stats[main_cfg_path][i_cutset] = sp_scan_pt_bin(fitter, data_cutset, sgn_func_label, pt_label, resolution, sp_intervals,
+#     #         # stats[main_cfg_path][i_cutset] = sp_scan_pt_bin(fitter, df_cutsets[i_cutset], sgn_func_label, pt_label, resolution, sp_intervals,
+#     #                                                         f"{outdir}/scan_{i_cutset:02d}", mass_intervals=main_cfg['projections']['inv_mass_bins'][i_pt],
+#     #                                                         save_plots=True, is_multitrial=is_multitrial)
+#     #                                                         # save_plots=not is_multitrial, is_multitrial=is_multitrial)
+#     #         t10 = time.perf_counter()
+#     #         # logger(f"Time for sp scan for cutset {i_cutset} in pt bin {pt_label}: {t10 - t9} s", "INFO")
+#     #         stats[main_cfg_path][i_cutset]['SpIntervals'] = sp_intervals
+#     #         stats[main_cfg_path][i_cutset]['RawYieldsSimFit'] = fit_info_pt_int[sgn_func_label]["ry"]
+#     #         stats[main_cfg_path][i_cutset]['RawYieldsSimFitUnc'] = fit_info_pt_int[sgn_func_label]["ry_unc"]
+#     #         stats[main_cfg_path][i_cutset]['MeanSimFit'] = sgn_pars_pt_int[f"mu_{sgn_func_label}"]
+#     #         stats[main_cfg_path][i_cutset]['MeanSimFitUnc'] = sgn_pars_uncs_pt_int[f"mu_{sgn_func_label}"]
+#     #         stats[main_cfg_path][i_cutset]['SigmaSimFit'] = sgn_pars_pt_int[f"sigma_{sgn_func_label}"]
+#     #         stats[main_cfg_path][i_cutset]['SigmaSimFitUnc'] = sgn_pars_uncs_pt_int[f"sigma_{sgn_func_label}"]
+#     #         # Clear data_cutset to save memory
+#     #         del data_cutset
+#     #         t11 = time.perf_counter()
+#     #         logger(f"Time after sp scan, cutset {i_cutset} completed: {t11 - t_start_cutset} s\n", "INFO")
+
+#     #     del fitter
+#     #     logger(f"Finished config file {os.path.basename(main_cfg_path)} for pt bin {pt_label}, total time: {time.perf_counter() - t0} s\n\n", "INFO")
+
+#     # IMPORTANT: return ONLY python objects
+#     return pt_label, i_pt, stats
+
