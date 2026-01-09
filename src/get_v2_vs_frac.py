@@ -273,7 +273,7 @@ def main_v2_vs_frac(flow_config, ry_input_dir, frac_input_dir, correlated=False,
     # Use ry_input_dir, not frac_input_dir, to define output dir
     # because in multitrial frac_input_dir is constant and the
     # reference results would be overwritten
-    outputDir = os.path.join(os.path.dirname(ry_input_dir), 'v2')
+    outputDir = os.path.join(os.path.dirname(ry_input_dir), '..', 'v2') if outputdir == '' else f"{outputdir}/v2"
     v2_vs_frac(
         config['Dmeson'],
         ptMins,
@@ -299,6 +299,8 @@ if __name__ == "__main__":
                         help="perform correlated analysis")
     parser.add_argument('--multitrial', action='store_true',
                         help='suppress redundant prints')
+    parser.add_argument('--outputdir', '-o', metavar='text', default='',
+                        help='output directory (used for systematics)', required=False)
     args = parser.parse_args()
 
     if args.multitrial:
@@ -310,5 +312,6 @@ if __name__ == "__main__":
         args.frac_input_dir,
         args.correlated,
         args.multitrial,
-        args.batch
+        args.batch,
+        args.outputdir
     )

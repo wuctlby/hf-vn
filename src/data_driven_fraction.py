@@ -105,14 +105,14 @@ def data_driven_frac(outputDir, iFile, hEffPrompt, hEffFD, \
     cEff.Write()
     outFile.Close()
 
-def main_data_driven_frac(cutVarFile, effPath, batch=False):
+def main_data_driven_frac(cutVarFile, effPath, batch=False, outputDir=''):
 
     if batch:
         gROOT.SetBatch()
     
     hEffPrompts, hEffFDs, hPromptFracs, hFDFracs, hPromptFracCorrs, hFDFracCorrs = load_eff_histos(load_root_files(effPath, 'eff_'))
     hCorrYieldPrompt, hCorrYieldFD, hCovPromptPrompt, hCovPromptFD, hCovFDFD = load_cutVar_histos(cutVarFile)
-    outputDir = os.path.join(os.path.dirname(effPath), 'frac')
+    outputDir = os.path.join(os.path.dirname(effPath), 'frac') if outputDir == '' else f"{outputDir}/frac"
     logger(f'Output directory: {outputDir}', level='INFO')
     os.makedirs(outputDir, exist_ok=True)
     for iFile in range(len(hEffPrompts)):
@@ -139,6 +139,8 @@ if __name__ == "__main__":
                         help="path to the cut variation file")
     parser.add_argument("effPath", metavar="text",
                         help="path to the efficiency file")
+    parser.add_argument("--outputdir", "-o", metavar="text", default='',
+                        help="output directory (used for systematics)", required=False)
     parser.add_argument("--batch", '-b', action='store_true',
                         help="run in batch mode")
     args = parser.parse_args()
@@ -146,5 +148,6 @@ if __name__ == "__main__":
     main_data_driven_frac(
         cutVarFile=args.cutVarFile,
         effPath=args.effPath,
-        batch=args.batch
+        batch=args.batch,
+        outputDir=args.outputdir
     )
