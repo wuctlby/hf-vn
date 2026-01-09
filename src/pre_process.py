@@ -63,7 +63,7 @@ def get_inputs_sparse(file, full_cfg, sparse_cfg, debug=False):
     else:
         logger(f"Sparse {sparse} loaded from {sparse_cfg['path']}", level='INFO')
     
-    if full_cfg['Dmeson'] == 'Dzero':
+    if full_cfg['Dmeson'] == 'Dzero' and sparse_cfg['name'] != "FlowSP":
         # TODO: safety checks for Dmeson reflecton and secondary peak
         if sparse_cfg['name'] == "RecoPrompt":
             sparse.GetAxis(axes['Origin']).SetRange(2, 2)       # select prompt
@@ -80,9 +80,9 @@ def get_inputs_sparse(file, full_cfg, sparse_cfg, debug=False):
             sparse.GetAxis(axes['CandType']).SetRange(3, 4)     # select reflection
             sparse.GetAxis(axes['Origin']).SetRange(3, 3)       # select FD
         elif sparse_cfg['name'] == "GenPrompt":
-            sparsesGen['GenPrompt'][i_file].GetAxis(axes_dict['GenPrompt']['Origin']).SetRange(2, 2)  # select prompt
+            sparse.GetAxis(axes['Origin']).SetRange(2, 2)       # select prompt
         elif sparse_cfg['name'] == "GenFD":
-            sparsesGen['GenFD'][i_file].GetAxis(axes_dict['GenFD']['Origin']).SetRange(3, 3)  # select non-prompt
+            sparse.GetAxis(axes['Origin']).SetRange(3, 3)       # select non-prompt
         else:
             logger(f"Unknown sparse type for Dzero {sparse_cfg['name']}", level='ERROR')
 

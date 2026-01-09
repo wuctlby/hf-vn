@@ -319,13 +319,13 @@ if __name__ == "__main__":
 	os.system(f'cp {args.flow_config} {outdir}/config_flow/{os.path.splitext(os.path.basename(args.flow_config))[0]}_{config["suffix"]}_{nfile}.yml')
 
 	if operations.get('preprocess'):
-		print("\033[32mINFO: Preprocess will be performed\033[0m")
+		logger("Preprocess will be performed", level="INFO")
 		os.system(f"python3 {paths['Preprocess']} {args.flow_config} --workers {nworkers}")
 	else:
-		print("\033[33mWARNING: Preprocess will not be performed\033[0m")
+		logger("Preprocess will not be performed", level="WARNING")
 
 	if not args.correlated and not args.combined:
-		print("\033[33mWARNING: No cut variation will be performed\033[0m")
+		logger("No cut variation will be performed, please specify --correlated or --combined", level="WARNING")
 		sys.exit(0)
 	if args.correlated:
 		run_correlated_cut_variation(args.flow_config, operations, nworkers, outdir)
@@ -334,4 +334,4 @@ if __name__ == "__main__":
 
 	end_time = time.time()
 	execution_time = end_time - start_time
-	print(f"\033[34mTotal execution time: {execution_time:.2f} seconds\033[0m")
+	logger("Analysis completed, total execution time: {:.2f} seconds".format(execution_time), level="INFO")
