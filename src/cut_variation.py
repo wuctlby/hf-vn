@@ -26,6 +26,8 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
     hPromptFracVsCut, hFDFracVsCut = [], []
     hCorrMatrixCutSets = []
     cFinalResPt = []
+    cFinalResAllPt = TCanvas('cFinalResAllPt', '', 1400, 800)
+    cFinalResAllPt.Divide(6, int(np.ceil(len(ptmins)*2 / 3)))
 
     hCorrYieldPrompt = hRawYields[0].Clone('hCorrYieldPrompt')
     hCorrYieldPrompt.SetTitle(';#it{p}_{T} (GeV/#it{c}); #it{N}_{prompt}')
@@ -287,6 +289,33 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
         legFrac.Draw()
         cFinalResPt[-1].Update()
 
+        # fill the canvas with all pt results
+        topPadIndex = iPt + 1*(1 + iPt) + 6*(iPt // 3)
+        bottomPadIndex = topPadIndex + 6
+        cFinalResAllPt.cd(topPadIndex)
+        hCorrMatrixCutSets[iPt].Draw('colz text')
+        hFrameDistrAllPt = cFinalResAllPt.cd(topPadIndex+1).DrawFrame(0.5, 0., nSets + 0.5, hRawYieldsVsCut[iPt].GetMaximum() * 1.2,
+                                    f'{commonString};raw yield')
+        hFrameDistrAllPt.GetYaxis().SetDecimals()
+        hRawYieldsVsCut[iPt].Draw('same')
+        hRawYieldPromptVsCut[iPt].DrawCopy('histsame')
+        hRawYieldFDVsCut[iPt].DrawCopy('histsame')
+        hRawYieldsVsCutReSum[iPt].Draw('same')
+        legDistr.Draw()
+        #latInfo.DrawLatex(0.47, 0.65, f'#chi^{{2}} / ndf = {chiSquare:.3f}') # DO NOT TRUST CHI2 IN RUN 3
+        # bottom-left: efficiency
+        cFinalResAllPt.cd(bottomPadIndex).DrawFrame(0.5, hEffPromptVsCut[iPt].GetMinimum()/5, nSets + 0.5, 1., f'{commonString};efficiency')
+        cFinalResAllPt.cd(bottomPadIndex).SetLogy()
+        hEffPromptVsCut[iPt].DrawCopy('same')
+        hEffFDVsCut[iPt].DrawCopy('same')
+        legEff.Draw()
+        # bottom-right: fraction
+        cFinalResAllPt.cd(bottomPadIndex+1).DrawFrame(0.5, 0., nSets + 0.5, 1.8, f'{commonString};fraction')
+        hPromptFracVsCut[iPt].DrawCopy('Esame')
+        hFDFracVsCut[iPt].DrawCopy('Esame')
+        legFrac.Draw()
+        cFinalResAllPt.Update()
+
     nPtBins = hCorrYieldPrompt.GetNbinsX()
     cCorrYield = TCanvas('cCorrYield', '', 800, 800)
     cCorrYield.DrawFrame(hCorrYieldPrompt.GetBinLowEdge(1), 1.,
@@ -330,6 +359,8 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
         if iPt == hRawYields[0].GetNbinsX() - 1:
             cFinalResPt[iPt].SaveAs(f'{outDir}/FinalResPt.pdf]')
         cFinalResPt[iPt].SaveAs(f'{outDir}/FinalResPt_pt{ptmins[iPt]}_{ptmaxs[iPt]}.png')
+    cFinalResAllPt.SaveAs(f'{outDir}/FinalResAllPt.png')
+    cFinalResAllPt.SaveAs(f'{outDir}/FinalResAllPt.pdf')
 
 
 def compute_frac_cut_var(config_flow, inputPathRy, inputPathEff, batch=False):
