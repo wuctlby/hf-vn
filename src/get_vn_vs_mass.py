@@ -91,6 +91,17 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
     if 1 in inclSecPeak and not configfit.get('SigmaSecPeak'):
         logger('Second peak enabled, but SigmaSecPeak not provided. Check your config file.', level='ERROR')
 
+    # Create canvas to contain all fit plots
+    nCols = 4
+    if nPtBins <= 8:
+        cSimFitFull = TCanvas('cSimFitFull', 'cSimFitFull', 1200, 1200)  
+        cSimFitFull.Divide(nCols, nCols)
+    if nPtBins > 8 and nPtBins <= 16:
+        cSimFitFull = TCanvas('cSimFitFull', 'cSimFitFull', 1600, 1200)  
+        cSimFitFull.Divide(nCols, 2*nCols)
+    else:
+        logger('More than 16 pt bins not supported for full fit canvas. Skip creating it.', level='WARNING')
+
     SgnFunc, BkgFunc, BkgFuncVn, degPol = [], [], [], []
     for iPt, (bkgStr, sgnStr, bkgVnStr) in enumerate(zip(BkgFuncStr, SgnFuncStr, BkgFuncVnStr)):
         degPol.append(-1)
@@ -132,7 +143,7 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
             logger('Only kGaus, k2Gaus and k2GausSigmaRatioPar signal functions supported! Exit!', level='ERROR')
 
     # Set particle configuration
-    _, massAxisTit, decay, massForFit, massSecPeak, secPeakLabel = get_particle_info(particleName)
+    partTitle, massAxisTit, decay, massForFit, massSecPeak, secPeakLabel = get_particle_info(particleName)
 
     # Load histos
     infile = TFile.Open(inFileName)
@@ -302,6 +313,8 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
             vnFitter[iPt].SetInitialGaussianSigma(configfit['Sigma'][iPt], 1)
         # nSigma4SB
         if configfit.get('NSigma4SB'):
+            if not isinstance(configfit['NSigma4SB'], list):
+                configfit['NSigma4SB'] = [configfit['NSigma4SB']] * nPtBins
             vnFitter[iPt].SetNSigmaForVnSB(configfit['NSigma4SB'][iPt])
         # Second peak
         if secPeak:
@@ -448,6 +461,7 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
             cSimFit[iPt].cd(2)
             hVnForFit[iPt].GetXaxis().SetRangeUser(massMin, massMax)
             hVnForFit[iPt].GetYaxis().SetTitle(f'#it{{v}}_{{{harmonic}}} (SP)')
+            hVnForFit[iPt].GetYaxis().SetTitleOffset(1.4)
             hVnForFit[iPt].GetYaxis().SetDecimals()
             hVnForFit[iPt].GetYaxis().SetRangeUser(0.5*hVnForFit[iPt].GetMinimum(),
                                                     1.5*hVnForFit[iPt].GetMaximum())
@@ -457,7 +471,7 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
             
             latex.DrawLatex(0.18, 0.18, f'#chi^{{2}}/ndf = {vnResults["chi2"]:.2f}')
             latex.DrawLatex(0.18, 0.80,
-                            f'#it{{v}}{harmonic}({particleName}) = {vnResults["vn"]:.3f} #pm {vnResults["vnUnc"]:.3f}')
+                            f'#it{{v}}{harmonic}({partTitle}) = {vnResults["vn"]:.3f} #pm {vnResults["vnUnc"]:.3f}')
                 
             if secPeak:
                 latex.DrawLatex(0.18, 0.75,
@@ -487,6 +501,43 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
 
             cSimFit[iCanv].Modified()
             cSimFit[iCanv].Update()
+
+            # Draw on full canvas
+            massPadIndex = iPt + 1 + nCols*(iPt // nCols)
+            vnPadIndex = massPadIndex + nCols
+            cSimFitFull.cd(massPadIndex)
+            hMassForFit[iPt].Draw('E')
+            fSgnFuncMass[iPt].Draw('fc same')
+            fBkgFuncMass[iPt].Draw('same')
+            fTotFuncMass[iPt].Draw('same')
+            if secPeak:
+                fMassSecPeakFunc[-1].Draw('fc same')
+                latex.DrawLatex(0.18, 0.55,
+                                f'#mu ({secPeakLabel}) = {vnResults["secPeakMeanMass"]:.3f} #pm {vnResults["secPeakMeanMassUnc"]:.3f} GeV/c^{2}')
+                latex.DrawLatex(0.18, 0.50,
+                                f'#sigma ({secPeakLabel}) = {vnResults["secPeakSigmaMass"]:.3f} #pm {vnResults["secPeakSigmaMassUnc"]:.3f} GeV/c^{2}')
+            if useRefl:
+                fMassBkgRflFunc[iPt].Draw('same')
+                hRefl[iPt].Draw('same')
+                latex.DrawLatex(0.18, 0.20, f'RoverS = {SoverR:.2f}')
+            latex.DrawLatex(0.18, 0.80, f'#mu = {vnResults["mean"]:.3f} #pm {vnResults["meanUnc"]:.3f} GeV/c^{2}')
+            latex.DrawLatex(0.18, 0.75, f'#sigma = {vnResults["sigma"]:.3f} #pm {vnResults["sigmaUnc"]:.3f} GeV/c^{2}')
+            latex.DrawLatex(0.18, 0.70, f'S = {vnResults["ry"]:.0f} #pm {vnResults["ryUnc"]:.0f}')
+            latex.DrawLatex(0.18, 0.65, f'S/B (3#sigma) = {vnResults["ry"]/vnResults["bkg"]:.2f}')
+            latex.DrawLatex(0.18, 0.60, f'Signif. (3#sigma) = {round(vnResults["signif"], 2)}')
+            cSimFitFull.cd(vnPadIndex)
+            hVnForFit[iPt].Draw('E')
+            fBkgFuncVn[iPt].Draw('same')
+            fTotFuncVn[iPt].Draw('same')
+            latex.DrawLatex(0.18, 0.18, f'#chi^{{2}}/ndf = {vnResults["chi2"]:.2f}')
+            latex.DrawLatex(0.18, 0.80,
+                            f'#it{{v}}_{{{harmonic}}}({partTitle}) = {vnResults["vn"]:.3f} #pm {vnResults["vnUnc"]:.3f}')
+            if secPeak:
+                latex.DrawLatex(0.18, 0.75,
+                                f'#it{{v}}_{{{harmonic}}}({secPeakLabel}) = {vnResults["vnSecPeak"]:.3f} #pm {vnResults["vnSecPeakUnc"]:.3f}')
+            cSimFitFull.Modified()
+            cSimFitFull.Update()
+
         else:
             fTotFuncMass.append(None)
             fTotFuncVn.append(None)
@@ -539,6 +590,8 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
             cSimFit[iPt].SaveAs(f'{outFileName}.pdf')
         else:
             cSimFit[iPt].SaveAs(f'{outFileName}.pdf{suffix_pdf}')
+    cSimFitFull.SaveAs(f'{outFileName}_AllFits.pdf')
+    cSimFitFull.SaveAs(f'{outFileName}_AllFits.png') 
     outFile = TFile(f'{outFileName}.root', 'recreate')
 
     for canv in cSimFit:

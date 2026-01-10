@@ -7,8 +7,9 @@ import argparse
 import os
 import yaml
 import sys
+import numpy as np
 import ROOT
-from ROOT import TFile, TH1, TCanvas, TLegend, TLatex, TGraphErrors, TF1, TH1D, TVirtualFitter, gROOT
+from ROOT import TFile, TH1, TCanvas, TLegend, TLatex, TGraphErrors, TF1, TH1D, TVirtualFitter, gROOT, TLine
 from ROOT import kBlack, kAzure, kOrange, kFullCircle
 script_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(script_dir, '..', 'utils'))
@@ -50,6 +51,10 @@ def v2_vs_frac(Dmeson, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multit
 
     hV2, gV2, hFracFD = [], [], []
 
+    lineat0 = TLine(0, 0, 1, 0)
+    lineat0.SetLineStyle(2)
+    lineat0.SetLineColor(kBlack)
+
     for fracFile, v2File in zip(fracFiles, rawYieldFiles):
         inV2File = TFile.Open(v2File)
         hV2.append(inV2File.Get('hVnSimFit'))
@@ -83,7 +88,7 @@ def v2_vs_frac(Dmeson, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multit
         gFracVsV2.append(TGraphErrors(-1))
         hV2VsFrac.append(TH1D(f"hV2VsFrac_{iPt}", "", 1000, 0.0, 1.0))
         SetObjectStyle(hV2VsFrac[-1], markerstyle=kFullCircle, markersize=0)
-        SetObjectStyle(gFracVsV2[-1], linecolor=kAzure+4, linewidth=2, markerstyle=kFullCircle, markersize=1, markercolor=kAzure+4)
+        SetObjectStyle(gFracVsV2[-1], linecolor=kBlack, linewidth=2, markerstyle=kFullCircle, markersize=1, markercolor=kBlack)
 
         if not multitrial:
             logger(f"Processing pt bin {iPt+1}/{nPtBins}: {ptMin:.2f} < pT < {ptMax:.2f} GeV/c, nSets: {nSets}", level="INFO")
@@ -100,7 +105,7 @@ def v2_vs_frac(Dmeson, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multit
             gFracVsV2[iPt].SetPointError(iSet, fracFDUnc, v2Unc)
         
         linFunc = TF1("linear", "pol1", 0, 1)
-        SetObjectStyle(linFunc, color=kOrange+1, linestyle=9, linewidth=2)
+        SetObjectStyle(linFunc, color=kOrange+1, linestyle=2, linewidth=2)
         fitOption = ""
         if multitrial:
             fitOption += "Q"
@@ -135,6 +140,10 @@ def v2_vs_frac(Dmeson, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multit
     t.SetTextFont(42)
     t.SetTextColor(kBlack)
 
+    # Create canvas to contain all plots
+    canvV2VsFrac = TCanvas("cV2VsFrac", "v2 versus fraction", 1800, 900) 
+    canvV2VsFrac.Divide(int(np.ceil((nPtBins + 1) / 2)), 2)
+
     for iPt, (ptMin, ptMax) in enumerate(zip(ptMins, ptMaxs)):
         if iPt == 0:
             suffix_pdf = '('
@@ -162,6 +171,18 @@ def v2_vs_frac(Dmeson, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multit
         cFrac[iPt].SaveAs(f"{outputDir}/v2VsFrac.pdf{suffix_pdf}")
         cFrac[iPt].SaveAs(f"{outputDir}/v2VsFrac_pt{ptMin}_{ptMax}.png")
 
+        canvV2VsFrac.cd(iPt + 1)
+        hV2VsFrac[iPt].GetXaxis().SetTitle('#it{f}_{non-prompt}')
+        hV2VsFrac[iPt].GetYaxis().SetTitle('#it{v}_{2}^{obs}')
+        hV2VsFrac[iPt].GetYaxis().SetTitleOffset(1.5)
+        hV2VsFrac[iPt].GetYaxis().SetDecimals()
+
+        hV2VsFrac[iPt].SetTitle(f"{ptStrings[iPt]}")
+        hV2VsFrac[iPt].SetStats(0)
+        hV2VsFrac[iPt].Draw("EZ")
+        gFracVsV2[iPt].Draw("same pZ")
+        lineat0.Draw("same")
+
         outFile.mkdir(f"pt_{int(ptMin*10)}_{int(ptMax*10)}")
         outFile.cd(f"pt_{int(ptMin*10)}_{int(ptMax*10)}")
         cFrac[-1].Write()
@@ -174,13 +195,18 @@ def v2_vs_frac(Dmeson, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multit
     leg.SetTextSize(0.045)
     leg.SetBorderSize(0)
     leg.SetFillStyle(0)
-    SetObjectStyle(hV2VsPtFD, color=GetROOTColor("kAzure+4"), fillstyle=1)
-    SetObjectStyle(hV2VsPtPrompt, color=GetROOTColor("kRed+1"), fillstyle=1)
+    SetObjectStyle(hV2VsPtFD, color=GetROOTColor("kAzure+4"), fillstyle=1, markerstyle=20, markersize=1.2, linestyle=2)
+    SetObjectStyle(hV2VsPtPrompt, color=GetROOTColor("kRed+1"), fillstyle=1, markerstyle=20, markersize=1.2)
+
+    lineat0 = TLine(hV2VsPtFD.GetXaxis().GetXmin(), 0, hV2VsPtFD.GetXaxis().GetXmax(), 0) 
+    lineat0.SetLineStyle(2)
+    lineat0.SetLineColor(kBlack)
 
     cV2VsPtFD = TCanvas("cV2VsPtFD", "non-prompt v2 versus pt", 800, 800)
     set_frame_margin(cV2VsPtFD)
     cV2VsPtFD.cd()
     hV2VsPtFD.Draw("")
+    lineat0.Draw("same")
     hV2VsPtFD.GetXaxis().SetTitle(PtTit)
     hV2VsPtFD.GetYaxis().SetTitle("Non-prompt #it{v_{2}}")
     hV2VsPtFD.GetYaxis().SetRangeUser(-0.05, 0.35)
@@ -193,11 +219,10 @@ def v2_vs_frac(Dmeson, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multit
     set_frame_margin(cV2VsPtPrompt)
     cV2VsPtPrompt.cd()
     hV2VsPtPrompt.Draw("")
+    lineat0.Draw("same")
     hV2VsPtPrompt.GetXaxis().SetTitle(PtTit)
-    hV2VsPtPrompt.GetYaxis().SetTitle("Prompt #it{v_{2}}")
-    hV2VsPtPrompt.GetYaxis().SetRangeUser(-0.05, 0.35)
-    hV2VsPtPrompt.SetMarkerStyle(20)
-    hV2VsPtPrompt.SetMarkerSize(2)
+    hV2VsPtPrompt.GetYaxis().SetTitle("Prompt #it{v}_{2}")
+    hV2VsPtPrompt.GetYaxis().SetRangeUser(-0.10, 0.35)
     hV2VsPtPrompt.GetYaxis().SetNoExponent()
     hV2VsPtPrompt.GetYaxis().SetDecimals()
 
@@ -207,9 +232,21 @@ def v2_vs_frac(Dmeson, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multit
     hV2VsPtFD.GetYaxis().SetTitle("#it{v_{2}}")
     hV2VsPtFD.Draw("")
     hV2VsPtPrompt.Draw("same")
+    lineat0.Draw("same")
 
     leg.AddEntry(hV2VsPtFD, "Non-prompt #it{v_{2}}", "lp")
     leg.AddEntry(hV2VsPtPrompt, "Prompt #it{v_{2}}", "lp")
+    leg.Draw("same")
+
+    canvV2VsFrac.cd(len(ptMins) + 1)
+    hV2VsPtPrompt.GetYaxis().SetTitleSize(0.04)
+    hV2VsPtPrompt.GetYaxis().SetTitle("#it{v_{2}}")
+    hV2VsPtPrompt.GetYaxis().SetTitleOffset(1.3)
+    hV2VsPtPrompt.GetYaxis().SetLabelSize(0.035)
+    hV2VsPtPrompt.GetXaxis().SetTitleSize(0.04)
+    hV2VsPtPrompt.Draw("")
+    hV2VsPtFD.Draw("same")
+    lineat0.Draw("same")
     leg.Draw("same")
 
     hV2VsPtFD.Write()
@@ -220,8 +257,9 @@ def v2_vs_frac(Dmeson, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multit
     cV2VsPtFD.SaveAs(f"{outputDir}/v2VsPtFD.png")
     cV2VsPtPrompt.SaveAs(f"{outputDir}/v2VsPtPrompt.png")
     cPromptAndFDV2.SaveAs(f"{outputDir}/v2VsPtPromptAndFD.png")
+    canvV2VsFrac.SaveAs(f"{outputDir}/v2VsFrac_allPts.png")
 
-def main_v2_vs_frac(flow_config, ry_input_dir, frac_input_dir, correlated=False, multitrial=False, batch=False):
+def main_v2_vs_frac(flow_config, ry_input_dir, frac_input_dir, correlated=False, multitrial=False, batch=False, outputdir=''):
     
     if batch:
         gROOT.SetBatch(True)
@@ -262,7 +300,6 @@ def main_v2_vs_frac(flow_config, ry_input_dir, frac_input_dir, correlated=False,
         ptMins = config['ptbins'][:-1]
         ptMaxs = config['ptbins'][1:]
         nPtBins = len(ptMins)
-        import numpy as np
         if correlated:
             sig = config['cut_variation']['corr_bdt_cut']['sig']
             CutSets = [len(list(np.arange(sig['min'][i], sig['max'][i], sig['step'][i]))) - 1 for i in range(nPtBins)]
