@@ -149,11 +149,16 @@ def cut_variation(flow_config, outdir, correlated, combined=False, operations=No
 			logger(f"{cmd}", level="COMMAND")
 			os.system(cmd)
 
-def data_driven_fraction(outdir):
-	logger("Data driven fraction will be performed", level="INFO")
-	check_dir(f"{outdir}/frac")
- 
-	cutvar_file = f"{outdir}/cutVar/cutVar.root"
+def data_driven_fraction(outdir, combined=False):
+
+	if combined:
+		correlated_path = os.path.join(os.path.dirname(outdir), os.path.basename(outdir).replace("_combined", "_correlated"))
+		logger(f"Using cut variation from correlated analysis at {correlated_path}", level="INFO")
+		cutvar_file = f"{correlated_path}/cutVar/cutVar.root"
+	else:
+		logger("Data driven fraction should be performed only for combined analysis. Are you sure you want to continue?", level="WARNING")
+		cutvar_file = f"{outdir}/cutVar/cutVar.root"
+	
 	eff_path = f"{outdir}/effs"
 
 	cmd = (
@@ -278,7 +283,7 @@ def run_combined_cut_variation(flow_config, operations, nworkers, outdir):
 	#___________________________________________________________________________________________________________________________
 	# Data driven fraction
 	if operations.get('data_driven_fraction', False):
-		data_driven_fraction(outdir)
+		data_driven_fraction(outdir, combined=True)
 	else:
 		logger("Data driven fraction will not be performed", level="WARNING")
   
