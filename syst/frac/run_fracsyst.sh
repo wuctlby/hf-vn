@@ -107,5 +107,5 @@ for file in "${all_v2_files[@]}"; do
 done
 # Produce systematic plots 
 echo "python3 produce_frac_syst_plots.py ${all_v2_files[@]} -s $suffix -o $output_dir"
-#python3 produce_frac_syst_plots.py ${all_v2_files[@]} -s $suffix -o $output_dir
+python3 produce_frac_syst_plots.py ${all_v2_files[@]} -s $suffix -o $output_dir
 echo "Systematic plots produced in $output_dir"
