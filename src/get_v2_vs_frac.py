@@ -45,7 +45,7 @@ def set_frame_margin(canv):
 def v2_vs_frac(config, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multitrial, outputDir):
 
     gROOT.SetBatch(True)
-    
+
     nPtBins = len(ptMins)
     particleTit, _, decay, _, _, _ = get_particle_info(config['Dmeson'])
 
@@ -74,7 +74,7 @@ def v2_vs_frac(config, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multit
     for iPt, (ptMin, ptMax) in enumerate(zip(ptMins, ptMaxs)):
         ptCent = (ptMin + ptMax) / 2
         nSets = CutSets[iPt]
-        
+
         ptBinFrac = iPt + 1
         # Multitrial is evaluated per pt-bin, so the
         # pt-bins of ry and frac files are not equal
@@ -102,10 +102,10 @@ def v2_vs_frac(config, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multit
             if skip_cuts_iPt != []:
                 logger(f"Skipping cutsets at indices: {skip_cuts_iPt}", level="WARNING")
 
-        v2Values = [hV2[i].GetBinContent(iPt + 1) for i in range(nSets) if i not in skip_cuts_iPt]
-        v2Unc = [hV2[i].GetBinError(iPt + 1) for i in range(nSets) if i not in skip_cuts_iPt]
-        fracFDValues = [hFracFD[i].GetBinContent(ptBinFrac) for i in range(nSets) if i not in skip_cuts_iPt]
-        fracFDUnc = [hFracFD[i].GetBinError(ptBinFrac) for i in range(nSets) if i not in skip_cuts_iPt]
+        v2Values = [hist.GetBinContent(iPt + 1) for i, hist in enumerate(hV2) if i not in skip_cuts_iPt]
+        v2Unc = [hist.GetBinError(iPt + 1) for i, hist in enumerate(hV2) if i not in skip_cuts_iPt]
+        fracFDValues = [hist.GetBinContent(ptBinFrac) for i, hist in enumerate(hFracFD) if i not in skip_cuts_iPt]
+        fracFDUnc = [hist.GetBinError(ptBinFrac) for i, hist in enumerate(hFracFD) if i not in skip_cuts_iPt]
 
         for iSet, (v2, fracFD, v2Unc, fracFDUnc) in enumerate(zip(v2Values, fracFDValues, v2Unc, fracFDUnc)):
             if not multitrial:
