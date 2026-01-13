@@ -28,6 +28,10 @@ def main():
     for yaml_file in args.yaml_files:
         trial_dir = os.path.dirname(yaml_file)
         proj_dir = os.path.join(trial_dir, "projs")
+        # check if proj_dir exists
+        if not os.path.exists(proj_dir):
+            print(f"Projection directory {proj_dir} does not exist. Skipping.")
+            continue
         proj_files = sorted([os.path.join(proj_dir, f)
                              for f in os.listdir(proj_dir) if f.startswith("proj_") and f.endswith(".root")])
         all_tasks.extend([(yaml_file, pf) for pf in proj_files])
