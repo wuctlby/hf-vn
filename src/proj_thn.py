@@ -24,7 +24,7 @@ ROOT.TH1.AddDirectory(False)
 import yaml
 from ROOT import TFile
 
-def proj_multitrial(config, multitrial_folder):
+def proj_multitrial(config, multitrial_folder, workers, resolution):
 
     pt_bin_label = Path(multitrial_folder).name
     logger(f"Processing multitrial projections for pt bin {pt_bin_label} ...", level='INFO')
@@ -51,24 +51,23 @@ def proj_multitrial(config, multitrial_folder):
             logger(f"Error opening or reading config file for trial {trial_number}: {e}", level='ERROR')
             return
 
-        multitrial_cutsets = glob.glob(f"{multitrial_dir}/cutsets/*.yml")
-        for multitrial_cutset in multitrial_cutsets:
-            suffix = os.path.basename(multitrial_cutset).replace(".yml", "").replace("cutset_", "")
-            output_dir = os.path.dirname(multitrial_cutset).replace('cutset', 'proj')
+        for suffix, histo in default_histos.items():
+            output_dir = f"{multitrial_dir}/projs"
             os.makedirs(output_dir, exist_ok=True)
-            output_path = multitrial_cutset.replace('.yml', '.root').replace('cutset', 'proj')
+            output_path = f"{output_dir}/proj_{suffix}.root"
             output_file = TFile.Open(output_path, "RECREATE")
             output_file.mkdir(pt_bin_label)
             output_file.cd(pt_bin_label)
             default_histos[suffix]['Mass'].Write("hMassData")
-            hist_vn_vs_mass = profile_mass_sp(default_histos[suffix]['MassSp'], config_trial['projections']['inv_mass_bins'][0], 0.746)
+            hist_vn_vs_mass = profile_mass_sp(default_histos[suffix]['MassSp'], config_trial['projections']['inv_mass_bins'][0], resolution)
             hist_vn_vs_mass.Write("hVnVsMassData")
             output_file.Close()
+
         logger(f"[{trial_number}] Completed projections!", level='INFO')
 
     # Parallel execution
-    multitrial_dirs = [f for f in glob.glob(f"{multitrial_folder}/trial_*/")]
-    with ThreadPoolExecutor(max_workers=8) as executor:
+    multitrial_dirs = [f for f in glob.glob(f"{multitrial_folder}/trials/*") if os.path.isdir(f)]
+    with ThreadPoolExecutor(max_workers=workers) as executor:
         executor.map(partial(process_cutset, default_histos=default_histos), multitrial_dirs)
 
 def proj_data(i_bin, sparse, axes, resolution, proj_cfg, writeopt):
@@ -93,7 +92,7 @@ def proj_data(i_bin, sparse, axes, resolution, proj_cfg, writeopt):
     mass_highest_bin = hist_mass_sp.ProjectionX().FindLastBinAbove(0)
     hist_mass_sp.GetXaxis().SetRange(mass_lowest_bin, mass_highest_bin)
     hist_mass_sp.GetYaxis().SetRange(sp_lowest_bin, sp_highest_bin)
-    hist_mass_sp.Write(f'hMassSpData', writeopt)
+    hist_mass_sp.Write('hMassSpData', writeopt)
 
 def proj_mc_reco(sparses_reco, sPtWeightsD, sPtWeightsB, Bspeciesweights, writeopt):
 
@@ -233,6 +232,8 @@ if __name__ == "__main__":
                         help='Optional cutset configuration file (default: cutsetConfig.yaml)')
     parser.add_argument("--multitrial_folder", "-multfolder", metavar="text",
                         default="", help="Produce projection files for multitrial systematics")
+    parser.add_argument("--multitrial_workers", "-multworkers", metavar="int",
+                        type=int, default=1, help="Number of workers for multitrial projections")
     parser.add_argument("--outputDir", "-o", metavar="text",
                         default="", help="output directory, used only for directly running the script")
     args = parser.parse_args()
@@ -241,9 +242,20 @@ if __name__ == "__main__":
         config = yaml.load(ymlCfgFile, yaml.FullLoader)
     operations = config["operations"]
 
+    if operations.get("proj_data") or args.multitrial_folder != "":
+        reso_file = TFile.Open(config["projections"]["Resolution"], 'r')
+        det_A = config["projections"].get('detA', 'FT0c')
+        det_B = config["projections"].get('detB', 'FV0a')
+        det_C = config["projections"].get('detC', 'TPCtot')
+        logger(f"Getting resolution histogram from file {config['projections']['Resolution']} for triplet {det_A}_{det_B}_{det_C}",  "WARNING")
+        reso_hist = reso_file.Get(f'{det_A}_{det_B}_{det_C}/histo_reso_delta_cent')
+        resolution = reso_hist.GetBinContent(1)
+        reso_hist.SetDirectory(0)
+        reso_file.Close()
+
     if args.multitrial_folder != "":
         logger(f"Running multitrial projections with config: {args.config}", level='INFO')
-        proj_multitrial(config, args.multitrial_folder)
+        proj_multitrial(config, args.multitrial_folder, args.multitrial_workers, resolution)
         sys.exit(0)
 
     with open(args.cutsetConfig, 'r') as ymlCutSetFile:
@@ -272,15 +284,6 @@ if __name__ == "__main__":
         sPtWeightsD, sPtWeightsB, Bspeciesweights = get_pt_weights(config["projections"]) if config['projections'].get('PtWeightsFile') else (None, None, None)
 
     if operations.get("proj_data"):
-        reso_file = TFile.Open(config["projections"]["Resolution"], 'r')
-        det_A = config["projections"].get('detA', 'FT0c')
-        det_B = config["projections"].get('detB', 'FV0a')
-        det_C = config["projections"].get('detC', 'TPCtot')
-        logger(f"Getting resolution histogram from file {config['projections']['Resolution']} for triplet {det_A}_{det_B}_{det_C}",  "WARNING")
-        reso_hist = reso_file.Get(f'{det_A}_{det_B}_{det_C}/histo_reso_delta_cent')
-        reso_hist.SetDirectory(0)
-        reso_file.Close()
-        outfile.cd()
         reso_hist.Write("hResolution", write_opt_data)
         resolution = reso_hist.GetBinContent(1)
 
