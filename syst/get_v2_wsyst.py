@@ -4,11 +4,13 @@ import sys
 import os
 import numpy as np
 import argparse
-from ROOT import TFile, TGraphAsymmErrors, kRed, kOrange, kAzure, kBlack, kGreen, kOpenCircle
+from ROOT import TFile, TGraphAsymmErrors, kRed, kOrange, kAzure, kBlack, TCanvas, kFullCircle, kGreen, TLine, TLegend
 script_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(script_dir, '..', 'utils'))
 from utils import get_particle_info, logger
 from StyleFormatter import SetObjectStyle
+
+cols = [ROOT.TColor.GetColorTransparent(c, 0.9) for c in  [kBlack, kRed+1, kGreen+2, kAzure+4, kOrange+1]]
 
 def th1_to_tgraph(hist):
     """
@@ -83,7 +85,7 @@ def compute_vn_with_syst(in_file_name, config, dmeson, origin,  centrality, outp
     
     gvn_stat = th1_to_tgraph(hvn_stat)
     gvn_stat.SetName("gvn_prompt_stat") if origin == 'prompt' else gvn_stat.SetName("gvn_np_stat")
-    SetObjectStyle(gvn_stat, color=kBlack, markerstyle=kOpenCircle)
+    SetObjectStyle(gvn_stat, color=cols[0], markerstyle=kFullCircle)
     
     fd_syst = config[dmeson][centrality]['fd_syst']
     fit_syst = config[dmeson][centrality]['fit_syst']
@@ -108,21 +110,55 @@ def compute_vn_with_syst(in_file_name, config, dmeson, origin,  centrality, outp
     gvn_resosyst = assign_syst(hvn_stat, reso_syst, 'reso_syst', isrelative=True)
     gvn_totsyst = assign_syst(hvn_stat, tot_syst, 'tot_syst')
     
-    SetObjectStyle(gvn_fdsyst, markerstyle=kOpenCircle, fillalpha=0.2, color=kAzure+6)
-    SetObjectStyle(gvn_fitsyst, markerstyle=kOpenCircle, fillalpha=0.2, color=kGreen+1)
-    SetObjectStyle(gvn_resosyst, markerstyle=kOpenCircle, fillalpha=0.2, color=kRed-4)
-    SetObjectStyle(gvn_totsyst, markerstyle=kOpenCircle, fillalpha=0.2, color=kBlack)
+    SetObjectStyle(gvn_fdsyst, markerstyle=kFullCircle, fillalpha=0.2, color=cols[1])
+    SetObjectStyle(gvn_fitsyst, markerstyle=kFullCircle, fillalpha=0.2, color=cols[2])
+    SetObjectStyle(gvn_resosyst, markerstyle=kFullCircle, fillalpha=0.2, color=cols[3])
+    SetObjectStyle(gvn_totsyst, markerstyle=kFullCircle, fillalpha=0.2, color=cols[4])
+
+    systLegend = ROOT.TLegend(0.55, 0.6, 0.85, 0.85)
+    systLegend.SetBorderSize(0)
+    systLegend.SetFillStyle(0)
+    systLegend.AddEntry(gvn_stat, 'Statistical uncertainty', 'pez')
+    systLegend.AddEntry(gvn_fdsyst, '#it{f}_{FD} systematic uncertainty', 'f')
+    systLegend.AddEntry(gvn_fitsyst, 'Fit systematic uncertainty', 'f')
+    systLegend.AddEntry(gvn_resosyst, 'Resolution systematic uncertainty', 'f')
+    systLegend.AddEntry(gvn_totsyst, 'Total systematic uncertainty', 'f')
+
+    lineAt0 = TLine(0+0.5, 0, hvn_stat.GetXaxis().GetXmax()-0.5+hvn_stat.GetXaxis().GetBinWidth(hvn_stat.GetNbinsX())/2, 0)
+    lineAt0.SetLineStyle(9)
+    lineAt0.SetLineColor(cols[0])
+    lineAt0.SetLineWidth(2)
+
+    canvSystPrompt = TCanvas('canvSystPrompt', 'canvSystPrompt', 800, 800)
+    canvSystPrompt.SetLeftMargin(0.16)
+    gvn_stat.SetStats(0)
+    gvn_stat.SetTitle('')
+    gvn_stat.GetXaxis().SetTitle('#it{p}_{T} (GeV/#it{c})')
+    gvn_stat.GetYaxis().SetTitle('#it{v}_{2}')
+    gvn_stat.GetYaxis().SetDecimals()
+    gvn_stat.GetXaxis().SetRangeUser(0, 20)
+    gvn_stat.GetYaxis().SetRangeUser(-0.1, 0.3)
+    gvn_stat.Draw('apez')
+    gvn_totsyst.Draw('same5')
+    gvn_resosyst.Draw('same5')
+    gvn_fdsyst.Draw('same5')
+    gvn_fitsyst.Draw('same5')
+    systLegend.Draw()
+    lineAt0.Draw('same')
+    canvSystPrompt.Update()
     
     output_dir = f'{output}/v2_wsyst/'
     os.makedirs(output_dir, exist_ok=True)
     
     outFile = TFile(f'{output_dir}/v2_prompt_wsyst_{suffix}.root', "recreate") if origin == 'prompt' else TFile(f'{output_dir}/v2_np_wsyst_{suffix}.root', "recreate")
+    canvSystPrompt.Write()
     gvn_fdsyst.Write()
     gvn_fitsyst.Write()
     gvn_resosyst.Write()
     gvn_totsyst.Write()
     gvn_stat.Write()
     outFile.Close()
+    canvSystPrompt.SaveAs(f'{output_dir}/v2_wsyst_{suffix}.pdf')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Compute prompt v2 with systematic uncertainties.')
