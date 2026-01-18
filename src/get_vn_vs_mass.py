@@ -193,11 +193,11 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
     for iPt, (ptMin, ptMax) in enumerate(zip(ptmins, ptmaxs)):
         hMass.append(infile.Get(f'pt_{ptMin*10:.0f}_{ptMax*10:.0f}/hMassData'))
         hVn.append(infile.Get(f'pt_{ptMin*10:.0f}_{ptMax*10:.0f}/hVnVsMassData'))
-        
+
         hMass[iPt].SetDirectory(0)
         hVn[iPt].SetDirectory(0)
         SetObjectStyle(hMass[iPt], color=kBlack, markerstyle=kFullCircle)
-        SetObjectStyle(hVn[iPt], color=kBlack, markerstyle=kFullCircle)   
+        SetObjectStyle(hVn[iPt], color=kBlack, markerstyle=kFullCircle)
     infile.Close()
 
     hSigmaToFix = None

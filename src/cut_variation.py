@@ -68,7 +68,7 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
                     last_FD_score_cut = cutsetConfig['ScoreFD']['min'][iPt]
 
             # also skip cuts as suggested by the check
-            if iCut in suggested_skipped_cuts_pts[iPt]:
+            if iCut in suggested_skipped_cuts_pts[iPt] and config.get('minimisation', {}).get('apply_suggested_skips', False):
                 logger(f'Skipping cut set {iCut} for pt {ptMin:.1f}-{ptMax:.1f} as suggested by check', level='WARNING')
                 continue
 
@@ -128,7 +128,7 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
                 listEffPromptUnc = [x for x, b in zip(listEffPromptUnc, random_bools) if b]
                 listEffFD        = [x for x, b in zip(listEffFD, random_bools) if b]
                 listEffFDUnc     = [x for x, b in zip(listEffFDUnc, random_bools) if b]
-            # Remove 1 element every 3 '1in3' is in systematics
+            # Keep 1 element every 3 '1in3' is in systematics
             if '1in3' in systematics:
                 listRawYield     = [x for i, x in enumerate(listRawYield) if i % 3 == 0]
                 listRawYieldUnc  = [x for i, x in enumerate(listRawYieldUnc) if i % 3 == 0]
@@ -136,7 +136,7 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
                 listEffPromptUnc = [x for i, x in enumerate(listEffPromptUnc) if i % 3 == 0]
                 listEffFD        = [x for i, x in enumerate(listEffFD) if i % 3 == 0]
                 listEffFDUnc     = [x for i, x in enumerate(listEffFDUnc) if i % 3 == 0]
-            # Remove 1 element every 4 '1in4' is in systematics
+            # Keep 1 element every 4 '1in4' is in systematics
             if '1in4' in systematics:
                 listRawYield     = [x for i, x in enumerate(listRawYield) if i % 4 == 0]
                 listRawYieldUnc  = [x for i, x in enumerate(listRawYieldUnc) if i % 4 == 0]

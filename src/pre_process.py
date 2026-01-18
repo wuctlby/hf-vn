@@ -263,7 +263,6 @@ if __name__ == "__main__":
         full_cfg = yaml.safe_load(cfg_pre)
 
     output_dir = full_cfg['outdirPrep'] if full_cfg.get("outdirPrep") else full_cfg['outdir']
-
     for input_cfg in full_cfg['preprocess']['inputs']:
         if isinstance(input_cfg['files'], str) and not input_cfg['files'].endswith(".txt"):
             dir_path = input_cfg['files']

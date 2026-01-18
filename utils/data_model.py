@@ -30,7 +30,7 @@ def get_pt_preprocessed_sparses(config, pt_label):
                 break
 
     prep_dir = config.get("outdirPrep", config["outdir"])
-    if config["operations"].get("proj_data"):
+    if config["operations"].get("proj_data") or config["operations"].get("perform_fits_syst_reso"):
         infile_prep_data = TFile.Open(f"{prep_dir}/preprocess/{pt_label}/FlowSP/AnalysisResults_{pt_label}.root", "read")
         logger(f"Loading preprocessed sparse from: {prep_dir}/preprocess/{pt_label}/FlowSP/AnalysisResults_{pt_label}.root", level='INFO')
         axes['FlowSP'] = {ax: iax for iax, ax in enumerate(sparse_proj_data_cfg['axes']['names'])}

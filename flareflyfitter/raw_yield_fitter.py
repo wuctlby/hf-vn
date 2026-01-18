@@ -8,6 +8,7 @@ from ROOT import RooFit
 gStyle.SetEndErrorSize(0)
 script_dir = os.path.dirname(os.path.realpath(__file__))
 os.sys.path.append(os.path.join(script_dir, '..', 'utils'))
+os.sys.path.append(os.path.join(script_dir, '..', 'src'))
 from correlated_bkgs import get_corr_bkg
 from utils import logger, get_centrality_bins
 import zfit
@@ -114,7 +115,8 @@ class RawYieldFitter:
                    f" for fitter with name {self.fit_name}\n", "INFO")
         self.hist = data
         if self.minimize_flarefly:
-            self.data = DataHandler(data, limits=[self.fit_range_min, self.fit_range_max], rebin=self.rebin)
+            self.data = DataHandler(data, limits=[self.fit_range_min, self.fit_range_max])
+            # self.data = DataHandler(data, limits=[self.fit_range_min, self.fit_range_max], rebin=self.rebin)
         else:
             self.data = ROOT.RooDataHist("data_hist", "data_hist", ROOT.RooArgList(self.roofit_fit_var), data)
 

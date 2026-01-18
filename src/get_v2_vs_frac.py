@@ -24,7 +24,7 @@ def set_frame_style(canv, Title, particleTit):
     canv.SetRightMargin(0.05)
     canv.SetBottomMargin(0.15)
     canv.SetTopMargin(0.05)
-    hFrame = canv.DrawFrame(0.0, -0.2, 1, 0.35, f";Non-prompt {particleTit} fraction; #it{{v}}_{{2}}^{{#it{{obs}}}}")
+    hFrame = canv.DrawFrame(0.0, -0.5, 1, 0.5, f";Non-prompt {particleTit} fraction; #it{{v}}_{{2}}^{{#it{{obs}}}}")
     hFrame.GetYaxis().SetDecimals()
     hFrame.GetYaxis().SetNoExponent()
     hFrame.GetXaxis().SetMoreLogLabels()
@@ -323,7 +323,8 @@ def main_v2_vs_frac(flow_config, ry_input_dir, frac_input_dir, correlated=False,
     # Use ry_input_dir, not frac_input_dir, to define output dir
     # because in multitrial frac_input_dir is constant and the
     # reference results would be overwritten
-    outputDir = os.path.join(os.path.dirname(ry_input_dir), '..', 'v2') if outputdir == '' else f"{outputdir}/v2"
+    ry_input_dir = os.path.normpath(ry_input_dir)
+    outputDir = ry_input_dir.replace('raw_yields', 'v2') if outputdir == '' else f"{outputdir}/v2"
     v2_vs_frac(
         config,
         ptMins,

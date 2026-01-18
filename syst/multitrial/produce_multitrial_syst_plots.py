@@ -520,14 +520,14 @@ def compute_syst_multitrial(v2_vs_frac_ref, ry_cutsets_ref, mult_dir, out_dir):
     # Prompt v2 systematic uncertainty wrt reference
     v2_prompt_ref = v2_vs_frac_ref.Get('hV2VsPtPrompt').GetBinContent(pt_bin_ref)
     v2_prompt_ref_unc = v2_vs_frac_ref.Get('hV2VsPtPrompt').GetBinError(pt_bin_ref)
-    syst_uncs['PromptV2'] = compute_systematics_fin_val(f"{out_dir}/{mult_dir}/SystV2Prompt.root", "Prompt #it{v}_{2}", \
+    syst_uncs['PromptV2'] = compute_systematics_fin_val(f"{out_dir}/{mult_dir}/SystV2Prompt.root", f"Prompt #it{{v}}_{{2}}, {pt_min} < #it{{p}}_{{T}} < {pt_max} GeV/#it{{c}}", \
                                    v2_prompt_ref, v2_prompt_ref_unc, \
                                    v2_prompt_trials, v2_prompt_trials_uncs)
 
     # FD v2 systematic uncertainty wrt reference
     v2_non_prompt_ref = v2_vs_frac_ref.Get('hV2VsPtFD').GetBinContent(pt_bin_ref)
     v2_non_prompt_ref_unc = v2_vs_frac_ref.Get('hV2VsPtFD').GetBinError(pt_bin_ref)
-    syst_uncs['NonPromptV2'] = compute_systematics_fin_val(f"{out_dir}/{mult_dir}/SystV2FD.root", "Non-prompt #it{v}_{2}", \
+    syst_uncs['NonPromptV2'] = compute_systematics_fin_val(f"{out_dir}/{mult_dir}/SystV2FD.root", f"Non-prompt #it{{v}}_{{2}}, {pt_min} < #it{{p}}_{{T}} < {pt_max} GeV/#it{{c}}", \
                                    v2_non_prompt_ref, v2_non_prompt_ref_unc, \
                                    v2_non_prompt_trials, v2_non_prompt_trials_uncs)
 
@@ -802,8 +802,8 @@ if __name__ == "__main__":
 
     pt_bins = sorted(pt_bins)
     # Produce plots with all pt-bins summary for prompt and non-prompt v2
-    h_prompt_syst = TH1F('h_prompt_syst', 'h_prompt_syst;#it{p}_{T} (GeV/#it{c});syst (%)', len(pt_bins)-1, array.array('d', pt_bins))
-    h_non_prompt_syst = TH1F('h_non_prompt_syst', 'h_non_prompt_syst;#it{p}_{T} (GeV/#it{c});syst (%)', len(pt_bins)-1, array.array('d', pt_bins))
+    h_prompt_syst = TH1F('h_prompt_syst', 'h_prompt_syst;#it{p}_{T} (GeV/#it{c});Fit syst. unc. on prompt #it{v}_{2}', len(pt_bins)-1, array.array('d', pt_bins))
+    h_non_prompt_syst = TH1F('h_non_prompt_syst', 'h_non_prompt_syst;#it{p}_{T} (GeV/#it{c});Fit syst. unc. on non-prompt #it{v}_{2}', len(pt_bins)-1, array.array('d', pt_bins))
     for i_pt, mult_dir in enumerate(sorted(multitrial_pt_dirs)):
         logger(f"Processing final summary for {mult_dir} ...", "INFO")
         h_prompt_syst.SetBinContent(i_pt+1, syst_uncs_all[mult_dir]['PromptV2'])

@@ -14,3 +14,8 @@ test*
 *.so
 *.pcm
 *_dict.cxx
+*.d
+*tmp*
+
+# jupyter notebook
+*.ipynb

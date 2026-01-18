@@ -72,7 +72,7 @@ def compute_syst(infiles, outputdir, suffix):
             gv2_vs_frc.SetTitle(f'{(ptmin*10):.0f} < #it{{p}}_{{T}} < {(ptmax*10):.0f} GeV/#it{{c}}')
             gv2_vs_frc.GetXaxis().SetTitle('#it{f}_{FD}')
             gv2_vs_frc.GetYaxis().SetTitle(f'#it{{v}}_{{2}} ({ptmin:.1f} < #it{{p}}_{{T}} < {ptmax:.1f} GeV/#it{{c}})')
-            gv2_vs_frc.GetYaxis().SetRangeUser(-0.1, 0.3)
+            gv2_vs_frc.GetYaxis().SetRangeUser(-0.3, 0.3)
             gv2_vs_frc.GetYaxis().SetDecimals()
             gv2_vs_frc.GetXaxis().SetRangeUser(0, 1)
             gv2vsfrac[labels[ifile]].append(gv2_vs_frc)
@@ -104,15 +104,21 @@ def compute_syst(infiles, outputdir, suffix):
             canv_fFD.cd(ig+1).SetBottomMargin(0.16)
             canv_fFD.cd(ig+1).SetLeftMargin(0.16)
             if igs == 0:
+                # Set log scale on x axis
+                gfrac.GetXaxis().SetMoreLogLabels()
+                gfrac.GetXaxis().SetNoExponent()
                 gfrac.Draw('peaz')
                 if ig == len(gv2vsfrac[gfracs]) - 1:
                     legv2.Draw()
             else:
+                # Set log scale on x axis
+                gfrac.GetXaxis().SetMoreLogLabels()
+                gfrac.GetXaxis().SetNoExponent()
                 gfrac.Draw('same pez')
             if ig == 0:
                 legv2.AddEntry(hv2_prompt[igs], labels[igs], 'ep')
     canv_fFD.Update()
-    canv_fFD.SaveAs(f'{outputdir}/gV2vsFrac_{suffix}.png')
+    canv_fFD.SaveAs(f'{outputdir}/gV2vsFrac_{suffix}.pdf')
 
     #______________________________________________________________________________________
     # Plot the systematics
@@ -150,7 +156,7 @@ def compute_syst(infiles, outputdir, suffix):
         hist.GetXaxis().SetTitle('#it{p}_{T} (GeV/#it{c})')
         hist.GetYaxis().SetTitle('prompt #it{v}_{2}^{syst.} #minus #it{v}_{2}^{ref.}')
         hist.GetXaxis().SetRangeUser(0, 25)
-        hist.GetYaxis().SetRangeUser(-0.001, 0.001)
+        hist.GetYaxis().SetRangeUser(-0.003, 0.003)
         hist.Draw('samepe')
     gsyst_prompt.Draw('same5')
     legsyst.AddEntry(gsyst_prompt, f'#sqrt{{shift^{{2}} + rms^{{2}}}}', 'f')
