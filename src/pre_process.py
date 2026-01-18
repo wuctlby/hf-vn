@@ -168,6 +168,8 @@ def process_tree(i_file, infile_path, full_cfg, trees_cfg, prep_out_dir, input_o
         def collect_trees(uproot_dir, tree_names, trees):
             for key in uproot_dir.keys():
                 obj = uproot_dir[key]
+                if '/' in key: # Else one gets duplicate entries
+                    continue
                 if isinstance(obj, uproot.TTree) and obj.name in tree_names:
                     # extend existing awkward array with new data
                     trees[obj.name] = ak.concatenate([trees[obj.name], obj.arrays(library="ak")])
@@ -261,7 +263,6 @@ if __name__ == "__main__":
         full_cfg = yaml.safe_load(cfg_pre)
 
     output_dir = full_cfg['outdirPrep'] if full_cfg.get("outdirPrep") else full_cfg['outdir']
-
     for input_cfg in full_cfg['preprocess']['inputs']:
         if isinstance(input_cfg['files'], str) and not input_cfg['files'].endswith(".txt"):
             dir_path = input_cfg['files']
@@ -292,10 +293,19 @@ if __name__ == "__main__":
         else:
             logger("No sparses or trees found in the configuration for pre-processing", "ERROR")
 
+        # Dump file_paths used
+        dump_file_paths = f"{output_dir}/preprocess/file_paths_{input_cfg['outdir']}.txt"
+        os.makedirs(os.path.dirname(dump_file_paths), exist_ok=True)
+        with open(dump_file_paths, "w") as dump_file:
+            for file_path in file_paths:
+                dump_file.write(f"{file_path}\n")
+
         logger(f"Finished processing {input_cfg['outdir']}\n\n", "INFO")
 
     # use hadd to merge the results in the directories for the different pT bins
     for pt_dir in os.listdir(f"{output_dir}/preprocess/"):
+        if not os.path.isdir(f"{output_dir}/preprocess/{pt_dir}"):
+            continue
         for input_type_dir in os.listdir(f"{output_dir}/preprocess/{pt_dir}"):
             prep_dir = f"{output_dir}/preprocess/{pt_dir}/{input_type_dir}"
             files_to_merge = [f"./jobs/{file}" for file in os.listdir(f"{prep_dir}/jobs") if file.endswith(".root")]

@@ -1,0 +1,64 @@
+operations:
+  preprocess: false
+  perform_fits_syst_reso: false
+  make_figures: true
+outdir: /home/mdicosta/DFlowOO/SP_bdt_peripheral_pbpb/020
+suffix: '020'
+centrality: k020
+Dmeson: Dplus
+nworkers: 40
+ptbins:
+- 1.0
+- 3.0
+- 5.0
+- 8.0
+bkg_max:
+- 0.12
+- 0.12
+- 0.12
+cent_scan_step: 1
+MassFitRanges:
+- - 1.75
+  - 1.95
+- - 1.75
+  - 1.95
+- - 1.7
+  - 1.97
+BkgFunc: kLin
+SgnFunc: kGaus
+SgnFuncLabel: DplusToPiKPi
+BkgFuncVn: kLin
+Rebin:
+- 1
+- 1
+- 1
+preprocess:
+  bkg_cuts:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+  inputs:
+  - files:
+    - /data/mdicosta/DplusFlow/OO/Resolution/Train586078ResoSyst/run_564356/AnalysisResults_3576.root
+    outdir: FlowSP
+    sparses:
+    - name: FlowSP
+      path: hf-task-flow-charm-hadrons/hSparseFlowCharm
+      axes:
+        names:
+        - Mass
+        - Pt
+        - Cent
+        - Sp
+        - ScoreBkg
+        - ScoreFD
+        rebin:
+        - 1
+        - 1
+        - 1
+        - 1
+        - 1
+        - 1
+outdirPrep: /home/mdicosta/DFlowOO/SP_bdt_peripheral_pbpb/020/cutvar_020_combined/syst/reso
+Resolution: /data/mdicosta/DplusFlow/OO/Resolution/Train557248/reso_020.root

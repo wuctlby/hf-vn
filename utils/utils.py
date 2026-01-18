@@ -32,6 +32,8 @@ def logger(message, level='INFO'):
 		print(f"\033[33m{message}\033[0m")
 	elif level == 'ERROR':
 		print(f"\033[31m{message}\033[0m")
+	elif level == 'FATAL':
+		print(f"\033[31m{message}\033[0m")
 		sys.exit(1)
 	elif level == 'COMMAND':
 		print(f"\033[35m{message}\033[0m")
@@ -42,12 +44,14 @@ def logger(message, level='INFO'):
 	else:
 		print(f"\033[37m{message}\033[0m")  # Default to white for unknown levels
 
-def make_dir_root_file(directory, file):
+def make_dir_root_file(directory, file, verbose=True):
     if not file.GetDirectory(directory):
         file.mkdir(directory)
-        logger(f"Created directory {directory} in file {file.GetName()}", level='WARNING')
+        if verbose:
+            logger(f"Created directory {directory} in file {file.GetName()}", level='WARNING')
     else:
-        logger(f"Directory {directory} already exists in file {file.GetName()}", level='WARNING')
+        if verbose:
+            logger(f"Directory {directory} already exists in file {file.GetName()}", level='WARNING')
 
 def profile_mass_sp(hist_mass_sp, inv_mass_bins, resolution):
     '''
@@ -318,110 +322,6 @@ def get_particle_info(particleName):
 
     return particleTit, massAxisTit, decay, massForFit, massSecPeak if 'massSecPeak' in locals() else None, secPeakLabel if 'secPeakLabel' in locals() else None
 
-def get_resolution(dets, det_lables, cent_min_max):
-    '''
-    Compute resolution for SP method
-
-    Input:
-        - dets:
-            list of TH2D, list of TH2D objects with the SP product or EP cos(deltaphi) values vs centrality
-        - det_lables:
-            list of strings, list of detector labels
-        - cent_min_max:
-            list of floats, max and min centrality bins
-
-    Output:
-        - histo_means:
-            list of TH1D, list of histograms with the mean value of the projections as a function of centrality for 1% bins
-        - histo_means_deltacent:
-            list of TH1D, list of histograms with the mean value of the projections as a function of centrality for CentMin-CentMax
-        - histo_reso:
-            TH1D, histogram with the resolution value as a function of centrality for 1% bins
-        - histo_reso_delta_cent:
-            TH1D, histogram with the resolution value as a function of centrality for CentMin-CentMax
-    '''
-    histo_projs, histo_means, histo_means_deltacent = [], [], []
-
-    # collect the qvecs and prepare histo for mean and resolution
-    for _, (det, det_label) in enumerate(zip(dets, det_lables)):
-        print(f'Processing {det_label}')
-        # th1 for mean 1% centrality bins
-        histo_means.append(ROOT.TH1F('', '', cent_min_max[1]-cent_min_max[0], cent_min_max[0], cent_min_max[1]))
-        histo_means[-1].SetDirectory(0)
-        histo_means[-1].SetName(f'proj_{det_label}_mean')
-        # th1 for mean CentMin-CentMax
-        histo_projs.append([])
-        hist_proj_dummy = det.ProjectionY(f'proj_{det.GetName()}_mean_deltacent',
-                                          det.GetXaxis().FindBin(cent_min_max[0]),
-                                          det.GetXaxis().FindBin(cent_min_max[1])-1)
-        histo_means_deltacent.append(ROOT.TH1F('', '', 1, cent_min_max[0], cent_min_max[1]))
-        histo_means_deltacent[-1].SetDirectory(0)
-        histo_means_deltacent[-1].SetName(f'proj_{det_label}_mean_deltacent')
-
-        # Set mean values for CentMin-CentMax
-        histo_means_deltacent[-1].SetBinContent(1, hist_proj_dummy.GetMean())
-        histo_means_deltacent[-1].SetBinError(1, hist_proj_dummy.GetMeanError())
-        del hist_proj_dummy
-
-        # collect projections 1% centrality bins
-        for cent in range(cent_min_max[0], cent_min_max[1]):
-            bin_cent = det.GetXaxis().FindBin(cent) # common binning
-            histo_projs[-1].append(det.ProjectionY(f'proj_{det_label}_{cent}',
-                                                          bin_cent, bin_cent))
-        # Set mean values for 1% centrality bins
-        for ihist, _ in enumerate(histo_projs[-1]):
-            histo_means[-1].SetBinContent(ihist+1, histo_projs[-1][ihist].GetMean())
-
-    # Compute resolution for 1% centrality bins
-    histo_reso = ROOT.TH1F('histo_reso', 'histo_reso',
-                           cent_min_max[1]-cent_min_max[0],
-                           cent_min_max[0], cent_min_max[1])
-    histo_reso.SetDirectory(0)
-    for icent in range(cent_min_max[0], cent_min_max[1]):
-        reso = compute_resolution([histo_means[i].GetBinContent(icent-cent_min_max[0]+1) for i in range(len(dets))])
-        centbin = histo_reso.GetXaxis().FindBin(icent)
-        histo_reso.SetBinContent(centbin, reso)
-
-    # Compute resolution for CentMin-CentMax
-    histo_reso_delta_cent = ROOT.TH1F('histo_reso_delta_cent', 'histo_reso_delta_cent',
-                                      1, cent_min_max[0], cent_min_max[1])
-    res_deltacent = compute_resolution([histo_means_deltacent[i].GetBinContent(1) for i in range(len(dets))])
-    histo_reso_delta_cent.SetBinContent(1, res_deltacent)
-    histo_reso_delta_cent.SetDirectory(0)
-
-    return histo_means, histo_means_deltacent, histo_reso, histo_reso_delta_cent
-
-def compute_resolution(subMean):
-    '''
-    Compute resolution for SP or EP method
-
-    Input:
-        - subMean:
-            list of floats, list of mean values of the projections
-
-    Output:
-        - resolution:
-            float, resolution value
-    '''
-    print(subMean)
-    if len(subMean) == 1:
-        resolution =  subMean[0]
-        if resolution <= 0:
-            return 0
-        else:
-            return np.sqrt(resolution)
-    elif len(subMean) == 3:
-        print('3 subsystems')
-        resolution = (subMean[0] * subMean[1]) / subMean[2] if subMean[2] != 0 else 0
-        if resolution <= 0:
-            return 0
-        else:
-            print(resolution, np.sqrt(resolution))
-            return np.sqrt(resolution)
-    else:
-        print('ERROR: dets must be a list of 2 or 3 subsystems')
-        sys.exit(1)
-
 def check_file_exists(file_path):
     '''
     Check if file exists
@@ -598,8 +498,8 @@ def suggest_skip_cuts(hRawYields, hEffPrompt, hEffFD, nPtBins):
         for iCut in range(nCuts):
             # zero or negative efficiencies or raw yields
             if any([rys[iCut] < 0, effPs[iCut] < 0, effFs[iCut] < 0]):
-				logger(f'Cut {iCut} for pt bin {iPt+1} has negative value, prompt eff={effPs[iCut]}, FD eff={effFs[iCut]}, ry={rys[iCut]}', level='ERROR')
-			elif any ([rys[iCut] == 0, effPs[iCut] == 0, effFs[iCut] == 0]):
+                logger(f'Cut {iCut} for pt bin {iPt+1} has negative value, prompt eff={effPs[iCut]}, FD eff={effFs[iCut]}, ry={rys[iCut]}', level='ERROR')
+            elif any ([rys[iCut] == 0, effPs[iCut] == 0, effFs[iCut] == 0]):
                 logger(f'Suggested to skip cut {iCut} for pt bin {iPt+1} due to zero or negative efficiency/raw yield', level='WARNING')
                 suggested_skipped_cuts.append(iCut)
             elif iCut == 0 and nCuts > 1 and rys[0] == rys[1]:

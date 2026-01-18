@@ -4,6 +4,7 @@
 **/__pycache__/
 **/resolution/reso*
 ptweights/weights/
+mltraining/models/
 
 # test files to ignore
 test*
@@ -13,3 +14,8 @@ test*
 *.so
 *.pcm
 *_dict.cxx
+*.d
+*tmp*
+
+# jupyter notebook
+*.ipynb

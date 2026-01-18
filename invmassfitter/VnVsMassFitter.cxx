@@ -343,6 +343,13 @@ Bool_t VnVsMassFitter::SimultaneousFit(Bool_t drawFit) {
     }
   }
 
+  // // Fix v2 of bkg from prefit
+  // for (int iVnBkgPar=0; iVnBkgPar<fNParsVnBkg; iVnBkgPar++) {
+  //   std::cout << "Fixing v2 bkg par " << iVnBkgPar << " to " << fVnBkgFuncSb->GetParameter(iVnBkgPar) << std::endl;
+  //   fitter.Config().ParSettings(iVnBkgPar+nparsmass).SetValue(fVnBkgFuncSb->GetParameter(iVnBkgPar));
+  //   fitter.Config().ParSettings(iVnBkgPar+nparsmass).Fix();
+  // }
+
   fitter.Config().MinimizerOptions().SetPrintLevel(0);
   fitter.Config().SetMinimizer("Minuit2","Migrad");
   for(Int_t iPar=0; iPar<nparsvn; iPar++) {fitter.Config().ParSettings(iPar).SetName(fVnTotFunc->GetParName(iPar));}

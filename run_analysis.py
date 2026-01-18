@@ -76,22 +76,28 @@ def get_vn(flow_config, outdir, nworkers, mCutSets, extraction_type):
 	logger("Fit v2 vs mass will be performed", level="INFO")
 	check_dir(f"{outdir}/raw_yields")
 
-	script_path = paths['GetVnVsMass'] if extraction_type == 'simfit' else paths['GetVnByYieldExtraction']
-
-	def run_fit(i):
-		"""Run simultaneous fit for a given cutset index."""
-		iCutSets = f"{i:02d}"
-		print(f"\033[32mProcessing cutset {iCutSets}...\033[0m")
-
-		proj_cutset = f"{outdir}/projs/proj_{iCutSets}.root"
+	if extraction_type != 'simfit':
+		proj_cutset = f"{outdir}/projs/proj_00.root"
 		cmd = (
-			f"python3 {script_path} {flow_config} {proj_cutset} -b"
+			f"python3 {paths['GetVnByYieldExtraction']} {flow_config} -b"
 		)
 		logger(f"{cmd}", level="COMMAND")
 		os.system(cmd)
+	else:
+		def run_fit(i):
+			"""Run simultaneous fit for a given cutset index."""
+			iCutSets = f"{i:02d}"
+			print(f"\033[32mProcessing cutset {iCutSets}...\033[0m")
 
-	with concurrent.futures.ThreadPoolExecutor(max_workers=nworkers) as executor:
-		results_fit = list(executor.map(run_fit, range(mCutSets)))
+			proj_cutset = f"{outdir}/projs/proj_{iCutSets}.root"
+			cmd = (
+				f"python3 {paths['GetVnVsMass']} {flow_config} {proj_cutset} -b"
+			)
+			logger(f"{cmd}", level="COMMAND")
+			os.system(cmd)
+
+		with concurrent.futures.ThreadPoolExecutor(max_workers=nworkers) as executor:
+			results_fit = list(executor.map(run_fit, range(mCutSets)))
 
 def cut_variation(flow_config, outdir, correlated, combined=False, operations=None):
 	check_dir(f"{outdir}/cutVar")
@@ -130,6 +136,8 @@ def cut_variation(flow_config, outdir, correlated, combined=False, operations=No
 					operationsCorr[key] = True
 				else:
 					operationsCorr[key] = False
+			if 'get_vn_yield_extraction' in operationsCorr:
+				operationsCorr['get_vn_vs_mass'] = True
 			os.makedirs(os.path.join(outdir, "config_flow"), exist_ok=True)
 			flow_configCorr = os.path.join(outdir, "config_flow", f"corr_{os.path.basename(flow_config)}")
 			with open(flow_config, 'r') as cfgFlow:

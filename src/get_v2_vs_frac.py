@@ -24,7 +24,7 @@ def set_frame_style(canv, Title, particleTit):
     canv.SetRightMargin(0.05)
     canv.SetBottomMargin(0.15)
     canv.SetTopMargin(0.05)
-    hFrame = canv.DrawFrame(0.0, -0.2, 1, 0.35, f";Non-prompt {particleTit} fraction; #it{{v}}_{{2}}^{{#it{{obs}}}}")
+    hFrame = canv.DrawFrame(0.0, -0.5, 1, 0.5, f";Non-prompt {particleTit} fraction; #it{{v}}_{{2}}^{{#it{{obs}}}}")
     hFrame.GetYaxis().SetDecimals()
     hFrame.GetYaxis().SetNoExponent()
     hFrame.GetXaxis().SetMoreLogLabels()
@@ -42,12 +42,12 @@ def set_frame_margin(canv):
     canv.SetBottomMargin(0.15)
     canv.SetTopMargin(0.05)
 
-def v2_vs_frac(Dmeson, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multitrial, outputDir):
+def v2_vs_frac(config, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multitrial, outputDir):
 
     gROOT.SetBatch(True)
-    
+
     nPtBins = len(ptMins)
-    particleTit, _, decay, _, _, _ = get_particle_info(Dmeson)
+    particleTit, _, decay, _, _, _ = get_particle_info(config['Dmeson'])
 
     hV2, gV2, hFracFD = [], [], []
 
@@ -65,14 +65,16 @@ def v2_vs_frac(Dmeson, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multit
 
     gFracVsV2, hV2VsFrac = [], [] # gFracVsV2 used for fitting, hV2VsFrac used for plotting
     hV2VsPtFD = hV2[0].Clone("hV2VsPtFD")
+    hV2VsPtFDUnc = hV2[0].Clone("hV2VsPtFDUnc")
     hV2VsPtPrompt = hV2[0].Clone("hV2VsPtPrompt")
+    hV2VsPtPromptUnc = hV2[0].Clone("hV2VsPtPromptUnc")
 
     cFrac, ptStrings, chi2Strings = [], [], []
 
     for iPt, (ptMin, ptMax) in enumerate(zip(ptMins, ptMaxs)):
         ptCent = (ptMin + ptMax) / 2
         nSets = CutSets[iPt]
-        
+
         ptBinFrac = iPt + 1
         # Multitrial is evaluated per pt-bin, so the
         # pt-bins of ry and frac files are not equal
@@ -93,10 +95,17 @@ def v2_vs_frac(Dmeson, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multit
         if not multitrial:
             logger(f"Processing pt bin {iPt+1}/{nPtBins}: {ptMin:.2f} < pT < {ptMax:.2f} GeV/c, nSets: {nSets}", level="INFO")
 
-        v2Values = [hV2[i].GetBinContent(iPt + 1) for i in range(nSets)]
-        v2Unc = [hV2[i].GetBinError(iPt + 1) for i in range(nSets)]
-        fracFDValues = [hFracFD[i].GetBinContent(ptBinFrac) for i in range(nSets)]
-        fracFDUnc = [hFracFD[i].GetBinError(ptBinFrac) for i in range(nSets)]
+        skip_cuts_iPt = []
+        if config.get('v2VsFrac') is not None:
+            skip_cuts = config['v2VsFrac'].get('skip_cuts', [])
+            skip_cuts_iPt = skip_cuts[iPt] if iPt < len(skip_cuts) else []
+            if skip_cuts_iPt != []:
+                logger(f"Skipping cutsets at indices: {skip_cuts_iPt}", level="WARNING")
+
+        v2Values = [hist.GetBinContent(iPt + 1) for i, hist in enumerate(hV2) if i not in skip_cuts_iPt]
+        v2Unc = [hist.GetBinError(iPt + 1) for i, hist in enumerate(hV2) if i not in skip_cuts_iPt]
+        fracFDValues = [hist.GetBinContent(ptBinFrac) for i, hist in enumerate(hFracFD) if i not in skip_cuts_iPt]
+        fracFDUnc = [hist.GetBinError(ptBinFrac) for i, hist in enumerate(hFracFD) if i not in skip_cuts_iPt]
 
         for iSet, (v2, fracFD, v2Unc, fracFDUnc) in enumerate(zip(v2Values, fracFDValues, v2Unc, fracFDUnc)):
             if not multitrial:
@@ -121,10 +130,12 @@ def v2_vs_frac(Dmeson, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multit
         # get the v2 value at the FD fraction = 1
         hV2VsPtFD.SetBinContent(iPt + 1, hV2VsFrac[-1].GetBinContent(hV2VsFrac[-1].GetNbinsX()))
         hV2VsPtFD.SetBinError(iPt + 1, hV2VsFrac[-1].GetBinError(hV2VsFrac[-1].GetNbinsX()))
+        hV2VsPtFDUnc.SetBinContent(iPt + 1, hV2VsFrac[-1].GetBinError(hV2VsFrac[-1].GetNbinsX()))
         
         # get the v2 value at the FD fraction = 0
         hV2VsPtPrompt.SetBinContent(iPt + 1, hV2VsFrac[-1].GetBinContent(1))
         hV2VsPtPrompt.SetBinError(iPt + 1, hV2VsFrac[-1].GetBinError(1))
+        hV2VsPtPromptUnc.SetBinContent(iPt + 1, hV2VsFrac[-1].GetBinError(1))
         
         #TODO: plot the v2 vs pt, and the center of the pt bin is calculate by the average of pT
 
@@ -251,6 +262,8 @@ def v2_vs_frac(Dmeson, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multit
 
     hV2VsPtFD.Write()
     hV2VsPtPrompt.Write()
+    hV2VsPtFDUnc.Write()
+    hV2VsPtPromptUnc.Write()
     cV2VsPtFD.SaveAs(f"{outputDir}/v2VsPtFD.pdf")
     cV2VsPtPrompt.SaveAs(f"{outputDir}/v2VsPtPrompt.pdf")
     cPromptAndFDV2.SaveAs(f"{outputDir}/v2VsPtPromptAndFD.pdf")
@@ -310,9 +323,10 @@ def main_v2_vs_frac(flow_config, ry_input_dir, frac_input_dir, correlated=False,
     # Use ry_input_dir, not frac_input_dir, to define output dir
     # because in multitrial frac_input_dir is constant and the
     # reference results would be overwritten
-    outputDir = os.path.join(os.path.dirname(ry_input_dir), '..', 'v2') if outputdir == '' else f"{outputdir}/v2"
+    ry_input_dir = os.path.normpath(ry_input_dir)
+    outputDir = ry_input_dir.replace('raw_yields', 'v2') if outputdir == '' else f"{outputdir}/v2"
     v2_vs_frac(
-        config['Dmeson'],
+        config,
         ptMins,
         ptMaxs,
         CutSets,
