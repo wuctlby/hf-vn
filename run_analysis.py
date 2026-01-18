@@ -74,7 +74,7 @@ def efficiencies(flow_config, outdir, nworkers, mCutSets):
 
 def get_vn(flow_config, outdir, nworkers, mCutSets, extraction_type):
 	logger("Fit v2 vs mass will be performed", level="INFO")
-	# check_dir(f"{outdir}/raw_yields")
+	check_dir(f"{outdir}/raw_yields")
 
 	if extraction_type != 'simfit':
 		proj_cutset = f"{outdir}/projs/proj_00.root"

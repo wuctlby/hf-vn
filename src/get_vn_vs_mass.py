@@ -47,15 +47,10 @@ if not os.path.exists(lib):
 # Load the library once
 if not hasattr(gSystem, "_vnfitter_loaded"):
     script_dir = os.path.dirname(os.path.realpath(__file__))
-    # gSystem.Load(f"{script_dir}/../invmassfitter/libvnfitter.so")
     gSystem.CompileMacro(f"{script_dir}/../invmassfitter/VnVsMassFitter.cxx", "kO")
     gSystem.CompileMacro(f"{script_dir}/../invmassfitter/InvMassFitter.cxx", "kO")
     gSystem._vnfitter_loaded = True
 
-# if not hasattr(gSystem, "_vnfitter_loaded"):
-#     script_dir = os.path.dirname(os.path.realpath(__file__))
-#     gSystem.Load(f"{script_dir}/../invmassfitter/libvnfitter.so")
-#     gSystem._vnfitter_loaded = True
 from ROOT import InvMassFitter, VnVsMassFitter
 os.sys.path.append(os.path.join(script_dir, '..', 'utils'))
 from StyleFormatter import SetGlobalStyle, SetObjectStyle
