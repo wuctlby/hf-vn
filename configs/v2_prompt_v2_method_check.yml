@@ -1,0 +1,41 @@
+#python3 src/compute_prompt_v2_unfold.py configs/v2_prompt_v2_method_check.yml
+
+mode:
+  method: ratio   # "ratio" or "fixedFD"  1. ratio is run2's method  fixedFD: take the exact FD v2 from paper
+
+input:
+  fractions:
+    file: /Users/zbiao/Downloads/hf-vn-pr/OOCharmFlow/cutvar_D0_combined/frac/frac_00.root
+
+    # used only when method=ratio, note: use corrected fraction here since the prompt v2 is not corrected
+    objects_ratio:
+      f_prompt: hPromptFracCorr
+      f_FD: hFDFracCorr
+
+    # used only when method=fixedFD
+    objects_fixedFD:
+      f_prompt: hPromptFrac
+      f_FD: hFDFrac
+
+  v2obs:
+    file: /Users/zbiao/Downloads/hf-vn-pr/OOCharmFlow/cutvar_D0_combined/raw_yields/raw_yields_00.root
+    object: gVnSimFit
+
+assumption:
+  # for ratio
+  r: 0.5
+
+  # for fixedFD
+  v2_FD_fixed: 0.0248
+  v2_FD_fixed_err: 0.0
+
+output:
+  file: v2_prompt_ratio.root
+  object: gV2Prompt
+  title: "v2^{prompt}"
+
+checks:
+  check_npoints: true
+  check_fraction_sum: true
+  fraction_sum_tolerance: 0.05
+  min_f_prompt: 1.0e-6
