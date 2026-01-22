@@ -204,6 +204,10 @@ def get_vnfitter_results(vnFitter, secPeak, useRefl, useTempl):
     vn_results['fBkgFuncVn'] = vnFitter.GetVnVsMassBkgFitFunc()
     vn_results['fSgnFuncMass'] = vnFitter.GetMassSignalFitFunc()
 
+    bkg_pars_with_uncs = vnFitter.GetBkgPars()
+    vn_results['bkgPars'] = bkg_pars_with_uncs[:len(bkg_pars_with_uncs)//2]
+    vn_results['bkgParsUncs'] = bkg_pars_with_uncs[len(bkg_pars_with_uncs)//2:]
+
     vn_results['fVnCompsFuncts'] = {}
     vn_comps = vnFitter.GetVnCompsFuncts()
     vn_results['fVnCompsFuncts']['vnSgn'] = vn_comps[0]

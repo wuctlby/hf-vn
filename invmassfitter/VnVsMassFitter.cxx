@@ -350,6 +350,7 @@ Bool_t VnVsMassFitter::SimultaneousFit(Bool_t drawFit) {
   //   fitter.Config().ParSettings(iVnBkgPar+nparsmass).Fix();
   // }
 
+  fitter.Config().MinimizerOptions().SetStrategy(2);    // For more precise BkgVn error calculation
   fitter.Config().MinimizerOptions().SetPrintLevel(0);
   fitter.Config().SetMinimizer("Minuit2","Migrad");
   for(Int_t iPar=0; iPar<nparsvn; iPar++) {fitter.Config().ParSettings(iPar).SetName(fVnTotFunc->GetParName(iPar));}
@@ -360,7 +361,7 @@ Bool_t VnVsMassFitter::SimultaneousFit(Bool_t drawFit) {
 
   ROOT::Fit::FitResult result = fitter.Result();
   if (!fSuppressOutput) {
-    result.Print(std::cout);
+    result.Print(std::cout, true);
   }
   if(fTemplates && fTemplSameVnOfSignal) {
     printf("\n --->Templates share the vn parameter with the signal! \n");
@@ -681,6 +682,9 @@ Bool_t VnVsMassFitter::VnSBPrefit() {
       fVnBkgFuncSb->SetParName(1,"Coef1VnBkg");
       fVnBkgFuncSb->SetParName(2,"Coef2VnBkg");
       break;
+    case 3:
+      fVnBkgFuncSb->SetParName(0,"ConstVnBkg");
+      break;
     default:
       printf("Error in setting signal par names: check fVnBkgFuncType");
       break;
@@ -753,6 +757,9 @@ void VnVsMassFitter::DefineNumberOfParameters() {
       break;
     case 2: //pol2
       fNParsVnBkg=3;
+      break;
+    case 3: //const
+      fNParsVnBkg=1;
       break;
     case 6: //high degree pol
       fNParsVnBkg=fPolDegreeVnBkg+1;
@@ -1145,6 +1152,9 @@ Double_t VnVsMassFitter::vnBkgFunc(Double_t *m, Double_t *pars) {
       break;
     case 2: //parabolic
       return GetPolPDF(m[0],pars,2,kFALSE);
+      break;
+    case 3: //constant
+      return GetPolPDF(m[0],pars,0,kFALSE);
       break;
     case 6: //higher order (>=3) polinomial
       return GetHigherPolFuncPDF(m[0],pars,fPolDegreeVnBkg,kFALSE);

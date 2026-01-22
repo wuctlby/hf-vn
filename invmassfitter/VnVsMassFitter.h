@@ -137,6 +137,16 @@ public:
     else if(fHistoTemplRflInit) {return (TH1F*)fHistoTemplRflInit->Clone("fHistoTemplRflInit");}
     else {return 0;}
   }
+  std::vector<Double_t> GetBkgPars() const {
+    std::vector<Double_t> bkgpars;
+    for (Int_t iBkgPar=0; iBkgPar<fNParsMassBkg; iBkgPar++) {
+      bkgpars.push_back(fVnBkgFunc->GetParameter(iBkgPar));
+    }
+    for (Int_t iBkgPar=0; iBkgPar<fNParsMassBkg; iBkgPar++) {
+      bkgpars.push_back(fVnBkgFunc->GetParError(iBkgPar));
+    }
+    return bkgpars;
+  }
   void Signal(Double_t nOfSigma,Double_t &signal,Double_t &errsignal) const;
   void Signal(Double_t min,Double_t max,Double_t &signal,Double_t &errsignal) const;
   void Background(Double_t nOfSigma, Double_t &background,Double_t &errbackground) const;
