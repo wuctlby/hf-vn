@@ -10,19 +10,17 @@ import argparse
 import sys
 import os
 import glob
+import numpy as np
 from pathlib import Path
 from functools import partial
-from ROOT import TFile, TObject
+from ROOT import TFile, TObject, TH1F
 from alive_progress import alive_bar
 from scipy.interpolate import make_interp_spline
 sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/../utils")
 from data_model import get_pt_preprocessed_sparses
-from utils import reweight_histo_1D, reweight_histo_2D, reweight_histo_3D, get_vn_versus_mass, profile_mass_sp, make_dir_root_file, logger
+from utils import reweight_histo_1D, reweight_histo_2D, reweight_histo_3D, get_vn_versus_mass, profile_mass_sp, make_dir_root_file, logger, get_centrality_bins
 
 ROOT.TH1.AddDirectory(False)
-
-import yaml
-from ROOT import TFile
 
 def proj_multitrial(config, multitrial_folder, workers, resolution):
 
@@ -72,7 +70,8 @@ def proj_multitrial(config, multitrial_folder, workers, resolution):
 
 def proj_data(i_bin, sparse, axes, resolution, proj_cfg, writeopt):
 
-    proj_vars = ['Mass', 'Sp', 'ScoreFD', 'ScoreBkg'] if proj_cfg.get('storeML') else ['Mass', 'Sp']
+    proj_vars = proj_cfg.get('ProjVars', [])
+    proj_vars += ['Mass', 'Sp']
     proj_axes = [axes['FlowSP'][var] for var in proj_vars]
 
     for var, ax in zip(proj_vars, proj_axes):
@@ -94,7 +93,7 @@ def proj_data(i_bin, sparse, axes, resolution, proj_cfg, writeopt):
     hist_mass_sp.GetYaxis().SetRange(sp_lowest_bin, sp_highest_bin)
     hist_mass_sp.Write('hMassSpData', writeopt)
 
-def proj_mc_reco(sparses_reco, sPtWeightsD, sPtWeightsB, Bspeciesweights, writeopt):
+def proj_mc_reco(sparses_reco, sPtWeightsD, sPtWeightsB, Bspeciesweights, writeopt, save_centrality=False):
 
     for key, sparse in sparses_reco.items():
         if key != 'RecoPrompt' and key != 'RecoFD':
@@ -139,7 +138,14 @@ def proj_mc_reco(sparses_reco, sPtWeightsD, sPtWeightsB, Bspeciesweights, writeo
     hPtPrompt.Write('hPromptPt', writeopt)
     hPtFD.Write('hFDPt', writeopt)
 
-def proj_mc_gen(sparses_gen, sPtWeightsD, sPtWeightsB, Bspeciesweights, writeopt):
+    # Store also centrality of prompt, if available
+    if save_centrality and 'Cent' in axes['RecoPrompt']:
+        hRecoCentPrompt = sparses_reco['RecoPrompt'].Projection(axes['RecoPrompt']['Cent'])
+        hRecoCentPrompt.Write('hPromptRecoCent', writeopt)
+
+    return hPtPrompt, hPtFD
+
+def proj_mc_gen(sparses_gen, sPtWeightsD, sPtWeightsB, Bspeciesweights, writeopt, save_centrality=False):
 
     for key, sparse in sparses_gen.items():
         if key != 'GenPrompt' and key != 'GenFD':
@@ -175,6 +181,13 @@ def proj_mc_gen(sparses_gen, sPtWeightsD, sPtWeightsB, Bspeciesweights, writeopt
     ## write the output
     hGenPtPrompt.Write('hPromptGenPt', writeopt)
     hGenPtFD.Write('hFDGenPt', writeopt)
+
+    # Store also centrality of prompt, if available
+    if save_centrality and 'Cent' in axes['GenPrompt']:
+        hGenCentPrompt = sparses_gen['GenPrompt'].Projection(axes['GenPrompt']['Cent'])
+        hGenCentPrompt.Write('hPromptGenCent', writeopt)
+
+    return hGenPtPrompt, hGenPtFD
 
 def get_pt_weights(cfgProj):
     """Get pt weights and return weights flags with spline
@@ -242,6 +255,10 @@ if __name__ == "__main__":
         config = yaml.load(ymlCfgFile, yaml.FullLoader)
     operations = config["operations"]
 
+    proj_mc_cent_diff = True if operations.get("proj_mc") and config['projections'].get('CentDiffBinsMCYieldsStep', False) else False
+    if config['projections'].get('CentDiffBinsMCYieldsStep'):
+        _, (centLowLim, centMaxLim) = get_centrality_bins(config['centrality'])
+
     if operations.get("proj_data") or args.multitrial_folder != "":
         reso_file = TFile.Open(config["projections"]["Resolution"], 'r')
         det_A = config["projections"].get('detA', 'FT0c')
@@ -266,7 +283,7 @@ if __name__ == "__main__":
     outfilePath = os.path.join(outDir, f"proj_{iCut}.root")
     os.makedirs(outDir, exist_ok=True)
 
-    if operations["proj_data"] or operations["proj_mc"]:
+    if operations.get("proj_data") or operations.get("proj_mc"):
         if os.path.exists(outfilePath):
             logger(f"Found previous projection file {outfilePath}, will update it", level='INFO')
             outfile = TFile.Open(outfilePath, 'UPDATE')
@@ -298,7 +315,7 @@ if __name__ == "__main__":
             make_dir_root_file(pt_label, outfile)
             sparse_flow, sparses_reco, sparses_gen, axes = get_pt_preprocessed_sparses(config, pt_label)
             outfile.cd(pt_label)
-            if operations["proj_data"]:
+            if operations.get("proj_data"):
                 sparse_flow["FlowSP"].GetAxis(axes['FlowSP']['ScoreFD']).SetRangeUser(fd_min, fd_max)
                 sparse_flow["FlowSP"].GetAxis(axes['FlowSP']['ScoreBkg']).SetRangeUser(bkg_min, bkg_max)
                 proj_data(i_pt, sparse_flow["FlowSP"], axes, resolution, config["projections"], write_opt_data)
@@ -309,10 +326,52 @@ if __name__ == "__main__":
                     i_sparse.GetAxis(axes[key]['ScoreBkg']).SetRangeUser(bkg_min, bkg_max)
                     i_sparse.GetAxis(axes[key]['ScoreFD']).SetRangeUser(fd_min, fd_max)
 
-                proj_mc_reco(sparses_reco, sPtWeightsD, sPtWeightsB, Bspeciesweights, write_opt_mc)
+                proj_mc_reco(sparses_reco, sPtWeightsD, sPtWeightsB, Bspeciesweights, write_opt_mc, save_centrality=proj_mc_cent_diff)
                 logger("Projected mc reco!")
-                proj_mc_gen(sparses_gen, sPtWeightsD, sPtWeightsB, Bspeciesweights, write_opt_mc)
+                proj_mc_gen(sparses_gen, sPtWeightsD, sPtWeightsB, Bspeciesweights, write_opt_mc, save_centrality=proj_mc_cent_diff)
                 logger("Projected mc gen!\n\n")
+
+                if proj_mc_cent_diff:
+
+                    centStep = config['projections']['CentDiffBinsMCYieldsStep']
+                    centBins = list(np.arange(centLowLim, centMaxLim + centStep, centStep))
+                    hCentDiffYieldsRecoPrompt = TH1F("hCentDiffYieldsRecoPrompt", ";Centrality (%);Yield", len(centBins)-1, np.asarray(centBins, 'd'))
+                    hCentDiffYieldsRecoFD = TH1F("hCentDiffYieldsRecoFD", ";Centrality (%);Yield", len(centBins)-1, np.asarray(centBins, 'd'))
+                    hCentDiffYieldsGenPrompt = TH1F("hCentDiffYieldsGenPrompt", ";Centrality (%);Yield", len(centBins)-1, np.asarray(centBins, 'd'))
+                    hCentDiffYieldsGenFD = TH1F("hCentDiffYieldsGenFD", ";Centrality (%);Yield", len(centBins)-1, np.asarray(centBins, 'd'))
+                    for i_cent_bin, (cent_min, cent_max) in enumerate(zip(centBins[:-1], centBins[1:])):
+                        cent_label = f'cent_{int(cent_min)}_{int(cent_max)}'
+                        outfile.mkdir(f"{pt_label}/{cent_label}")
+                        outfile.cd(f"{pt_label}/{cent_label}")
+                        for key, i_sparse in sparses_reco.items():
+                            i_sparse.GetAxis(axes[key]['Cent']).SetRangeUser(cent_min, cent_max)
+                        for key, i_sparse in sparses_gen.items():
+                            i_sparse.GetAxis(axes[key]['Cent']).SetRangeUser(cent_min, cent_max)
+
+                        hPtPrompt, hPtFD = proj_mc_reco(sparses_reco, sPtWeightsD, sPtWeightsB, Bspeciesweights, write_opt_mc, save_centrality=True)
+                        hCentDiffYieldsRecoPrompt.SetBinContent(i_cent_bin+1, hPtPrompt.Integral())
+                        hCentDiffYieldsRecoFD.SetBinContent(i_cent_bin+1, hPtFD.Integral())
+                        hGenPtPrompt, hGenPtFD = proj_mc_gen(sparses_gen, sPtWeightsD, sPtWeightsB, Bspeciesweights, write_opt_mc, save_centrality=True)
+                        hCentDiffYieldsGenPrompt.SetBinContent(i_cent_bin+1, hGenPtPrompt.Integral())
+                        hCentDiffYieldsGenFD.SetBinContent(i_cent_bin+1, hGenPtFD.Integral())
+                        logger(f"Projected mc reco and gen for cent {cent_min}-{cent_max}!", "INFO")
+
+                    logger("\n\n")
+                    outfile.cd(pt_label)
+                    hCentDiffYieldsRecoPrompt.Sumw2()
+                    hCentDiffYieldsRecoPrompt.Write("hCentDiffYieldsRecoPrompt", write_opt_mc)
+                    hCentDiffYieldsRecoFD.Sumw2()
+                    hCentDiffYieldsRecoFD.Write("hCentDiffYieldsRecoFD", write_opt_mc)
+                    hCentDiffYieldsGenPrompt.Sumw2()
+                    hCentDiffYieldsGenPrompt.Write("hCentDiffYieldsGenPrompt", write_opt_mc)
+                    hCentDiffYieldsGenFD.Sumw2()
+                    hCentDiffYieldsGenFD.Write("hCentDiffYieldsGenFD", write_opt_mc)
+
+                    # Restore full cent range
+                    for key, i_sparse in sparses_reco.items():
+                        i_sparse.GetAxis(axes[key]['Cent']).SetRangeUser(centLowLim, centMaxLim)
+                    for key, i_sparse in sparses_gen.items():
+                        i_sparse.GetAxis(axes[key]['Cent']).SetRangeUser(centLowLim, centMaxLim)
 
             bar()
 

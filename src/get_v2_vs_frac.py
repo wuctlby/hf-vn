@@ -69,7 +69,7 @@ def v2_vs_frac(config, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multit
     hV2VsPtPrompt = hV2[0].Clone("hV2VsPtPrompt")
     hV2VsPtPromptUnc = hV2[0].Clone("hV2VsPtPromptUnc")
 
-    cFrac, ptStrings, chi2Strings = [], [], []
+    cFrac, ptStrings, chi2Strings, promptV2Strings = [], [], [], []
 
     for iPt, (ptMin, ptMax) in enumerate(zip(ptMins, ptMaxs)):
         ptCent = (ptMin + ptMax) / 2
@@ -141,6 +141,7 @@ def v2_vs_frac(config, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multit
 
         ptStrings.append(f"{ptMin:.1f} < #it{{p}}_{{T}} < {ptMax:.1f} GeV/#it{{c}}")
         chi2Strings.append(f"#chi^{{2}}/n.d.f = {chi2:.2f}/{ndf:.2f}")
+        promptV2Strings.append(f"Prompt #it{{v}}_{{2}} = {hV2VsFrac[-1].GetBinContent(1):.3f} #pm {hV2VsFrac[-1].GetBinError(1):.3f}")
 
     # save the results
     os.makedirs(outputDir, exist_ok=True)
@@ -172,6 +173,7 @@ def v2_vs_frac(config, ptMins, ptMaxs, CutSets, rawYieldFiles, fracFiles, multit
         t.DrawLatex(0.25, 0.85, decay)
         t.DrawLatex(0.25, 0.78, f"{ptStrings[iPt]}")
         t.SetTextSize(0.035)
+        t.DrawLatex(0.250, 0.28, f'{promptV2Strings[iPt]}')
         t.DrawLatex(0.250, 0.23, f'{chi2Strings[iPt]}')
 
         hV2VsFrac[iPt].Draw("same pZ")

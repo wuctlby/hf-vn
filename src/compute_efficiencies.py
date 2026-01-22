@@ -4,7 +4,7 @@ import yaml
 import argparse
 import os
 import numpy as np
-from ROOT import TFile, TCanvas, TH1F, TLegend, gROOT  # pylint: disable=import-error,no-name-in-module
+from ROOT import TFile, TCanvas, TH1F, TLegend, TEfficiency, gROOT  # pylint: disable=import-error,no-name-in-module
 import sys
 sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/../utils")
 from StyleFormatter import SetGlobalStyle, SetObjectStyle
@@ -44,6 +44,7 @@ def eval_eff(recoCounts, genCounts, recoCountsError, genCountsError):
     hTmpNum.Delete()
 
     return efficiency, error
+
 
 def compute_eff(config, inputFile, batch=False):
     '''
@@ -153,6 +154,61 @@ def compute_eff(config, inputFile, batch=False):
 
     outFileNamePDF = outFileName.replace('.root', '.pdf')
     cEff.SaveAs(outFileNamePDF)
+    infile.Close()
+
+
+def compute_cent_diff_eff(config, inputFile, batch=False):
+    '''
+    Method to compute centrality-differential efficiency from input file
+
+    Parameters
+    ----------
+    - config_file: configuration file
+    - inputFile: input file with histograms
+    - batch: run in batch mode
+    '''
+
+    if config['projections'].get('CentDiffBinsMCYieldsStep', False) is False:
+        return
+
+    #_____________________________________________________________________________________
+    # Set batch mode
+    gROOT.SetBatch(batch)
+
+    #_____________________________________________________________________________________
+    # Load input files
+    infile = ROOT.TFile.Open(inputFile)
+    ptBins = config['ptbins']
+    nPtBins = len(ptBins)
+
+    out_file = inputFile.replace('projs', 'effs').replace('proj', 'eff_cent_diff')
+    outFile = TFile(out_file, 'recreate')
+    #_____________________________________________________________________________________
+    # Loop over ptBins
+    for iPt, (ptMin, ptMax) in enumerate(zip(ptBins[:-1], ptBins[1:])):
+        ## get input histograms, adjustments needed for reflections?
+        pt_label = f'pt_{int(ptMin*10)}_{int(ptMax*10)}'
+        infile.cd(pt_label)
+
+        # Retrieve centrality differential yields
+        hRecoPromptCentDiff = infile.Get(f'{pt_label}/hCentDiffYieldsRecoPrompt')
+        hRecoPromptCentDiff.SetTitle(';Centrality (%);Prompt Efficiency')
+        hRecoFDCentDiff     = infile.Get(f'{pt_label}/hCentDiffYieldsRecoFD')
+        hRecoFDCentDiff.SetTitle(';Centrality (%);Feed-down Efficiency')
+        hGenPromptCentDiff  = infile.Get(f'{pt_label}/hCentDiffYieldsGenPrompt')
+        hGenFDCentDiff      = infile.Get(f'{pt_label}/hCentDiffYieldsGenFD')
+
+        # Compute efficiencies
+        hRecoPromptCentDiff.Divide(hGenPromptCentDiff)
+        hRecoFDCentDiff.Divide(hGenFDCentDiff)
+
+        outFile.mkdir(pt_label)
+        outFile.cd(pt_label)
+        hRecoPromptCentDiff.Write('hCentDiffEffPrompt')
+        hRecoFDCentDiff.Write('hCentDiffEffFD')
+
+    outFile.Close()
+    infile.Close()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Arguments")
@@ -169,6 +225,12 @@ if __name__ == "__main__":
         config = yaml.load(ymlconfig, yaml.FullLoader)
 
     compute_eff(
+            config=config,
+            inputFile=args.infileName,
+            batch=args.batch
+        )
+
+    compute_cent_diff_eff(
             config=config,
             inputFile=args.infileName,
             batch=args.batch

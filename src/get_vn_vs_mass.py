@@ -133,6 +133,7 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
         logger('More than 16 pt bins not supported for full fit canvas. Skip creating it.', level='WARNING')
 
     SgnFunc, BkgFunc, BkgFuncVn, degPol = [], [], [], []
+    hVnBkgCoeffs = [[] for iPt in range(nPtBins)]
     for iPt, (bkgStr, sgnStr, bkgVnStr) in enumerate(zip(BkgFuncStr, SgnFuncStr, BkgFuncVnStr)):
         degPol.append(-1)
         if bkgStr == 'kExpo':
@@ -157,10 +158,20 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
             logger(f'ERROR: only kExpo, kLin, kPol2, kPol3, kPol4, kPow, and kPowEx background functions supported. Exit.', level='ERROR')
         if bkgVnStr == 'kExpo':
             BkgFuncVn.append(InvMassFitter.kExpo)
+            hVnBkgCoeffs[iPt].append(TH1F("hVnBkgCoeff0", "hVnBkgCoeff0", nPtBins, ptBinsArr))
+            hVnBkgCoeffs[iPt].append(TH1F("hVnBkgCoeff1", "hVnBkgCoeff1", nPtBins, ptBinsArr))
+        elif bkgVnStr == 'kConst':
+            BkgFuncVn.append(InvMassFitter.kNoBk)
+            hVnBkgCoeffs[iPt].append(TH1F("hVnBkgCoeff0", "hVnBkgCoeff0", nPtBins, ptBinsArr))
         elif bkgVnStr == 'kLin':
             BkgFuncVn.append(InvMassFitter.kLin)
+            hVnBkgCoeffs[iPt].append(TH1F("hVnBkgCoeff0", "hVnBkgCoeff0", nPtBins, ptBinsArr))
+            hVnBkgCoeffs[iPt].append(TH1F("hVnBkgCoeff1", "hVnBkgCoeff1", nPtBins, ptBinsArr))
         elif bkgVnStr == 'kPol2':
             BkgFuncVn.append(InvMassFitter.kPol2)
+            hVnBkgCoeffs[iPt].append(TH1F("hVnBkgCoeff0", "hVnBkgCoeff0", nPtBins, ptBinsArr))
+            hVnBkgCoeffs[iPt].append(TH1F("hVnBkgCoeff1", "hVnBkgCoeff1", nPtBins, ptBinsArr))
+            hVnBkgCoeffs[iPt].append(TH1F("hVnBkgCoeff2", "hVnBkgCoeff2", nPtBins, ptBinsArr))
         else:
             logger('Only kExpo, kLin, and kPol2 background functions supported for vn. Exit.', level='ERROR')
         if sgnStr == 'kGaus':
@@ -417,6 +428,11 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
             gVnSimFit.SetPointError(iPt, (ptMax-ptMin)/2, (ptMax-ptMin)/2, vnResults['vnUnc'], vnResults['vnUnc'])
             gVnUnc.SetPoint(iPt, (ptMin+ptMax)/2, vnResults['vnUnc'])
             gVnUnc.SetPointError(iPt, (ptMax-ptMin)/2, (ptMax-ptMin)/2, 1.e-20, 1.e-20)
+            hRawYieldsSoverBSimFit.SetBinContent(iPt+1, vnResults['ry']/vnResults['bkg'])
+
+            for bkgHisto, bkgParVal, bkgParErr in zip(hVnBkgCoeffs[iPt], vnResults['bkgPars'], vnResults['bkgParsUncs']):
+                bkgHisto.SetBinContent(iPt+1, bkgParVal)
+                bkgHisto.SetBinError(iPt+1, bkgParErr)
 
             fTotFuncMass.append(vnResults['fTotFuncMass'])
             fTotFuncVn.append(vnResults['fTotFuncVn'])
@@ -429,7 +445,7 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
             SetObjectStyle(fBkgFuncMass[iPt], color=kOrange+1, linestyle=9, linewidth=2)
             SetObjectStyle(fBkgFuncVn[iPt], color=kOrange+1, linestyle=7, linewidth=2)
             SetObjectStyle(fTotFuncVn[iPt], color=kAzure+4, linewidth=3)
-            
+
             if secPeak:
                 hMeanSecPeakFitMass.SetBinContent(iPt+1, vnResults['secPeakMeanMass'])
                 hMeanSecPeakFitMass.SetBinError(iPt+1, vnResults['secPeakMeanMassUnc'])
@@ -445,17 +461,16 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
                                                vnResults['vnSecPeakUnc'])
                 gVnUncSecPeak.SetPoint(iPt, (ptMin+ptMax)/2, vnResults['vnSecPeakUnc'])
                 gVnUncSecPeak.SetPointError(iPt, (ptMax-ptMin)/2, (ptMax-ptMin)/2, 1.e-20, 1.e-20)
-                
                 fMassSecPeakFunc.append(vnResults['fMassSecPeakFunc'])
                 fVnSecPeakFunc.append(vnResults['fVnSecPeakFunct'])
-                SetObjectStyle(fMassSecPeakFunc[-1], fillcolor=kGreen+1, fillstyle=1000, linewidth=0, fillalpha=0.3)   
-                
+                SetObjectStyle(fMassSecPeakFunc[-1], fillcolor=kGreen+1, fillstyle=1000, linewidth=0, fillalpha=0.3)
+
             if useRefl:
                 hRefl.append(vnResults['fMassRflFunc'])
                 fMassBkgRflFunc.append(vnResults['fMassBkgRflFunc'])
                 SetObjectStyle(hRefl[iPt], fillcolor=kGreen+1, fillstyle=1000, linewidth=0, fillalpha=0.3)
                 SetObjectStyle(fMassBkgRflFunc[iPt], color=kRed+1, linestyle=7, linewidth=2)
-            
+
             if configfit.get('DrawVnComps'):
                 fVnCompFuncts.append(vnResults['fVnCompsFuncts'])
 
@@ -638,6 +653,8 @@ def get_vn_vs_mass(fitConfigFileName, inFileName, batch, isMultitrial):
             fSgnFuncMass[ipt].Write(f'fSgnFuncMass_pt{ptmin*10:.0f}_{ptmax*10:.0f}')
             fBkgFuncMass[ipt].Write(f'fBkgFuncMass_pt{ptmin*10:.0f}_{ptmax*10:.0f}')
             fBkgFuncVn[ipt].Write(f'fBkgFuncVn_pt{ptmin*10:.0f}_{ptmax*10:.0f}')
+            for bkgHisto in hVnBkgCoeffs[ipt]:
+                bkgHisto.Write(f'{bkgHisto.GetName()}_pt{ptmin*10:.0f}_{ptmax*10:.0f}')
         except:
             logger(f'Fit function for pt {ptmin*10:.0f}-{ptmax*10:.0f} not available. Skipping.', level='WARNING')
 
