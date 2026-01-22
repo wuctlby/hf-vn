@@ -4,7 +4,7 @@ import yaml
 import argparse
 import os
 import numpy as np
-from ROOT import TFile, TCanvas, TH1F, TLegend, TEfficiency, gROOT  # pylint: disable=import-error,no-name-in-module
+from ROOT import TFile, TCanvas, TH1F, TLegend, gROOT  # pylint: disable=import-error,no-name-in-module
 import sys
 sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/../utils")
 from StyleFormatter import SetGlobalStyle, SetObjectStyle
