@@ -341,7 +341,7 @@ if __name__ == "__main__":
                     hCentDiffYieldsGenFD = TH1F("hCentDiffYieldsGenFD", ";Centrality (%);Yield", len(centBins)-1, np.asarray(centBins, 'd'))
                     for i_cent_bin, (cent_min, cent_max) in enumerate(zip(centBins[:-1], centBins[1:])):
                         cent_label = f'cent_{int(cent_min)}_{int(cent_max)}'
-                        outfile.mkdir(f"{pt_label}/{cent_label}")
+                        make_dir_root_file(f"{pt_label}/{cent_label}", outfile)
                         outfile.cd(f"{pt_label}/{cent_label}")
                         for key, i_sparse in sparses_reco.items():
                             i_sparse.GetAxis(axes[key]['Cent']).SetRangeUser(cent_min, cent_max)

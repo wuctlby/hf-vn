@@ -421,11 +421,11 @@ if __name__ == "__main__":
     # ------------------ Produce Figures ------------------
     # Weighted vs Arithmetic Resolution
     reso_syst_figure(pt_bins, avg_resos, reference_reso, syst_unc,
-                     f"{config['outdir']}/cutvar_{config['suffix']}_combined/syst/reso/reso_comparison.pdf")
+                     f"{config['outdir']}/cutvar_{config['suffix']}_combined/syst/reso/reso_syst.pdf")
 
     # Raw Yields vs Centrality
     ry_vs_cent_figure(pt_bins, cent_intervals, pt_bins_yields,
-                      f"{config['outdir']}/cutvar_{config['suffix']}_combined/syst/reso/ry_vs_cent_comparison.pdf")
+                      f"{config['outdir']}/cutvar_{config['suffix']}_combined/syst/reso/reso_syst_ry_vs_cent.pdf")
 
     logger("All figures produced successfully", "INFO")
 

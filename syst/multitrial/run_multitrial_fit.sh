@@ -56,20 +56,21 @@ export -f generate_cutset
 export -f get_v2_vs_fracs
 export dir  # make sure $dir is visible inside the function
 
-export n_parallel=40
-export path_to_src="/home/mdicosta/alice/hf-vn/"
-export config_modifies="/home/mdicosta/DFlowOO/SP_bdt_peripheral_pbpb/020/syst_multitrial_simfit.yml"
-export config_default="/home/mdicosta/DFlowOO/SP_bdt_peripheral_pbpb/020/config_020.yml"
-export output_dir="/home/mdicosta/DFlowOO/SP_bdt_peripheral_pbpb/020/cutvar_020_combined"
+export n_parallel=30
+export home_dir="/home/mdicosta/"
+export path_to_src="$home_dir/alice/hf-vn/"
+export config_modifies_fit="$home_dir/DFlowOO/SP_bdt_OO/020_correct_ev_sels/syst_multitrial_simfit.yml"
+export config_default="$home_dir/DFlowOO/SP_bdt_OO/020_correct_ev_sels/config_020_remove_outliars.yml"
+export output_dir="$home_dir/DFlowOO/SP_bdt_OO/020_correct_ev_sels/cutvar_020_remove_outliars_combined"
 export do_cms_fits=false
 export do_compile_fitter=false
-export do_cutset_generation=false
-export do_projections=false
-export do_sim_fits=false
-export do_v2_vs_frac=false
+export do_cutset_generation=true
+export do_projections=true
+export do_sim_fits=true
+export do_v2_vs_frac=true
 export produce_plots=true
 
-mkdir -p "$output_dir/syst/multitrial"
+mkdir -p "$output_dir/syst/multitrial/fit"
 
 # Sanity check
 if [ "$do_cms_fits" = true ] && [ "$do_sim_fits" = true ]; then
@@ -79,13 +80,13 @@ fi
 
 if [ "$do_cutset_generation" = true ]; then
     # Generate YAML file list with indices
-    python3 $path_to_src/syst/multitrial/make_configs_multitrial.py $config_default -m $config_modifies -o $output_dir > "$output_dir/syst/multitrial/log_make_cutsets.txt" 2>&1
+    python3 $path_to_src/syst/multitrial/make_configs_multitrial.py $config_default -m $config_modifies_fit -fm -o $output_dir > "$output_dir/syst/multitrial/fit/log_make_cutsets.txt" 2>&1
     echo "Yaml files generated!"
 fi
 
 if [ "$do_compile_fitter" = true ]; then
     echo "Compiling InvMassFitter and VnVsMassFitter ..."
-    rootcling -f $path_to_src/invmassfitter/vnfitter_dict.cxx -c /home/mdicosta/alice/hf-vn/invmassfitter/InvMassFitter.h /home/mdicosta/alice/hf-vn/invmassfitter/VnVsMassFitter.h /home/mdicosta/alice/hf-vn/invmassfitter/LinkDefVnFitter.h
+    rootcling -f $path_to_src/invmassfitter/vnfitter_dict.cxx -c $home_dir/alice/hf-vn/invmassfitter/InvMassFitter.h $home_dir/alice/hf-vn/invmassfitter/VnVsMassFitter.h $home_dir/alice/hf-vn/invmassfitter/LinkDefVnFitter.h
 
     echo "Compiling fitter once for every trial ..."
     g++ -shared -fPIC `root-config --cflags --libs` \
@@ -94,7 +95,7 @@ if [ "$do_compile_fitter" = true ]; then
     echo "Compilation done!"
 fi
 
-pt_dirs=($(ls -d "$output_dir"/syst/multitrial/pt_*))
+pt_dirs=($(ls -d "$output_dir"/syst/multitrial/fit/pt_*))
 
 # Find YAML files, sort numerically by trial number, one per line
 for dir in "${pt_dirs[@]}"; do
@@ -135,7 +136,7 @@ for dir in "${pt_dirs[@]}"; do
     fi
 done
 
-pt_dirs=("$output_dir"/syst/multitrial/pt_*)
+pt_dirs=("$output_dir"/syst/multitrial/fit/pt_*)
 
 if [ "$do_cms_fits" = true ]; then
     log_file_fits="$dir/log_yieldfits.txt"
@@ -168,9 +169,28 @@ if [ "$do_v2_vs_frac" = true ]; then
     done
 fi
 
-# --- Produce final plots ---
+# --- Evaluate systematics and produce final plots ---
+export max_chi2=10
+export min_signif=5
+export max_signif=1000
+export force_prompt_enhanced=false
 if [ "$produce_plots" = true ]; then
     echo "Producing final systematic plots ..."
-    python3 $path_to_src/syst/multitrial/produce_multitrial_syst_plots.py "$config_default" "$output_dir" > "$output_dir/syst/multitrial/log_produce_plots.txt" 2>&1
+    mkdir -p "$output_dir/syst/multitrial/fit/summary"
+    cmd=(
+        python3 "$path_to_src/syst/multitrial/produce_fit_multitrial_syst_plots.py"
+        "$config_default"
+        "$output_dir"
+        --multitrial_type fit
+        --max_chi2 "$max_chi2"
+        --min_signif "$min_signif"
+        --max_signif "$max_signif"
+    )
+
+    if [ "$force_prompt_enhanced" = "true" ]; then
+        cmd+=(--force_prompt_enhanced)
+    fi
+
+    "${cmd[@]}" > "$output_dir/syst/multitrial/fit/summary/log_produce_plots.txt" 2>&1
     echo "Final plots produced!"
 fi
