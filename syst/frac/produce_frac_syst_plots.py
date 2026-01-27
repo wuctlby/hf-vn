@@ -38,6 +38,18 @@ def get_rms_shift(histsdeltav2):
 
     return gsyst
 
+def get_division_panels(nplots):
+    if nplots <= 6:
+        return 3, 2
+    if nplots <= 8:
+        return 4, 2
+    if nplots == 9:
+        return 3, 3
+    if nplots == 10:
+        return 5, 2
+    else:
+        logger(f'Number of plots {nplots} too high, defaulting to 4x4 grid', level='FATAL')
+
 
 def compute_syst(infiles, outputdir, suffix):
     #______________________________________________________________________________________
@@ -88,10 +100,8 @@ def compute_syst(infiles, outputdir, suffix):
     gsyst_fd = get_rms_shift(hdeltav2_fd)
 
     canv_fFD = TCanvas('canv', 'canv', 1400, 800)
-    if len(gv2vsfrac[labels[0]]) <= 6:
-        canv_fFD.Divide(3, 2)
-    else:
-        canv_fFD.Divide(5, 2)
+    n_panels_x, n_panels_y = get_division_panels(len(gv2vsfrac[labels[0]]))
+    canv_fFD.Divide(n_panels_x, n_panels_y)
 
     legv2 = TLegend(0.6, 0.6, 0.9, 0.9)
     legv2.SetBorderSize(0)

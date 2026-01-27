@@ -20,7 +20,15 @@ TH1.AddDirectory(False)
 
 def data_driven_frac(outputDir, iFile, hEffPrompt, hEffFD, \
                      hPromptFrac, hFDFrac, hPromptFracCorr, hFDFracCorr, \
-                     hCorrYieldPrompt, hCorrYieldFD, hCovPromptPrompt, hCovPromptFD, hCovFDFD):
+                     hCorrYieldPrompt, hCorrYieldFD, hCovPromptPrompt, hCovPromptFD, hCovFDFD,
+                     multitrial_dir=None):
+
+    if multitrial_dir is not None:
+        pt_min_times_10, pt_max_times_10 = multitrial_dir.split('_')[-2:]
+        pt_min = float(pt_min_times_10) / 10.
+        pt_max = float(pt_max_times_10) / 10.
+        pt_bin_ref = hEffPrompt.GetXaxis().FindBin((pt_min + pt_max) / 2.)
+
     for iPt in range(hEffPrompt.GetNbinsX()):
         ptMin = hEffPrompt.GetBinLowEdge(iPt+1)
         ptMax = ptMin+hEffPrompt.GetBinWidth(iPt+1)
@@ -30,11 +38,14 @@ def data_driven_frac(outputDir, iFile, hEffPrompt, hEffFD, \
         effAccPromptUnc = hEffPrompt.GetBinError(iPt+1)
         effAccFDUnc = hEffFD.GetBinError(iPt+1)
 
-        corrYieldPrompt = hCorrYieldPrompt.GetBinContent(iPt+1)
-        corrYieldFD = hCorrYieldFD.GetBinContent(iPt+1)
-        covPromptPrompt = hCovPromptPrompt.GetBinContent(iPt+1)
-        covPromptFD = hCovPromptFD.GetBinContent(iPt+1)
-        covFDFD = hCovFDFD.GetBinContent(iPt+1)
+        if multitrial_dir is None:
+            pt_bin_ref = iPt + 1
+
+        corrYieldPrompt = hCorrYieldPrompt.GetBinContent(pt_bin_ref)
+        corrYieldFD = hCorrYieldFD.GetBinContent(pt_bin_ref)
+        covPromptPrompt = hCovPromptPrompt.GetBinContent(pt_bin_ref)
+        covPromptFD = hCovPromptFD.GetBinContent(pt_bin_ref)
+        covFDFD = hCovFDFD.GetBinContent(pt_bin_ref)
 
         fracPromptFD, uncFracPromptFD = GetPromptFDFractionCutSet(effAccPrompt, effAccFD, corrYieldPrompt, corrYieldFD,
                                                                   covPromptPrompt, covFDFD, covPromptFD)
@@ -105,7 +116,7 @@ def data_driven_frac(outputDir, iFile, hEffPrompt, hEffFD, \
     cEff.Write()
     outFile.Close()
 
-def main_data_driven_frac(cutVarFile, effPath, batch=False, outputDir=''):
+def main_data_driven_frac(cutVarFile, effPath, batch=False, outputDir='', multitrial_dir=None):
 
     if batch:
         gROOT.SetBatch()
@@ -129,7 +140,8 @@ def main_data_driven_frac(cutVarFile, effPath, batch=False, outputDir=''):
             hCorrYieldFD,
             hCovPromptPrompt,
             hCovPromptFD,
-            hCovFDFD
+            hCovFDFD,
+            multitrial_dir
         )
 
 
@@ -141,6 +153,8 @@ if __name__ == "__main__":
                         help="path to the efficiency file")
     parser.add_argument("--outputdir", "-o", metavar="text", default='',
                         help="output directory (used for systematics)", required=False)
+    parser.add_argument("--multitrial_dir", '-md', metavar="dummy_folder",
+                        help="path to the multitrial directory", required=False)
     parser.add_argument("--batch", '-b', action='store_true',
                         help="run in batch mode")
     args = parser.parse_args()
@@ -149,5 +163,6 @@ if __name__ == "__main__":
         cutVarFile=args.cutVarFile,
         effPath=args.effPath,
         batch=args.batch,
-        outputDir=args.outputdir
+        outputDir=args.outputdir,
+        multitrial_dir= None if args.multitrial_dir == "dummy_folder" else args.multitrial_dir
     )

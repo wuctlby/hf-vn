@@ -318,10 +318,14 @@ if __name__ == "__main__":
 
 	operations = config['operations']
 	nworkers = args.workers
-	if args.correlated:
-		outdir = f"{config['outdir']}/cutvar_{config['suffix']}" + "_correlated"
-	else:
-		outdir = f"{config['outdir']}/cutvar_{config['suffix']}" + "_combined"
+	outdir = config['outdir']
+ 
+	# For bdt bkg cut scan
+	if "bkg_" not in config['outdir']:
+		if args.correlated:
+			outdir = f"{config['outdir']}/cutvar_{config['suffix']}" + "_correlated"
+		else:
+			outdir = f"{config['outdir']}/cutvar_{config['suffix']}" + "_combined"
 	os.system(f"mkdir -p {outdir}")
 
 	# copy the configuration file
