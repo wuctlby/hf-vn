@@ -4,6 +4,22 @@ from ROOT import TFile # pyright: ignore # type: ignore
 sys.path.append("./")
 from utils import logger, get_centrality_bins
 
+def get_pt_preprocessed_files(config, pt_label):
+    """ Load preprocessed files for a given pt bin label from the preprocess output files.
+    Args:
+        config (dict): Configuration dictionary.
+        pt_label (str): Pt bin label to load files for.
+    Returns:
+        infile_prep_data (str): Path to preprocessed data file.
+        infile_prep_mc (str): Path to preprocessed MC file.
+    """
+
+    prep_dir = config.get("outdirPrep", config["outdir"])
+    infile_prep_data = f"{prep_dir}/preprocess/{pt_label}/Data/AnalysisResults_{pt_label}.root"
+    infile_prep_mc = f"{prep_dir}/preprocess/{pt_label}/MC/AnalysisResults_{pt_label}.root"
+
+    return infile_prep_data, infile_prep_mc
+
 def get_pt_preprocessed_sparses(config, pt_label):
     """ Load preprocessed sparses for a given pt bin label from the preprocess output files.
     Args:

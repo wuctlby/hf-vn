@@ -70,7 +70,7 @@ class RawYieldFitter:
             self.x_axis_label = r"$M(\mathrm{\pi^+ K^- \pi^+})\ \mathrm{(GeV/}c^2)$"
             self.sgn_main_label = "DplusToPiKPi"
             self.particle_pdg = 411
-        elif particle_name == "D0":
+        elif particle_name == "D0" or particle_name == "Dzero":
             self.x_axis_label = r"$M(\mathrm{K^- \pi^+})\ \mathrm{(GeV/}c^2)$"
             self.sgn_main_label = "D0ToKPi"
             self.particle_pdg = 421
@@ -253,7 +253,7 @@ class RawYieldFitter:
     def get_particle_mass(self, part_name):
         if part_name == 'Dplus' or part_name == 'DplusToPiKPi':
             return 1.869
-        elif part_name == 'D0':
+        elif part_name == 'D0' or part_name == 'Dzero' or part_name == 'D0ToKPi':
             return 1.865
         elif part_name == 'Ds':
             return 1.968
@@ -525,8 +525,9 @@ class RawYieldFitter:
             logger("Pulls plot for RooFit MC prefit not implemented yet", "WARNING")
 
     def plot_fit(self, logy, show_extra_info, loc=None, path=None, out_file=None):
-        logger(f"\nPlotting fit to {path}", "INFO")
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        if path is not None:
+            logger(f"\nPlotting fit to {path}", "INFO")
+            os.makedirs(os.path.dirname(path), exist_ok=True)
         if self.minimize_flarefly:
             fig, axs = self.fitter.plot_mass_fit(style="ATLAS",
                                                 figsize=(8, 8),
@@ -535,7 +536,8 @@ class RawYieldFitter:
                                                 logy=logy,
                                                 extra_info_loc=loc if loc is not None else ["lower right", "lower left"]
                                                 )
-            fig.savefig(path, dpi=300, bbox_inches="tight")
+            # fig.savefig(path, dpi=300, bbox_inches="tight")
+            return fig
         else:
             frame = self.roofit_fit_var.frame(ROOT.RooFit.Title("Invariant mass fit"))
             self.data.plotOn(frame, ROOT.RooFit.Range("fit"))
@@ -571,8 +573,8 @@ class RawYieldFitter:
                 print(f"Writing fit canvas to output file with name fit_canvas_{self.fit_name}")
                 out_file.cd()
                 canvas.Write(f"fit_canvas_{self.fit_name}")
-
-        logger(f"Plot saved to {path}", "INFO")
+        if path is not None:
+            logger(f"Plot saved to {path}", "INFO")
 
     def plot_raw_residuals(self):
         os.makedirs(os.path.dirname(path), exist_ok=True)
