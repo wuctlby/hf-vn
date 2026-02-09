@@ -1,12 +1,11 @@
 operations:
-    preprocess_data: False
-    preprocess_mc: False
-    make_yaml: False
-    proj_data: False
-    proj_mc: False
-    efficiencies: False
-    get_vn_vs_mass: False
-    do_cut_variation: False
+    preprocess: true
+    make_yaml: true
+    proj_data: true
+    proj_mc: true
+    efficiencies: true
+    get_vn_vs_mass: true
+    do_cut_variation: true
     data_driven_fraction: true
     get_v2_vs_frac: true
 

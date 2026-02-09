@@ -6,7 +6,7 @@ import numpy as np
 file_mass_path = '/home/wuct/ALICE/reps/hf-vn-working/correlations/PostProcessing/InvMass/InvMassVsPt_010_.root'
 file_v2Delta_path = '/home/wuct/ALICE/reps/hf-vn-working/correlations/PostProcessing/Output_CorrelationFitting_010_negDeta_Root/CorrPhiD0_FinalPlots.root'
 json_path = '/home/wuct/ALICE/reps/hf-vn-working/correlations/PostProcessing/config_CorrAnalysis_v2_010_negDeta.json'
-v2_delta_hh=0.7
+v2_delta_hh=0.07
 
 def get_mass_distribution(MassVsPt, pt_min, pt_max):
     binMin = MassVsPt.GetYaxis().FindBin(pt_min*1.0001)
@@ -59,7 +59,7 @@ for indexPtAssoc, (ptAssocMin, ptAssocMax) in enumerate(zip(ptAssocMins, ptAssoc
             errorYV2Delta = hV2Delta.GetBinError(indexPt)
             v2_mass_dist.SetBinContent(indexMass, valueV2Delta)
             v2_mass_dist.SetBinError(indexMass, errorYV2Delta)
-        v2_mass_dist.Scale(1/ROOT.TMath.Sqrt(v2_delta_hh))
+        v2_mass_dist.Scale(1/v2_delta_hh)
         v2_mass_distributions.append(v2_mass_dist)
     # save histograms
     os.makedirs("/home/wuct/ALICE/reps/hf-vn-working/correlations/PostProcessing/Output_MassVsV2", exist_ok=True)

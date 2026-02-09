@@ -1028,10 +1028,15 @@ TH2D* DhCorrelationExtraction::GetCorrelHisto(Int_t SEorME, Int_t pool, Double_t
   // possibility to select a certain eta region
   Int_t binExtEtaMin = (Int_t)hSparse->GetAxis(3)->FindBin(fDeltaEtaMin + 0.0001);
   Int_t binExtEtaMax = (Int_t)hSparse->GetAxis(3)->FindBin(fDeltaEtaMax - 0.0001);
+  std::cout << "fDeltaEtaMin: " << fDeltaEtaMin << std::endl;
+  std::cout << "binExtEtaMin: " << binExtEtaMin << std::endl;
+  std::cout << hSparse->GetAxis(3)->GetNbins() << std::endl;
   if (binExtEtaMax > hSparse->GetAxis(3)->GetNbins())
     binExtEtaMax = hSparse->GetAxis(3)->GetNbins();
   if (binExtEtaMin < 1)
     binExtEtaMin = 1;
+  std::cout << "binExtEtaMin after check: " << binExtEtaMin << std::endl;
+  std::cout << "binExtEtaMax after check: " << binExtEtaMax << std::endl;
   hSparse->GetAxis(0)->SetRange(binExtPoolMin, binExtPoolMax);         // axis0: pool bin
   hSparse->GetAxis(1)->SetRange(binExtPtCandMin, binExtPtCandMax);     // axis1: ptCand
   hSparse->GetAxis(2)->SetRange(binExtPtHadMin, binExtPtHadMax);       // axis2: ptHad

@@ -165,7 +165,8 @@ void FitCorrel(const TString cfgFileName = "config_CorrAnalysis.json")
   bool refl = false;
 
   // Input file
-  TFile* inFile = new TFile(inFileName.Data());
+  // TFile* inFile = new TFile(inFileName.Data());
+  TFile* inFile = new TFile("/home/wuct/ALICE/reps/hf-vn-working/correlations/PostProcessing/Output_k020/CorrelExtract_6080_negDeta/CorrelationsResults/CorrelationsResults.root");
   // TFile* inFileSystematicErrors = new TFile("OutputSystematicUncertainties/SystematicUncertaintesAngCorrMerged.root");
   // TFile* inFileFitSystematicErrors = new TFile("OutputSystematicUncertainties/SystematicUncertaintesFitPhysObsMerged.root");
 
@@ -197,11 +198,11 @@ void FitCorrel(const TString cfgFileName = "config_CorrAnalysis.json")
     for (int iBinPtCand = 0; iBinPtCand < nBinsPtCand; iBinPtCand++) {
       for (int iBinPtHad = 0; iBinPtHad < nBinsPtHad; iBinPtHad++) {
         if (isReflected) {
-          hCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass] = reinterpret_cast<TH1D*>(inFile->Get(Form("hCorrectedCorrReflected_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMassBin%d", binsPtCandIntervals[iBinPtCand], binsPtCandIntervals[iBinPtCand + 1], binsPtHadIntervals[iBinPtHad], binsPtHadIntervals[iBinPtHad + 1], iBinInvMass+1)));
+          hCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass] = reinterpret_cast<TH1D*>(inFile->Get(Form("PtCandBin_%0.f_%0.f/PtHadBin_4_50/InvMassBin_%0.f_%0.f/hCorrectedCorrel_Reflected_%d", binsPtCandIntervals[iBinPtCand], binsPtCandIntervals[iBinPtCand + 1], binsInvMassIntervals[iBinInvMass]*1000, binsInvMassIntervals[iBinInvMass + 1]*1000, iBinInvMass+1)));
         } else {
-          hCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass] = dynamic_cast<TH1D*>(inFile->Get(Form("hCorrectedCorr_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMassBin%d", binsPtCandIntervals[iBinPtCand], binsPtCandIntervals[iBinPtCand + 1], binsPtHadIntervals[iBinPtHad], binsPtHadIntervals[iBinPtHad + 1], iBinInvMass+1)));
+          hCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass] = reinterpret_cast<TH1D*>(inFile->Get(Form("PtCandBin_%0.f_%0.f/PtHadBin_4_50/InvMassBin_%0.f_%0.f/hCorrectedCorr", binsPtCandIntervals[iBinPtCand]*10, binsPtCandIntervals[iBinPtCand + 1]*10, binsInvMassIntervals[iBinInvMass]*1000, binsInvMassIntervals[iBinInvMass + 1]*1000)));
           if (!hCorrPhi[iBinPtCand][iBinPtHad][iBinInvMass]) {
-            printf("Not found Fitting histogram: hCorrectedCorr_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMassBin%d\n", binsPtCandIntervals[iBinPtCand], binsPtCandIntervals[iBinPtCand + 1], binsPtHadIntervals[iBinPtHad], binsPtHadIntervals[iBinPtHad + 1], iBinInvMass+1);
+            printf("Not found Fitting histogram: PtCandBin_%0.f_%0.f/PtHadBin_4_50/InvMassBin_%0.f_%0.f/hCorrectedCorr\n", binsPtCandIntervals[iBinPtCand], binsPtCandIntervals[iBinPtCand + 1], binsInvMassIntervals[iBinInvMass]*1000, binsInvMassIntervals[iBinInvMass + 1]*1000);
             continue;
           }
         }

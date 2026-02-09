@@ -73,7 +73,7 @@ fi
 # .q
 # EOFc
 
-# # Correlation extraction
+# Correlation extraction
 # root -b -l <<EOF &> Output_AnalysisExecution/stdoutExtractCorrel_010_negDeta.log
 # Printf("[INFO] EXTRACT CORRELATIONS");
 # .L DhCorrelationExtraction.cxx+

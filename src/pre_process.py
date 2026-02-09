@@ -199,6 +199,7 @@ def pre_process_data_mc(config):
 
     bkg_maxs = config['preprocess']['bkg_cuts']
     max_workers = config['preprocess']['workers'] # hyperparameter
+    max_workers = 1
     if config["operations"]["preprocess_data"] and config['preprocess'].get('data'):
         logger("##### Skimming Data #####")
         ### Centrally cut on centrality and max of bkg scores

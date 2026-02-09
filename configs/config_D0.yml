@@ -1,18 +1,18 @@
 operations:
-    preprocess_data: False
-    preprocess_mc: False
+    preprocess_data: true
+    preprocess_mc: true
     make_yaml: true
     proj_data: true
-    proj_mc: False
-    efficiencies: False
+    proj_mc: true
+    efficiencies: true
     get_vn_vs_mass: true
-    do_cut_variation: False
-    data_driven_fraction: False
-    get_v2_vs_frac: False
+    do_cut_variation: true
+    data_driven_fraction: true
+    get_v2_vs_frac: true
 
-outdir: '/home/wuct/MetaData/DATA/OO/apass2/sp/result/flook_corrected_evt_sels'
-outdirPrep: '/home/wuct/MetaData/DATA/OO/apass2/sp/result/flook_corrected_evt_sels' 
-suffix: 'flook_corrected_evt_sels'
+outdir: '/home/wuct/MetaData/DATA/OO/apass2/sp/result/slook_withMC'
+outdirPrep: '/home/wuct/MetaData/DATA/OO/apass2/sp/result/slook_withMC' 
+suffix: 'slook_withMC'
 centrality: 'k010'
 Dmeson: 'Dzero'
 nworkers: 18
@@ -31,19 +31,17 @@ ptbins: [
            7.0,
            8.0,
            10.0,
-           12.0,
-           16.0,
-           24.0
+           12.0
        ]
 
 # cut variation
 cut_variation:
     corr_bdt_cut:
-        bkg_max: [0.01, 0.01, 0.01, 0.01, 0.015, 0.015, 0.03, 0.05, 0.10, 0.15, 0.18, 0.18, 0.30, 0.30, 0.30]
+        bkg_max: [0.008, 0.004, 0.004, 0.004, 0.004, 0.02, 0.02, 0.02, 0.03, 0.03, 0.006, 0.008, 0.01, 0.03, 0.06]
         sig: # the max value is not contained in the range
-            min: [0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.02, 0.02, 0.01, 0.01, 0.01, 0.01, 0.01]
+            min: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.08, 0.1, 0.08, 0.08, 0.06, 0.04]
             max: [0.90, 0.90, 0.90, 0.90, 0.90, 0.90, 0.90, 0.90, 0.90, 0.90, 0.90, 0.90, 0.90, 0.90]
-            step: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+            step: [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.03, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04]
         skip_cuts: [    # index of the specific cuts to skip for each pt bin
                 [18,19,20,21,22,23,24,25], # pt 1
                 [26], # pt 2
@@ -121,7 +119,7 @@ projections:
 preprocess:
     data:
         '2023':
-            files: /home/wuct/MetaData/DATA/OO/apass2/sp/flook_corrected_evt_sels
+            files: /home/wuct/MetaData/DATA/OO/apass2/sp/flook_corrected_evt_sels_pid/FT0c
             resolution: '/home/wuct/MetaData/DATA/OO/apass2/resolution/resosp010.root'
         # Possibility to add more datasets, each with its resolution
         # '2024':
@@ -129,7 +127,7 @@ preprocess:
         #         /home/mdicosta/alice/hf-vn/datasets/Data_Dplus_3050.root
         #     ]
         #     resolution: '/home/mdicosta/alice/hf-vn/datasets/resosp3050l_PASS4_full_PbPb_Reso.root'
-    mc: '/home/mdicosta/alice/hf-vn/datasets/MC_Dplus_3050_vsphi_ptsmear20.root'
+    mc: '/home/wuct/MetaData/DATA/OO/apass2/sp/MC/OO/AnalysisResults.root'
     axes_data: {
         axis_names: ['Mass', 'sp', 'score_bkg', 'score_FD'],
         rebin_factors: [1, 1, 1, 1]

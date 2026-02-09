@@ -643,10 +643,16 @@ void DhCorrelationFitter::SetFitFunction()
 
       case 8: // case 2 Gaus w periodicity + v2 modulation (delta) low mult
 
-      fFit = new TF1("fTotFit", "[0]+[1]*(1 + 2*[2]*TMath::Cos(x)  + 2*[3] *TMath::Cos(2*x) + 2*[4] *TMath::Cos(3*x))", fMinCorr, fMaxCorr);
-      fv1 = new TF1("fv1", "2*[0]*[1]*TMath::Cos(x)", fMinCorr, fMaxCorr);
-      fv2 = new TF1("fv2", "2*[0]*[1]*TMath::Cos(2*x)", fMinCorr, fMaxCorr);
-      fv3 = new TF1("fv3", "2*[0]*[1]*TMath::Cos(3*x)", fMinCorr, fMaxCorr);
+      fFit = new TF1("fTotFit", "[0] + [1]* (1 + 2*[2]*TMath::Cos(x) + 2*[3]*TMath::Cos(2*x) + 2*[4]*TMath::Cos(3*x))", fMinCorr, fMaxCorr);
+      fv1 = new TF1("fv1", "[0]  * 2*[1]*TMath::Cos(x)", fMinCorr, fMaxCorr);
+      fv2 = new TF1("fv2", "[0]  * 2*[1]*TMath::Cos(2*x)", fMinCorr, fMaxCorr);
+      fv3 = new TF1("fv3", "[0]  * 2*[1]*TMath::Cos(3*x)", fMinCorr, fMaxCorr);
+      // fFit = new TF1("fTotFit", "[0] + [1] / 2 / TMath::Pi() * (1 + 2*[2]*TMath::Cos(x) + 2*[3]*TMath::Cos(2*x) + 2*[4]*TMath::Cos(3*x))", fMinCorr, fMaxCorr);
+      // fv1 = new TF1("fv1", "[1]  / 2 / TMath::Pi() * 2*[2]*TMath::Cos(x)", fMinCorr, fMaxCorr);
+      // fv2 = new TF1("fv2", "[1]  / 2 / TMath::Pi() * 2*[3]*TMath::Cos(2*x)", fMinCorr, fMaxCorr);
+      // fv3 = new TF1("fv3", "[1]  / 2 / TMath::Pi() * 2*[4]*TMath::Cos(3*x)", fMinCorr, fMaxCorr);
+      // fv4 = new TF1("fv4", "2*[0]*[1]/2/TMath::Pi()*TMath::Cos(4*x)", fMinCorr, fMaxCorr);
+      // fv5 = new TF1("fv5", "2*[0]*[1]*TMath::Cos(5*x)", fMinCorr, fMaxCorr);
       /*fv4 = new TF1("fv4", "2*[0]*[1]*TMath::Cos(4*x)", fMinCorr, fMaxCorr);
       fv5 = new TF1("fv5", "2*[0]*[1]*TMath::Cos(5*x)", fMinCorr, fMaxCorr);*/
 
@@ -658,7 +664,8 @@ void DhCorrelationFitter::SetFitFunction()
       }
 
       fFit->FixParameter(0, 0.0);
-      fFit->SetParameter(1, fBaseline);
+      // fFit->SetParameter(0, 0.3);
+      fFit->FixParameter(1, fBaseline);
 
       fFit->SetParName(0, "czyam");
       fFit->SetParName(1, "ped");
@@ -1265,9 +1272,9 @@ void DhCorrelationFitter::SetSingleTermsForDrawing(Bool_t draw)
     pvStatTests1->SetBorderSize(0);
     TText *t0, *t1, *t2, *t3, *t4;
     t0 = pvStatTests1->AddText(0., 1.00, Form("#chi^{2}/ndf = %.1f/%d ", fFit->GetChisquare(), fFit->GetNDF()));
-    t2 = pvStatTests1->AddText(0., 0.80, Form("v1 = %.3f#pm%.3f ", fFit->GetParameter("v_{1}"), fFit->GetParError(fFit->GetParNumber("v_{1}"))));
-    t3 = pvStatTests1->AddText(0., 0.65, Form("v2 = %.3f#pm%.3f ", fFit->GetParameter("v_{2} delta"), fFit->GetParError(fFit->GetParNumber("v_{2} delta"))));
-    t4 = pvStatTests1->AddText(0., 0.50, Form("v3 = %.3f#pm%.3f ", fFit->GetParameter("v_{3}"), fFit->GetParError(fFit->GetParNumber("v_{3}"))));
+    t2 = pvStatTests1->AddText(0., 0.80, Form("v1 = %.5f#pm%.5f ", fFit->GetParameter("v_{1}"), fFit->GetParError(fFit->GetParNumber("v_{1}"))));
+    t3 = pvStatTests1->AddText(0., 0.65, Form("v2 = %.5f#pm%.5f ", fFit->GetParameter("v_{2} delta"), fFit->GetParError(fFit->GetParNumber("v_{2} delta"))));
+    t4 = pvStatTests1->AddText(0., 0.50, Form("v3 = %.5f#pm%.5f ", fFit->GetParameter("v_{3}"), fFit->GetParError(fFit->GetParNumber("v_{3}"))));
 
     if (draw) {
       fFit->Draw("same");
