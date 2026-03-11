@@ -30,6 +30,14 @@
 #include <RtypesCore.h>
 #include <vector>
 
+namespace AxisLabels {
+    constexpr const char* kRawYield = "#frac{d^{2}N}{d#Delta#eta d#Delta#phi}";
+
+    constexpr const char* kPerTrigYield = "#frac{1}{N_{trig}} #frac{d^{2}N_{assoc}}{d#Delta#eta d#Delta#phi}";
+
+    constexpr const char* kRawYieldRad = "#frac{d^{2}N}{d#Delta#eta d#Delta#phi} (rad^{-1})";
+}
+
 class DhCorrelationExtraction : public TObject
 {
 
@@ -163,39 +171,40 @@ class DhCorrelationExtraction : public TObject
   /// Getters for the results
   TH2D* GetMassVsPtHist2D() { return fMassVsPt_2D; }
   // final results, debug level 0
-  TH1D* GetCorrectedCorrHisto() { return fCorrectedCorrHisto; }
-  TH1D* GetCorrectedMassPairs() { return fCorrectedMassPairs; }
-  TH1D* GetCorrectedRatioVsDeltaEta() { return fCorrectedRatioVsDeltaEta; }
-  TH1D* GetCorrectedCorrHisto_BaselineSubtr() { return fCorrectedCorrHisto_BaselineSubtr; }
-  TH1D* GetCorrectedCorrHisto_Reflected() { return fCorrectedCorrHisto_Reflected; }
-  TH1D* GetCorrectedCorrHisto_Reflected_BaselineSubtr() { return fCorrectedCorrHisto_Reflected_BaselineSubtr; }
+  TH1D* GetCorrectedCorrel() { return fCorrectedCorrel; }
+  TH1D* GetNormalizedCorrectedCorrel() { return fNormalizedCorrectedCorrel; }
+  TH1D* GetCorrectedPairsMass() { return fCorrectedMassPairs; }
+  TH1D* GetCorrectionRatio() { return fCorrectionRatio; }
+
   // intermediate results, debug level 1
-  TH2D* GetCorrel_SE_2D() { return fCorrel_SE_2D; }
-  TH2D* GetCorrel_ME_2D() { return fCorrel_ME_2D; }
+  TH2D* GetRawCorrel_SE_2D() { return fCorrel_SE_2D; }
+  TH2D* GetRawCorrel_ME_2D() { return fCorrel_ME_2D; }
   TH2D* GetCorrectedCorrel_2D() { return fCorrectedCorrel_2D; }
-  TH1D* GetNonNormalizedCorrHisto() { return fNonNormalizedCorrHisto; }
-  std::vector<TH1D*> GetVecCorrectedRatioVsDeltaEta() { return fVecCorrectedRatioVsDeltaEta; }
-  std::vector<std::vector<TH1D*>> GetVecVecCorrectedMassPairsVsDeltaEta() { return fVecVecCorrectedMassPairsVsDeltaEta; }
-  TH1D* GetBaselineHisto() { return fBaselineHisto; }
-  TH1D* GetBaselineHisto_Reflected() { return fBaselineHisto_Reflected; }
-  TH1D* GetCorrel_PrimaryPart() { return fCorrel_PrimaryPart; }
+  TH1D* GetNormalizedCorrel_ME_2D() { return fNormalizedCorrel_ME_2D; }
+  TH2D* GetOriginalCorrel_SE_2D() { return fOriginalCorrel_SE_2D; }
+  TH2D* GetOriginalCorrel_ME_2D() { return fOriginalCorrel_ME_2D; }
+  TH2D* GetOriginalMassVsDeltaEta_2D() { return fOriginalMassVsDeltaEta_2D; }
+  /*TH1D* GetCorrel_PrimaryPart() { return fCorrel_PrimaryPart; }
   TH1D* GetCorrel_AllPart() { return fCorrel_AllPart; }
   TH1D* GetFracSecondaryPart() { return fFracSecondaryPart; }
-  TH1D* GetCorrectedCorrHisto_Before_SecPart() { return fCorrectedCorrHisto_Before_SecPart; }
+  TH1D* GetCorrectedCorrHisto_Before_SecPart() { return fCorrectedCorrHisto_Before_SecPart; }*/
+
   // original data histograms, debug level 2
-  std::vector<TH2D*> GetVecOriginalCorrel_SE_2D() { return fVecOriginalCorrel_SE_2D; }
-  std::vector<TH2D*> GetVecOriginalCorrel_ME_2D() { return fVecOriginalCorrel_ME_2D; }
-  std::vector<TH2D*> GetVecCorrel_SE_2D() { return fVecCorrel_SE_2D; }
-  std::vector<TH2D*> GetVecCorrel_ME_2D() { return fVecCorrel_ME_2D; }
-  std::vector<TH2D*> GetVecCorrel_ME_norm_2D() { return fVecCorrel_ME_norm_2D; }
-  std::vector<TH2D*> GetVecCorrectedCorrel_2D() { return fVecCorrectedCorrel_2D; }
-  std::vector<TH2D*> GetVecMassPairsVsDeltaEta_2D() { return fVecMassPairsVsDeltaEta_2D; }
-  TH1D* GetOriginalCorrel_PrimaryPart() { return fOriginalCorrel_PrimaryPart; }
-  TH1D* GetOriginalCorrel_AllPart() { return fOriginalCorrel_AllPart; }
+  std::vector<TH2D*> GetPoolVec_OriginalCorrel_SE_2D() { return fVecOriginalCorrel_SE_2D; }
+  std::vector<TH2D*> GetPoolVec_OriginalCorrel_ME_2D() { return fVecOriginalCorrel_ME_2D; }
+  std::vector<TH2D*> GetPoolVec_RawCorrel_SE_2D() { return fVecCorrel_SE_2D; }
+  std::vector<TH2D*> GetPoolVec_RawCorrel_ME_2D() { return fVecCorrel_ME_2D; }
+  std::vector<TH2D*> GetPoolVec_NormalizedCorrel_ME_2D() { return fVecCorrel_ME_norm_2D; }
+  std::vector<TH2D*> GetPoolVec_CorrectedCorrel_2D() { return fVecCorrectedCorrel_2D; }
+  std::vector<TH2D*> GetPoolVec_OriginalMassVsDeltaEta_2D() { return fVecMassVsDeltaEta_2D; }
+  std::vector<TH1D*> GetPoolVec_CorrectedMass() { return fVecVecCorrectedMassPairsVsDeltaEta; }
+  std::vector<TH1D*> GetPoolVec_CorrectionRatio() { return fVecCorrectedRatioVsDeltaEta; }
+  /*TH1D* GetOriginalCorrel_PrimaryPart() { return fOriginalCorrel_PrimaryPart; }
+  TH1D* GetOriginalCorrel_AllPart() { return fOriginalCorrel_AllPart; }*/
 
   /// Histogram style
-  void SetTH1HistoStyle(TH1D*& histo, TString hTitle, TString hXaxisTitle, TString hYaxisTitle, Style_t markerStyle = kFullCircle, Color_t markerColor = kRed + 1, Double_t markerSize = 1.4, Color_t lineColor = kRed + 1, Int_t lineWidth = 3, Float_t hTitleXaxisOffset = 1.0, Float_t hTitleYaxisOffset = 1.0, Float_t hTitleXaxisSize = 0.060, Float_t hTitleYaxisSize = 0.060, Float_t hLabelXaxisSize = 0.060, Float_t hLabelYaxisSize = 0.060, Bool_t centerXaxisTitle = false, Bool_t centerYaxisTitle = false);
-  void SetTH2HistoStyle(TH2D*& histo, TString hTitle, TString hXaxisTitle, TString hYaxisTitle, TString hZaxisTitle, Float_t hTitleXaxisOffset = 1.8, Float_t hTitleYaxisOffset = 1.8, Float_t hTitleZaxisOffset = 1.2, Float_t hTitleXaxisSize = 0.060, Float_t hTitleYaxisSize = 0.060, Float_t hTitleZaxisSize = 0.060, Float_t hLabelXaxisSize = 0.060, Float_t hLabelYaxisSize = 0.060, Float_t hLabelZaxisSize = 0.060, Bool_t centerXaxisTitle = true, Bool_t centerYaxisTitle = true);
+  TH1D* SetTH1HistoStyle(TH1D* histo, TString hTitle, TString hXaxisTitle, TString hYaxisTitle, Style_t markerStyle = kFullCircle, Color_t markerColor = kRed + 1, Double_t markerSize = 1.4, Color_t lineColor = kRed + 1, Int_t lineWidth = 3, Float_t hTitleXaxisOffset = 1.0, Float_t hTitleYaxisOffset = 1.0, Float_t hTitleXaxisSize = 0.060, Float_t hTitleYaxisSize = 0.060, Float_t hLabelXaxisSize = 0.060, Float_t hLabelYaxisSize = 0.060, Bool_t centerXaxisTitle = false, Bool_t centerYaxisTitle = false);
+  TH2D* SetTH2HistoStyle(TH2D* histo, TString hTitle, TString hXaxisTitle, TString hYaxisTitle, TString hZaxisTitle, Float_t hTitleXaxisOffset = 1.8, Float_t hTitleYaxisOffset = 1.8, Float_t hTitleZaxisOffset = 1.2, Float_t hTitleXaxisSize = 0.060, Float_t hTitleYaxisSize = 0.060, Float_t hTitleZaxisSize = 0.060, Float_t hLabelXaxisSize = 0.060, Float_t hLabelYaxisSize = 0.060, Float_t hLabelZaxisSize = 0.060, Bool_t centerXaxisTitle = true, Bool_t centerYaxisTitle = true);
 
  private:
   //Copyable properties-----------------------------------------------------------------------------------------------------//
@@ -205,15 +214,16 @@ class DhCorrelationExtraction : public TObject
   TString fFileNameMass;                 // File name contaning invariant mass output
   TString fFileNameSE;                   // File name contaning Same Event (SE) output
   TString fFileNameME;                   // File name contaning Mixed Event (ME) output
-  TString fFileSecPartName;              // File name contaning secondary particle correction output
   TString fDirNameSE;                    // Directory in the file containing SE output
   TString fDirNameME;                    // Directory in the file containing ME output
-  TString fDirSecPartName;               // Directory in the file containing secondary particle correction output
   TString fMassSparseName;                   // Inv. mass THnSparse name and directory
   TString fCorrelSparseNameSE;               // THnSparse name containing SE
   TString fCorrelSparseNameME;               // THnSparse name containing ME
+  TString fTitleCorrel;                   // Title for correlation histograms
+  /*TString fFileSecPartName;              // File name contaning secondary particle correction output
+  TString fDirSecPartName;               // Directory in the file containing secondary particle correction output
   TString fHistoPrimaryPartName;         // Primary particle histogram (to be used for secondary particle contamination correction)
-  TString fHistoAllPartName;             // All particle histogram (to be used for secondary particle contamination correction)
+  TString fHistoAllPartName;             // All particle histogram (to be used for secondary particle contamination correction)*/
   
   Int_t fNpools;                         // Number of pools used for the ME correction
   Bool_t fDoPoolByPool;                  // Possibility to do the ME correction pool-by-pool (kTRUE) or merging all pools (kFALSE)
@@ -245,44 +255,49 @@ class DhCorrelationExtraction : public TObject
   Int_t fRebinAxisDeltaEta; // Rebin deltaEta axis value
   Int_t fRebinAxisDeltaPhi; // Rebin deltaPhi axis value
 
-  Double_t fNpairs;         // Number of pairs per trigger in a given candidate and hadron pt bin
   Double_t fNpairsError;    // Error on number of pairs
   method fMethod; // Method to be used for the analysis
 
   // Results---------------------------------------------------------------------------------------------------------------//
   TH2D* fMassVsPt_2D;                                 // Invariant mass vs pt histo
   // final results, debug level 0
-  TH1D* fCorrectedCorrHisto;                          // Corrected correlation histogram ME corrected
-  TH1D* fCorrectedMassPairs;                      // Corrected pairs mass vs deltaEta histogram
-  TH1D* fCorrectedRatioVsDeltaEta;                      // Ratio of corrected SE / SE vs deltaEta histogram
-  TH1D* fCorrectedCorrHisto_BaselineSubtr;            // Corrected correlation histogram with baseline subtracted
+  TH1D* hCorrectedCorrel;                          // Corrected D-h correlation deltaPhi distribution ME corrected
+  TH1D* hNormalizedCorrectedCorrel;                // Corrected D-h correlation deltaPhi distribution ME corrected and normalized by the number of triggers
+  TH1D* hCorrectedPairsMass;                      // Corrected pairs mass distribution
+  TH1D* hCorrectionRatio;                      // Ratio of corrected SE / SE histogram
+
+  /*TH1D* fCorrectedCorrHisto_BaselineSubtr;            // Corrected correlation histogram with baseline subtracted
   TH1D* fCorrectedCorrHisto_Reflected;                // Corrected correlation histogram reflected in azimuth
-  TH1D* fCorrectedCorrHisto_Reflected_BaselineSubtr;  // Corrected correlation histogram reflected in azimuth with baseline subtracted
+  TH1D* fCorrectedCorrHisto_Reflected_BaselineSubtr;  // Corrected correlation histogram reflected in azimuth with baseline subtracted*/
+  
   // intermediate results, debug level 1
   TH2D* fCorrel_SE_2D;                                // Processed same Event correlation histogram 2D
   TH2D* fCorrel_ME_2D;                                // Processed Mixed Event correlation histogram 2D
-  TH2D* fCorrel_ME_norm_2D;                           // Normalized Mixed Event correlation histogram 2D
   TH2D* fCorrectedCorrel_2D;                          // Corrected correlation histogram 2D
-  TH1D* fNonNormalizedCorrHisto;                      //Corrected correlation histogram 1D, not normalized by the trigger, projected in deltaPhi
-  std::vector<std::vector<TH1D*>> fVecVecCorrectedMassPairsVsDeltaEta;         // Vector of vector corrected mass distribution for each deltaEta bin and pool integrated
-  std::vector<TH1D*> fVecCorrectedRatioVsDeltaEta;            // Vector of mass vs deltaEta histograms for each deltaEta bin and pool
-  TH1D* fBaselineHisto;                               // Baseline histogram 1D, projected in deltaPhi
-  TH1D* fBaselineHisto_Reflected;                     // Baseline histogram reflected in azimuth 1D, projected in deltaPhi
-  TF1* fTFConstZero;                                  // Constant zero function
-  TH1D* fCorrel_PrimaryPart;                          // Processed secondary particle contamination histogram for primary particles
+  TH2D* fNormalizedCorrel_ME_2D;                          // Normalized Mixed Event correlation histogram 2D
+  TH2D* fOriginalCorrel_SE_2D;                       // Original same Event correlation histogram 2D, pool integrated
+  TH2D* fOriginalCorrel_ME_2D;                       // Original Mixed Event correlation histogram 2D, pool integrated
+  TH2D* fOriginalMassVsDeltaEta_2D;                // Original mass vs deltaEta histogram 2D, pool integrated
+
+  /*TH1D* fCorrel_PrimaryPart;                          // Processed secondary particle contamination histogram for primary particles
   TH1D* fCorrel_AllPart;                              // Processed secondary particle contamination histogram for all particles
   TH1D* fFracSecondaryPart;                           // Fraction of secondary particles histogram
-  TH1D* fCorrectedCorrHisto_Before_SecPart;           // Corrected correlation histogram before secondary particle contamination correction
+  TH1D* fCorrectedCorrHisto_Before_SecPart;           // Corrected correlation histogram before secondary particle contamination correction*/
+
   // original data histograms, debug level 2
-  std::vector<TH2D*> fVecOriginalCorrel_SE_2D;        // Vector of original SE correlation histograms 2D
-  std::vector<TH2D*> fVecOriginalCorrel_ME_2D;        // Vector of original ME correlation histograms 2D
-  std::vector<TH2D*> fVecCorrel_SE_2D;                // Vector of processed SE correlation histograms 2D
-  std::vector<TH2D*> fVecCorrel_ME_2D;                // Vector of processed ME correlation histograms 2D
-  std::vector<TH2D*> fVecCorrel_ME_norm_2D;           // Vector of normalized ME correlation histograms 2D
-  std::vector<TH2D*> fVecCorrectedCorrel_2D;          // Vector of corrected correlation histograms 2D
-  std::vector<TH2D*> fVecMassPairsVsDeltaEta_2D;                  // Vector of mass vs deltaEta histograms
-  TH1D* fOriginalCorrel_PrimaryPart;                  // Original secondary particle contamination histogram for primary particles
-  TH1D* fOriginalCorrel_AllPart;                      // Original secondary particle contamination histogram for all particles
+  std::vector<TH2D*> fPoolVec_OriginalCorrel_SE_2D;                       // Original same Event correlation histogram 2D, pool by pool
+  std::vector<TH2D*> fPoolVec_OriginalCorrel_ME_2D;                       // Original Mixed Event correlation histogram 2D, pool by pool
+  std::vector<TH2D*> fPoolVec_RawCorrel_SE_2D;                       // Raw same Event correlation histogram 2D, pool by pool
+  std::vector<TH2D*> fPoolVec_RawCorrel_ME_2D;                       // Raw Mixed Event correlation histogram 2D, pool by pool
+  std::vector<TH2D*> fPoolVec_NormalizedCorrel_ME_2D;                       // Normalized Mixed Event correlation histogram 2D, pool by pool
+  std::vector<TH2D*> fPoolVec_CorrectedCorrel_2D;                       // Corrected correlation histogram 2D, pool by pool
+  std::vector<TH2D*> fPoolVec_OriginalMassVsDeltaEta_2D;                // Original mass vs deltaEta histogram 2D, pool by pool
+  std::vector<TH2D*> fPoolVec_RawMassVsDeltaEta_2D;                // Raw mass vs deltaEta histogram 2D, pool by pool
+  std::vector<TH1D*> fPoolVec_CorrectedMass;                // Corrected mass distribution, pool by pool
+  std::vector<TH1D*> fPoolVec_CorrectionRatio;                // Ratio of corrected SE / SE histogram, pool by pool
+
+  /*TH1D* fOriginalCorrel_PrimaryPart;                  // Original secondary particle contamination histogram for primary particles
+  TH1D* fOriginalCorrel_AllPart;                      // Original secondary particle contamination histogram for all particles*/
   ClassDef(DhCorrelationExtraction, 1);
 };
 
