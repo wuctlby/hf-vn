@@ -577,7 +577,7 @@ class RawYieldFitter:
             logger(f"Plot saved to {path}", "INFO")
 
     def plot_raw_residuals(self):
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        # os.makedirs(os.path.dirname(path), exist_ok=True)
         fig_res = self.fitter.plot_raw_residuals(style="ATLAS",
                                                  figsize=(8, 8),
                                                  axis_title=self.x_axis_label)

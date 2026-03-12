@@ -32,10 +32,10 @@
 
 namespace AxisLabels {
     constexpr const char* kRawYield = "#frac{d^{2}N}{d#Delta#eta d#Delta#phi}";
-
-    constexpr const char* kPerTrigYield = "#frac{1}{N_{trig}} #frac{d^{2}N_{assoc}}{d#Delta#eta d#Delta#phi}";
-
     constexpr const char* kRawYieldRad = "#frac{d^{2}N}{d#Delta#eta d#Delta#phi} (rad^{-1})";
+    constexpr const char* kRawYieldRad_DP = "#frac{dN}{d#Delta#phi} (rad^{-1})";
+    constexpr const char* kPerTrigYield = "#frac{1}{N_{trig}} #frac{d^{2}N_{assoc}}{d#Delta#eta d#Delta#phi}";
+    constexpr const char* kPerTrigYield_DP = "#frac{1}{N_{trig}} #frac{dN_{assoc}}{d#Delta#phi}";
 }
 
 class DhCorrelationExtraction : public TObject
@@ -85,14 +85,14 @@ class DhCorrelationExtraction : public TObject
   void SetInputFilenameME(TString filenameME) { fFileNameME = filenameME; }
   void SetDirNameME(TString dirNameME) { fDirNameME = dirNameME; }
   void SetCorrelSparseNameME(TString correlSparseNameME) { fCorrelSparseNameME = correlSparseNameME; }
-  // secondary particle
+  /*// secondary particle
   void SetInputFilenameSecPart(TString filenameSecPart) { fFileSecPartName = filenameSecPart; }
   void SetDirNameSecPart(TString dirNameSecPart) { fDirSecPartName = dirNameSecPart; }
   void SetHistoSecPartName(TString histoPrimaryPartName, TString histoAllPartName)
   {
     fHistoPrimaryPartName = histoPrimaryPartName;
     fHistoAllPartName = histoAllPartName;
-  }
+  }*/
   // method
   void SetMethod(method m) { fMethod = m; }
   // Debug level
@@ -115,12 +115,6 @@ class DhCorrelationExtraction : public TObject
   {
     fDeltaEtaRightMin = etaMin;
     fDeltaEtaRightMax = etaMax;
-  }
-  // deltaPhi and deltaEta values for ME normalization
-  void SetBinDeltaPhiEtaForMEnorm(Double_t valDeltaPhiMEnorm, Double_t valDeltaEtaMEnorm)
-  { 
-    fValDeltaPhiMEnorm = valDeltaPhiMEnorm; 
-    fValDeltaEtaMEnorm = valDeltaEtaMEnorm;
   }
 
   /// Input conditions: PtCand, PtHad, PoolBins
@@ -149,9 +143,9 @@ class DhCorrelationExtraction : public TObject
     fRebinAxisDeltaPhi = rebinDeltaPhi;
   }
   // optional settings
-  void SetSubtractSoftPiInMEdistr(Bool_t subtractSoftPiME) { fdoSubtractSoftPiME = subtractSoftPiME; }
+  /*void SetSubtractSoftPiInMEdistr(Bool_t subtractSoftPiME) { fdoSubtractSoftPiME = subtractSoftPiME; }
   void SetdoRebinSecondaryPart(Bool_t rebinSecPart) { fdoRebinSecPart = rebinSecPart; }
-  void SetSecPartContamination(Bool_t secPartContamination) { fdoSecPartContamination = secPartContamination; }
+  void SetSecPartContamination(Bool_t secPartContamination) { fdoSecPartContamination = secPartContamination; }*/
 
   /// Analysis methods
   Bool_t ExtractCorrelations();
@@ -159,14 +153,14 @@ class DhCorrelationExtraction : public TObject
   Bool_t ReadInputSEandME();
   void ProjMassVsPt();
   TH2D* ProjCorrelHisto(Int_t SEorME, Int_t pool);
-  TH1D* ProjCorrelHistoSecondaryPart(Int_t PrimaryPart, Double_t PtCandMin, Double_t PtCandMax, Double_t PtHadMin, Double_t PtHadMax);
+  /*TH1D* ProjCorrelHistoSecondaryPart(Int_t PrimaryPart, Double_t PtCandMin, Double_t PtCandMax, Double_t PtHadMin, Double_t PtHadMax);*/
   void NormalizeMEplot(TH2D*& histoME, TH2D*& histoMEsoftPi);
   Double_t CalculateTriggerNormalizationFactor(TH2D* hMassVsPt, Double_t PtCandMin, Double_t PtCandMax, Double_t InvMassMin, Double_t InvMassMax);
-  TH1D* ReflectCorrHistogram(TH1D*& histo);
+  /*TH1D* ReflectCorrHistogram(TH1D*& histo);
   TH1D* ReflectHistoRun2(TH1D* h, Double_t scale);
   Double_t CalculateBaseline(TH1D*& histo, Bool_t totalRange = kTRUE, Bool_t reflected = kFALSE);
   Double_t CalculateBaselineError(TH1D*& histo, Bool_t totalRange = kTRUE, Bool_t reflected = kFALSE);
-  Bool_t ReadInputSecondaryPartContamination();
+  Bool_t ReadInputSecondaryPartContamination();*/
 
   /// Getters for the results
   TH2D* GetMassVsPtHist2D() { return fMassVsPt_2D; }
@@ -219,7 +213,10 @@ class DhCorrelationExtraction : public TObject
   TString fMassSparseName;                   // Inv. mass THnSparse name and directory
   TString fCorrelSparseNameSE;               // THnSparse name containing SE
   TString fCorrelSparseNameME;               // THnSparse name containing ME
+
   TString fTitleCorrel;                   // Title for correlation histograms
+  TString fDeltaEtaGap;                   // TString for the delta eta gap
+
   /*TString fFileSecPartName;              // File name contaning secondary particle correction output
   TString fDirSecPartName;               // Directory in the file containing secondary particle correction output
   TString fHistoPrimaryPartName;         // Primary particle histogram (to be used for secondary particle contamination correction)
@@ -261,10 +258,10 @@ class DhCorrelationExtraction : public TObject
   // Results---------------------------------------------------------------------------------------------------------------//
   TH2D* fMassVsPt_2D;                                 // Invariant mass vs pt histo
   // final results, debug level 0
-  TH1D* hCorrectedCorrel;                          // Corrected D-h correlation deltaPhi distribution ME corrected
-  TH1D* hNormalizedCorrectedCorrel;                // Corrected D-h correlation deltaPhi distribution ME corrected and normalized by the number of triggers
-  TH1D* hCorrectedPairsMass;                      // Corrected pairs mass distribution
-  TH1D* hCorrectionRatio;                      // Ratio of corrected SE / SE histogram
+  TH1D* fCorrectedCorrel;                          // Corrected D-h correlation deltaPhi distribution ME corrected
+  TH1D* fNormalizedCorrectedCorrel;                // Corrected D-h correlation deltaPhi distribution ME corrected and normalized by the number of triggers
+  TH1D* fCorrectedPairsMass;                      // Corrected pairs mass distribution
+  TH1D* fCorrectionRatio;                      // Ratio of corrected SE / SE histogram
 
   /*TH1D* fCorrectedCorrHisto_BaselineSubtr;            // Corrected correlation histogram with baseline subtracted
   TH1D* fCorrectedCorrHisto_Reflected;                // Corrected correlation histogram reflected in azimuth

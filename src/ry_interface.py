@@ -1,26 +1,27 @@
-from asyncio import current_task
 import sys
+import gc
 import argparse
 import yaml
 import numpy as np
 import pathlib as PATH
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+import multiprocessing
 from ROOT import TFile, TH1D
 from alive_progress import alive_bar
 import os
 os.environ['ZFIT_DISABLE_TF_WARNINGS'] = '1'
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 import tensorflow as tf
-tf.config.threading.set_intra_op_parallelism_threads(4)
+tf.config.threading.set_intra_op_parallelism_threads(1) # considering 2 components for 1 core
 tf.config.threading.set_inter_op_parallelism_threads(1)
-print(f"Intra-op threads: {tf.config.threading.get_intra_op_parallelism_threads()}")
-print(f"Inter-op threads: {tf.config.threading.get_inter_op_parallelism_threads()}")
-sys.path.append("../flareflyfitter/")
+sys.path.append("/home/wuct/ALICE/reps/hf-vn-pr/flareflyfitter/")
 from raw_yield_fitter import RawYieldFitter
-# from matplotlib.backends.backend_pdf import PdfPages
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import fitz
-from PyPDF2 import PdfWriter, PdfReader, Transformation
+from PyPDF2 import PdfMerger, PdfReader
 
 def build_raw_yield_fitter(task, fitConfig):
     task_id = task['taskID']
@@ -60,46 +61,121 @@ def build_raw_yield_fitter(task, fitConfig):
 
     return fitter
 
-def combine_pdfs(pdf_paths):
-    from PyPDF2 import PdfMerger, PdfReader
+def fit_task(task, fitConfig, inFilePath):
+    try:
+        inFile = TFile.Open(inFilePath)
+        histo_path = task['histoPath']
+        histo = inFile.Get(histo_path)
+        if not histo:
+            raise ValueError(f"Histogram {histo_path} not found in file {inFilePath}")
+        histo.SetDirectory(0)
+        inFile.Close()
+
+        fitter = build_raw_yield_fitter(task, fitConfig)
+        fitter.set_data_to_fit_hist(histo)
+        fitter.setup()
+        fitter.fit()
+
+        fig = fitter.plot_fit(False, True, loc=["lower left", "upper left"])
+        fig.savefig(task['pdfPath'], dpi=300, bbox_inches="tight")
+        plt.close(fig)
+        fig_residuals = fitter.plot_raw_residuals()
+        fig_residuals.savefig(task['pdfPath'].with_name(task['pdfPath'].stem + "_Residuals.pdf"), dpi=300, bbox_inches="tight")
+        plt.close(fig_residuals)
+
+        fit_info, _, _, _, _ = fitter.get_fit_info()
+        return {
+            'taskID': task['taskID'],
+            'iPtCand': task['iPtCand'],
+            'iPtHad': task['iPtHad'],
+            'iDeltaPhi': task['iDeltaPhi'],
+            'ry': fit_info['sgn']['ry'],
+            'ry_unc': fit_info['sgn']['ry_unc'],
+            'pdfPath': task['pdfPath'],
+            'pdfPathResiduals': task['pdfPath'].with_name(task['pdfPath'].stem + "_Residuals.pdf")
+        }
+    finally:
+        plt.close('all')
+        if 'fitter' in locals():
+            del fitter
+        if 'histo' in locals():
+            del histo
+        gc.collect()
+
+def combine_pdfs(pdf_paths, suffix=""):
     merger = PdfMerger()
-    sum_pdf = pdf_paths[0].parent / f"Summary_Fits.pdf"
-    sum_pdf_combined = pdf_paths[0].parent / f"Summary_Fits_Combined.pdf"
+    sum_pdf = pdf_paths[0].parent / f"Summary_Fits{suffix}.pdf"
+    sum_pdf_combined = pdf_paths[0].parent / f"Summary_Fits_Combined{suffix}.pdf"
     for pdf_path in pdf_paths:
         merger.append(str(pdf_path))
     merger.write(str(sum_pdf))
     merger.close()
-    reader = PdfReader(str(sum_pdf))
-    cols = 5
-    rows = 4
-    margins = 0.5
-    width = reader.pages[0].mediabox.width * cols
-    height = reader.pages[0].mediabox.height * rows
-    writer = PdfWriter()
-    for i in range(0, len(reader.pages)):
-        page = reader.pages[i]
-        row = i // cols
-        col = i % cols
-        x_offset = col * reader.pages[0].mediabox.width
-        y_offset = (rows - 1 - row) * reader.pages[0].mediabox.height
-        transformation = Transformation().translate(x_offset, y_offset)
-        page.add_transformation(transformation)
-        writer.add_page(page)
-        
-    with open(sum_pdf_combined, "wb") as f_out:
-        writer.write(f_out)
-    docs = fitz.open(sum_pdf_combined)
-    for doc in docs:
-        doc.select([0])
-        page = doc[0]
-        mat = fitz.Matrix(2, 2) 
-        pix = page.get_pixmap(matrix=mat, alpha=False)
-        pix.save(str(sum_pdf.parent / f"Summary_Fits_Combined.png"))
-    docs.close()
-    # size = reader.pages[0].mediabox
-    # width = size.width
-    # height = size.height
 
+    for iTotal in range(int(np.ceil(len(pdf_paths)/15))):
+        tot, axes = plt.subplots(3, 5, figsize=(20, 12))
+        plt.subplots_adjust(wspace=0.01, hspace=0.01, left=0.02, right=0.98, top=0.98, bottom=0.02)
+        axes = axes.flatten()
+        for i, pdf_path in enumerate(pdf_paths[iTotal*15:(iTotal+1)*15]):
+            doc = fitz.open(str(pdf_path))
+            page = doc.load_page(0)
+            pix = page.get_pixmap(dpi=300)
+            img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
+            axes[i].imshow(img)
+            axes[i].axis('off')
+
+            del pix
+            del img
+            doc.close()
+        
+        for j in range(i+1, 15):
+            axes[j].axis('off')
+
+        plt.tight_layout()
+        plt.savefig(sum_pdf.parent / f"Summary_Fits_Combined_{iTotal}{suffix}.pdf", dpi=300, bbox_inches="tight")
+        plt.savefig(sum_pdf.parent / f"Summary_Fits_Combined_{iTotal}{suffix}.png", dpi=300, bbox_inches="tight")
+        plt.close(tot)
+
+        del tot
+        del axes
+        gc.collect()
+
+    for pdf_path in pdf_paths:
+        os.remove(pdf_path)
+        if pdf_path.exists():
+            print(f"Warning: Failed to remove {pdf_path}")
+
+def _combine_for_key(key, pdfs_deltaPhi, pdfs_residuals_deltaPhi):
+    deltaPhi_dict = pdfs_deltaPhi
+    sorted_deltaPhi = sorted(deltaPhi_dict.keys())
+    pdf_paths = [deltaPhi_dict[iDeltaPhi] for iDeltaPhi in sorted_deltaPhi]
+    combine_pdfs(pdf_paths)
+
+    residuals = pdfs_residuals_deltaPhi
+    pdf_paths_residuals = [residuals[iDeltaPhi] for iDeltaPhi in sorted_deltaPhi]
+    combine_pdfs(pdf_paths_residuals, suffix="_residuals")
+    return key
+
+#     fitters.sort(key=lambda x: (int(x.fit_name.split("_")[0])))
+#     pdfs = []
+#     for i, fitter in enumerate(fitters):
+#         # task_id = int(fitter.fit_name.split("_")[0])
+#         task = tasks[i]
+#         iPtCand = task['iPtCand']
+#         iPtHad = task['iPtHad']
+#         iDeltaPhi = task['iDeltaPhi']
+#         bin_idx = task['iDeltaPhi'] + 1
+
+#         fig = fitter.plot_fit(False, True, loc=["lower left", "upper left"])
+#         fig.savefig(outFilePath / task['pdfPath'], dpi=300, bbox_inches="tight")
+#         fit_info, _, _, _, _ = fitter.get_fit_info()
+#         hPairsYields_vs_DeltaPhi.SetBinContent(bin_idx, fit_info['sgn']['ry'])
+#         hPairsYields_vs_DeltaPhi.SetBinError(bin_idx, fit_info['sgn']['ry_unc'])
+
+#         plt.close(fig)
+#         pdfs.append(task['pdfPath'])
+#         if iDeltaPhi == len(deltaPhiBins) - 2:
+#             combine_pdfs(pdfs, suffix="")
+#             pdfs = []
 
 def interface_raw_yield_fitter(config_path):
     with open(config_path, 'r') as f:
@@ -107,102 +183,88 @@ def interface_raw_yield_fitter(config_path):
     method = config.get("method", "")
     if method != "DeltaPhiBinning":
         raise ValueError(f"Unsupported method: {method}. Only 'DeltaPhiBinning' is supported in this interface.")
+    nWorkers = config.get("nWorkers", int(os.cpu_count()/0.6))
 
     Dmeson = config["Dmeson"]
     ptBinsCand = config["ptBinsCand"]
     ptBinsHad = config["ptBinsHad"]
     nPtBinsCand = len(ptBinsCand) - 1
-    deltaPhiBins = config.get("deltaPhiBins", list(np.linspace(-1.571, 4.712, 24)))  # default 24 bins from -pi/2 to 3pi/2
+    deltaPhiBins = config.get("deltaPhiBins", list(np.linspace(-1.5707963705062866, 4.71238911151886, 16+1)))  # attention: make sure the bin edges are matching with those used in the correlation analysis
 
     outdir = PATH.Path(config["outdir"])
     suffix = config.get("suffix", "")
-    outFilePath = outdir / f"AssociatedPairsYields"
+    outFilePath = outdir / f"CorrelExtract_{suffix}" / "AssociatedPairsYields"
     outFilePath.mkdir(parents=True, exist_ok=True)
 
-    inFile = TFile.Open(str(outdir / f"CorrelExtract_{suffix}" / "CorrelationsResults" / "CorrelationsResults.root"))
+    inFilePath = str(outdir / f"CorrelExtract_{suffix}" / "CorrelationsResults" / "CorrelationsResults.root")
 
     # build tasks
     tasks = []
-    datas = {}
     hPairsYields_vs_DeltaPhi = {}
-    with alive_bar(nPtBinsCand * len(ptBinsHad[:-1]) * len(deltaPhiBins[:-1]), title="Building tasks and loading histograms") as bar:
-        for iPtCand, (ptMin, ptMax) in enumerate(zip(ptBinsCand[:-1], ptBinsCand[1:])):
-            for iPtHad, (ptHadMin, ptHadMax) in enumerate(zip(ptBinsHad[:-1], ptBinsHad[1:])):
-                hTemp = TH1D(f"hPairsYields_vs_DeltaPhi_{iPtCand}_{iPtHad}", "Associated Pair Raw Yields vs #Delta#phi;#Delta#phi (rad); Associated pairs raw yield", len(deltaPhiBins)-1, np.array(deltaPhiBins, dtype='double'))
-                hPairsYields_vs_DeltaPhi[(iPtCand, iPtHad)] = hTemp
-                for iDeltaPhi, (deltaPhiMin, deltaPhiMax) in enumerate(zip(deltaPhiBins[:-1], deltaPhiBins[1:])):
-                    # build task
-                    task_id = len(tasks)
-                    task = {
-                        "taskID": task_id, 
-                        "taskName": f"CandPt_{int(ptMin*10)}_{int(ptMax*10)}_HadPt_{int(ptHadMin*10)}_{int(ptHadMax*10)}_dPhi_{int(deltaPhiMin*1000)}_{int(deltaPhiMax*1000)}",
-                        "iPtCand": iPtCand, "ptMin": ptMin, "ptMax": ptMax,
-                        "iPtHad": iPtHad, "ptHadMin": ptHadMin, "ptHadMax": ptHadMax,
-                        "iDeltaPhi": iDeltaPhi, "deltaPhiMin": deltaPhiMin, "deltaPhiMax": deltaPhiMax,
-                        "Dmeson": Dmeson,
-                        "pdfPath": outFilePath / f"PtCandBin_{int(ptMin*10)}_{int(ptMax*10)}" / f"PtHadBin_{int(ptHadMin*10)}_{int(ptHadMax*10)}" / f"TempFitResult_DeltaPhiBin_{int(deltaPhiMin*1000)}_{int(deltaPhiMax*1000)}.pdf",
-                    }
-                    tasks.append(task)
-                    # load histogram for the task
-                    histo_name = f"PtCandBin_{int(ptMin*10)}_{int(ptMax*10)}/PtHadBin_{int(ptHadMin*10)}_{int(ptHadMax*10)}/DeltaPhiBin_{int(deltaPhiMin*1000)}_{int(deltaPhiMax*1000)}/hCorrectedMassPairs_AllPools"
-                    bar.text = f"Loading histogram {histo_name} for task {task['taskName']}"
-                    datas[task["taskID"]] = inFile.Get(histo_name)
-                    datas[task["taskID"]].SetDirectory(0)  # detach from file
-                    bar()
+    print("Building tasks...")
+    for iPtCand, (ptMin, ptMax) in enumerate(zip(ptBinsCand[:-1], ptBinsCand[1:])):
+        strPtCand = f"PtCandBin_{int(ptMin*10)}_{int(ptMax*10)}"
 
-    fitters = []
-    with alive_bar(len(tasks), title="Building fitters") as bar:
-        for task in tasks:
-            fitter = build_raw_yield_fitter(task, config["fitConfig"])
-            fitters.append(fitter)
-            fitter.set_data_to_fit_hist(datas[task["taskID"]])
-            fitter.setup()
-            bar.text = f"Prepared fitter for task {task['taskName']}"
-            bar()
+        for iPtHad, (ptHadMin, ptHadMax) in enumerate(zip(ptBinsHad[:-1], ptBinsHad[1:])):
+            strPtHad = f"PtHadBin_{int(ptHadMin*10)}_{int(ptHadMax*10)}"
+            hTemp = TH1D(
+                f"hPairsYields_vs_DeltaPhi_{iPtCand}_{iPtHad}", 
+                "Associated Pair Raw Yields vs #Delta#phi;#Delta#phi (rad); Associated pairs raw yield", 
+                len(deltaPhiBins)-1, 
+                np.array(deltaPhiBins, dtype='double'))
+            hPairsYields_vs_DeltaPhi[(iPtCand, iPtHad)] = hTemp
+            (outFilePath / strPtCand / strPtHad).mkdir(parents=True, exist_ok=True)
+            
+            for iDeltaPhi, (deltaPhiMin, deltaPhiMax) in enumerate(zip(deltaPhiBins[:-1], deltaPhiBins[1:])):
+                strDeltaPhi = f"DeltaPhiBin_{int(deltaPhiMin*1000)}_{int(deltaPhiMax*1000)}"
+                # build task
+                task_id = len(tasks)
+                task = {
+                    "taskID": task_id, 
+                    "taskName": f"CandPt_{int(ptMin*10)}_{int(ptMax*10)}_HadPt_{int(ptHadMin*10)}_{int(ptHadMax*10)}_dPhi_{int(deltaPhiMin*1000)}_{int(deltaPhiMax*1000)}",
+                    "iPtCand": iPtCand, "ptMin": ptMin, "ptMax": ptMax,
+                    "iPtHad": iPtHad, "ptHadMin": ptHadMin, "ptHadMax": ptHadMax,
+                    "iDeltaPhi": iDeltaPhi, "deltaPhiMin": deltaPhiMin, "deltaPhiMax": deltaPhiMax,
+                    "Dmeson": Dmeson,
+                    "pdfPath": outFilePath / strPtCand / strPtHad / f"TempFitResult_{strDeltaPhi}.pdf",
+                    "histoPath": f"{strPtCand}/{strPtHad}/{strDeltaPhi}/hCorrectedMassPairs_AllPools"
+                }
+                tasks.append(task)
 
-    pdfs = {}
-    figs = {}
-    with alive_bar(len(fitters), title="Running fits") as bar:
-        with ThreadPoolExecutor(max_workers=6) as executor:
-            futures = {executor.submit(fitter.fit): fitter for fitter in fitters}
+    pdfs = defaultdict(dict)
+    pdfs_residuals = defaultdict(dict)
+    with alive_bar(len(tasks), title="Fitting tasks") as bar:
+        with ProcessPoolExecutor(max_workers=nWorkers) as executor:
+            futures = {executor.submit(fit_task, task, config["fitConfig"], inFilePath): task for task in tasks}
             for future in as_completed(futures):
-                fitter = futures[future]
-                try:
-                    future.result()
-                    bar.text = f"Completed fit for task {fitter.fit_name}"
-                except Exception as exc:
-                    bar.text = f"Fit generated an exception for task {fitter.fit_name}: {exc}"
+                result = future.result()
+                key_hPairs = (result['iPtCand'], result['iPtHad'])
+                bin_idx = result['iDeltaPhi'] + 1
+                hPairsYields_vs_DeltaPhi[key_hPairs].SetBinContent(bin_idx, result['ry'])
+                hPairsYields_vs_DeltaPhi[key_hPairs].SetBinError(bin_idx, result['ry_unc'])
+                pdfs[key_hPairs][result['iDeltaPhi']] = result['pdfPath']
+                pdfs_residuals[key_hPairs][result['iDeltaPhi']] = result['pdfPathResiduals']
+                bar.text = f"Completed task {result['taskID']}: PtCandBin_{result['iPtCand']}, PtHadBin_{result['iPtHad']}, DeltaPhiBin_{result['iDeltaPhi']}"
+                del future
                 bar()
-    
-    # with alive_bar(len(fitters), title="Running fits") as bar:
-    #     for fitter in fitters:
-    #         fitter.fit()
-    #         bar.text = f"Completed fit for task {fitter.name}"
-    #         bar()
-    fitters.sort(key=lambda x: (int(x.fit_name.split("_")[0])))
-    pdfs = []
-    for i, fitter in enumerate(fitters):
-        task_id = int(fitter.fit_name.split("_")[0])
-        task = tasks[task_id]
-        iPtCand = task['iPtCand']
-        iPtHad = task['iPtHad']
-        iDeltaPhi = task['iDeltaPhi']
-        bin_idx = task['iDeltaPhi'] + 1
+            futures.clear()
+            gc.collect()
 
-        fig = fitter.plot_fit(False, True, loc=["lower left", "upper left"])
-        fig.savefig(outFilePath / tasks[int(fitter.fit_name.split("_")[0])]['pdfPath'], dpi=300, bbox_inches="tight")
-        fit_info, _, _, _, _ = fitter.get_fit_info()
-        hPairsYields_vs_DeltaPhi[(iPtCand, iPtHad)].SetBinContent(bin_idx, fit_info['sgn']['ry'])
-        hPairsYields_vs_DeltaPhi[(iPtCand, iPtHad)].SetBinError(bin_idx, fit_info['sgn']['ry_unc'])
-
-        # fig = fitter.plot_fit(False, True, loc=["lower left", "upper left"])
-        # fig.savefig(pdf_path, dpi=300, bbox_inches="tight")s
-        # plt.close(fig)
-        # figs.append(fig)
-        pdfs.append(task['pdfPath'])
-        if iDeltaPhi == len(deltaPhiBins) - 2:
-            combine_pdfs(pdfs)
-            pdfs = []
+    with alive_bar(len(pdfs)+len(pdfs_residuals), title="Combining PDFs") as bar:
+        with ProcessPoolExecutor(max_workers=min(len(pdfs)+len(pdfs_residuals), nWorkers)) as combiner:
+            futures = []
+            for key in pdfs.keys():
+                sorted_pdfs = [pdfs[key][iDeltaPhi] for iDeltaPhi in sorted(pdfs[key].keys())]
+                futures.append(combiner.submit(combine_pdfs, sorted_pdfs))
+            for key in pdfs_residuals.keys():
+                sorted_pdfs = [pdfs_residuals[key][iDeltaPhi] for iDeltaPhi in sorted(pdfs_residuals[key].keys())]
+                futures.append(combiner.submit(combine_pdfs, sorted_pdfs, suffix="_residuals"))
+            for future in as_completed(futures):
+                future.result()
+                del future
+                bar()
+            futures.clear()
+            gc.collect()
 
     outROOT = TFile.Open(str(outFilePath / f"PairYieldsVsPhi.root"), "RECREATE")
     for (iPtCand, iPtHad), histo in hPairsYields_vs_DeltaPhi.items():
@@ -210,54 +272,11 @@ def interface_raw_yield_fitter(config_path):
         subdir_had = f"PtHadBin_{int(ptBinsHad[iPtHad]*10)}_{int(ptBinsHad[iPtHad+1]*10)}"
         outROOT.mkdir(subdir_pt + "/" + subdir_had)
         outROOT.cd(subdir_pt + "/" + subdir_had)
-        histo.Write()
+        histo.Write('hPairsYields_vs_DeltaPhi')
     outROOT.Close()
 
-    # outFilePath = outdir / f"AssociatedPairsYields"
-    # outFilePath.mkdir(parents=True, exist_ok=True)
-    # outROOT = TFile.Open(str(outFilePath / f"PairYieldsVsPhi.root"), "RECREATE")
-    # outTasks = []
-    # for iCand, (ptMin, ptMax) in enumerate(zip(ptBinsCand[:-1], ptBinsCand[1:])):
-    #     subdir_pt = f"PtCandBin_{int(ptMin*10)}_{int(ptMax*10)}"
-    #     (outFilePath / subdir_pt).mkdir(parents=True, exist_ok=True)
-    #     outROOT.mkdir(subdir_pt)
-    #     for iHad, (ptHadMin, ptHadMax) in enumerate(zip(ptBinsHad[:-1], ptBinsHad[1:])):
-    #         subdir_had = f"PtHadBin_{int(ptHadMin*10)}_{int(ptHadMax*10)}"
-    #         (outFilePath / subdir_pt / subdir_had).mkdir(parents=True, exist_ok=True)
-    #         outROOT.GetDirectory(subdir_pt).mkdir(subdir_had)
-    #     outTasks.append({
-    #             'outdir_pdf': outFilePath / subdir_pt / subdir_had / f"PairYields_vs_DeltaPhi.pdf",
-    #             'outdir_png': outFilePath / subdir_pt / subdir_had / f"Summary_Fits.png",
-    #             'outROOT_subdir': subdir_pt + "/" + subdir_had,
-    #             'pdf_canvas': PdfPages(outFilePath / subdir_pt / subdir_had / f"PairYields_vs_DeltaPhi.pdf")
-    #         })
-
-    # for i, task in enumerate(tasks):
-    #     fitter = fitters[i]
-    #     iPtCand = task['iPtCand']
-    #     iPtHad = task['iPtHad']
-    #     if (fitter.fit_name != f"{task['taskID']}_{task['taskName']}"):
-    #         raise ValueError(f"Fitter name {fitter.fit_name} does not match task name {task['taskName']}")
-    #     if task['iDeltaPhi'] == 0:
-    #         # outPDF = outTasks[iPtCand * len(ptBinsHad[:-1]) + iPtHad]['pdf']
-    #         # pngTemp = []
-    #         hTemp = TH1D(f"hPairsYields_vs_DeltaPhi", "Associated Pair Raw Yields vs #Delta#phi;#Delta#phi (rad); Associated pairs raw yield", len(deltaPhiBins)-1, np.array(deltaPhiBins, dtype='double'))
-    #     fig = fitter.plot_fit(False, True, loc=["lower left", "upper left"])
-    #     current_task = outTasks[iPtCand * len(ptBinsHad[:-1]) + iPtHad]
-    #     current_task['pdf_canvas'].savefig(fig)
-    #     bin_idx = task['iDeltaPhi'] + 1
-    #     fit_info, _, _, _, _ = fitter.get_fit_info()
-    #     hTemp.SetBinContent(bin_idx, fit_info['sgn']['ry'])
-    #     hTemp.SetBinError(bin_idx, fit_info['sgn']['ry_unc'])
-    #     if task['iDeltaPhi'] == len(deltaPhiBins) - 2:
-    #             current_task['pdf_canvas'].close()
-    #             outROOT.cd(current_task['outROOT_subdir'])
-    #             hTemp.Write()
-    # outROOT.Close()
-
-
-
 if __name__ == "__main__":
+    multiprocessing.set_start_method('spawn', force=True)
     parser = argparse.ArgumentParser(description="Raw Yield Fitter Interface")
     parser.add_argument('config', type=str, help='Path to the configuration YAML file')
     args = parser.parse_args()

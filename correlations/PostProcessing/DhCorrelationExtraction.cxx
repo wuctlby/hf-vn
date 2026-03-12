@@ -44,6 +44,7 @@ DhCorrelationExtraction::DhCorrelationExtraction() : // default constructor
   fCorrelSparseNameSE(""),
   fCorrelSparseNameME(""),
   fTitleCorrel("Correlations"),
+  fDeltaEtaGap("|#delta#Eta| > 0.8"),
   fNpools(10),
   fDebug(0),
   fDoPoolByPool(kTRUE),
@@ -77,10 +78,10 @@ DhCorrelationExtraction::DhCorrelationExtraction() : // default constructor
   // Results---------------------------------------------------------------------------------------------------------------//
   fMassVsPt_2D(0x0), // copyable properties, for trigger normalization
   // --- final results, debug level 0 ---
-  hCorrectedCorrel(0x0),
-  hNormalizedCorrectedCorrel(0x0),
-  hCorrectedPairsMass(0x0),
-  hCorrectionRatio(0x0),
+  fCorrectedCorrel(0x0),
+  fNormalizedCorrectedCorrel(0x0),
+  fCorrectedPairsMass(0x0),
+  fCorrectionRatio(0x0),
   // --- intermediate results, debug level 1 ---
   fCorrel_SE_2D(0x0),
   fCorrel_ME_2D(0x0),
@@ -121,6 +122,7 @@ DhCorrelationExtraction::DhCorrelationExtraction(const DhCorrelationExtraction& 
   fCorrelSparseNameSE(source.fCorrelSparseNameSE),
   fCorrelSparseNameME(source.fCorrelSparseNameME),
   fTitleCorrel(source.fTitleCorrel),
+  fDeltaEtaGap(source.fDeltaEtaGap),
   fNpools(source.fNpools),
   fDebug(source.fDebug),
   fDoPoolByPool(source.fDoPoolByPool),
@@ -145,10 +147,10 @@ DhCorrelationExtraction::DhCorrelationExtraction(const DhCorrelationExtraction& 
   // Results---------------------------------------------------------------------------------------------------------------//
   fMassVsPt_2D(source.fMassVsPt_2D), // copyable properties, for trigger normalization
   // --- final results, debug level 0 ---
-  hCorrectedCorrel(0x0),
-  hNormalizedCorrectedCorrel(0x0),
-  hCorrectedPairsMass(0x0),
-  hCorrectionRatio(0x0),
+  fCorrectedCorrel(0x0),
+  fNormalizedCorrectedCorrel(0x0),
+  fCorrectedPairsMass(0x0),
+  fCorrectionRatio(0x0),
   // --- intermediate results, debug level 1 ---
   fCorrel_SE_2D(0x0),
   fCorrel_ME_2D(0x0),
@@ -215,6 +217,7 @@ Bool_t DhCorrelationExtraction::Init()
     return kFALSE;
   }
   fTitleCorrel = Form("%s-h correlation", fDmesonLabel.Data());
+  fDeltaEtaGap = From("|#Delta#eta| > %.1f", fDeltaEtaRightMin);
   return kTRUE;
 }
 
@@ -222,7 +225,7 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations()
 {
   TH1::AddDirectory(kFALSE);
 
-  if (Init() == kFALSE) {
+  if (Init() == kFALSE) { // todo: reload file evry time
     return kFALSE;
   }
 
@@ -243,22 +246,19 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations()
   TH2D* h2D_SE = nullptr;
   TH2D* h2D_ME = nullptr;
   TH2D* h2D_ME_norm = nullptr;
-  TH2D* h2D_Sign = nullptr;
+  TH2D* h2D_CorrectedCorrel = nullptr;
+  TH1D* h1D_CorrectedPairsMass = nullptr;
+  TH1D* h1D_correctedRatioVsDeltaEta = nullptr;
 
-  TH1D* h1D_Sign = nullptr;
-  TH1D* h1D_Norm = nullptr;
-  TH1D* h1D_PrimaryPartCorr = nullptr;
-  TH1D* h1D_AllPartCorr = nullptr;
-  TH1D* h1D_SecPartFrac = nullptr;
-  TH1D* h1D_Norm_SecPart = nullptr;
-
+  TH1D* h1D_CorrectedCorrel = nullptr;
+  TH1D* h1D_NormalizedCorrectedCorrel = nullptr;
 
   for (int iPool = 0; iPool < fNpools; iPool++) {
     // Retrieve 2D plots for SE and ME, signal and bkg regions, for each pTbin and pool
     hSE_2D_Raw[iPool] = ProjCorrelHisto(kSE, iPool);
     hME_2D_Raw[iPool] = ProjCorrelHisto(kME, iPool);
-    hSE_2D_Raw[iPool]->Sumw2();
-    hME_2D_Raw[iPool]->Sumw2();
+    // hSE_2D_Raw[iPool]->Sumw2();
+    // hME_2D_Raw[iPool]->Sumw2();
 
 
     hME_2D_Normalized[iPool] = reinterpret_cast<TH2D*>(hME_2D_Raw[iPool]->Clone(Form("hNormalizedCorrel_ME_2D_Pool%d", iPool)));
@@ -267,206 +267,67 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations()
 
     // Apply Event Mixing Correction
     hCorrectedCorrel_2D[iPool] = reinterpret_cast<TH2D*>(hSE_2D_Raw[iPool]->Clone(Form("hCorrectedCorrel_2D_Pool%d", iPool)));
-    hCorrectedCorrel_2D[iPool]->Sumw2();
+    // hCorrectedCorrel_2D[iPool]->Sumw2();
     hCorrectedCorrel_2D[iPool]->Divide(hME_Normalized[iPool]);
 
     // Apply the ME correction on the Mass by the ratio of SE/ME integrated over deltaPhi bins for each deltaEta bin
     if (fMethod == kDeltaPhiBinning) {
-      hCorrectedMass[iPool] = CorrectedPairsMassDistr(hSE_2D_Raw[iPool], hCorrectedCorrel_2D[iPool], iPool);
+      hCorrectedPairsMass[iPool] = CorrectedPairsMassDistr(hSE_2D_Raw[iPool], hCorrectedCorrel_2D[iPool], iPool);
     }
 
     // Set proper number of entries after ME correction
-    Double_t N_SEsign = 0, N_sign = 0, N_massPairs = 0;
-    for (int i = 1; i <= hCorrected_Sign[iPool]->GetXaxis()->GetNbins(); i++) {
-      for (int j = 1; j <= hCorrected_Sign[iPool]->GetYaxis()->GetNbins(); j++) {
-        N_SEsign += hSE_Sign[iPool]->GetBinContent(i, j);
-        N_sign += hCorrected_Sign[iPool]->GetBinContent(i, j);
-      }
-      for (int k = 1; k <= hCorrectedMassPairs[iPool]->GetXaxis()->GetNbins(); k++) {
-        N_massPairs += hCorrectedMassPairs[iPool]->GetBinContent(i, k);
-      }
-    }
-
-    hSE_Sign[iPool]->SetEntries(N_SEsign);
-    hCorrected_Sign[iPool]->SetEntries(N_sign);
-    hCorrectedMassPairs[iPool]->SetEntries(N_massPairs);
-
-    // =========================================================================================
-    hSE_Sign[iPool] = ProjCorrelHisto(kSE, iPool);
-    hME_Sign[iPool] = ProjCorrelHisto(kME, iPool);
-
-    hSE_Sign[iPool]->Sumw2();
-    hME_Sign[iPool]->Sumw2();
-
-    // rebin axes deltaEta and deltaPhi
-    if (fRebinAxisDeltaEta > 1 || fRebinAxisDeltaPhi > 1) {
-      hSE_Sign[iPool]->Rebin2D(fRebinAxisDeltaEta, fRebinAxisDeltaPhi); // Xaxis: deltaEta, Yaxis: deltaPhi
-      hME_Sign[iPool]->Rebin2D(fRebinAxisDeltaEta, fRebinAxisDeltaPhi);
-    }
-
-    hME_Normalized[iPool] = reinterpret_cast<TH2D*>(hME_Sign[iPool]->Clone(Form("hNormalizedCorrel_ME_Pool%d", iPool)));
-    // Normalize ME plots for the entries in (deltaEta, deltaPhi) = (0, 0)
-    NormalizeMEplot(hME_Normalized[iPool], hME_Sign_SoftPi[iPool]);
-
-    // Apply Event Mixing Correction
-    hCorrected_Sign[iPool] = reinterpret_cast<TH2D*>(hSE_Sign[iPool]->Clone(Form("hCorrected_Sign_Pool%d", iPool)));
-    hCorrected_Sign[iPool]->Sumw2();
-    hCorrected_Sign[iPool]->Divide(hME_Normalized[iPool]);
-
-    // Apply the ME correction on the Mass by the ratio of SE/ME integrated over deltaPhi bins for each deltaEta bin
-    if (fMethod == kDeltaPhiBinning) {
-      TH1D* hTempCorrectedRatioVsDeltaEta = nullptr;
-      std::vector<TH1D*> VecTempCorrectedMassVsDeltaEta;
-
-      // Apply the correction in the whole deltaPhi range
-      Double_t original_content = hSE_Sign[iPool]->Integral(hSE_Sign[iPool]->GetXaxis()->FindBin(fDeltaEtaLeftMin), hSE_Sign[iPool]->GetXaxis()->FindBin(fDeltaEtaRightMax), 
-                                                            hSE_Sign[iPool]->GetYaxis()->FindBin(fDeltaPhiBins.front()), hSE_Sign[iPool]->GetYaxis()->FindBin(fDeltaPhiBins.back()));
-      if (original_content == 0) {
-        printf("[WARNING] Original content in SE signal histogram for pool %d is 0 in the selected deltaPhi range! Skipping ME correction for mass histogram in this pool.\n", iPool);
-        continue;
-      }
-      Double_t corrected_content = hCorrected_Sign[iPool]->Integral(hCorrected_Sign[iPool]->GetXaxis()->FindBin(fDeltaEtaLeftMin), hCorrected_Sign[iPool]->GetXaxis()->FindBin(fDeltaEtaRightMax), 
-                                                                    hCorrected_Sign[iPool]->GetYaxis()->FindBin(fDeltaPhiBins.front()), hCorrected_Sign[iPool]->GetYaxis()->FindBin(fDeltaPhiBins.back()));
-      Double_t ratio_correction = corrected_content / original_content;
-      TH2D* tempClone = reinterpret_cast<TH2D*>(fVecMassPairsVsDeltaEta_2D[iPool]->Clone(Form("hCorrectedMassPairs_Pool%d", iPool)));
-      hCorrectedMassPairs[iPool] = tempClone->ProjectionY(Form("hCorrectedMassPairs_ProjY_Pool%d", iPool), 1, fVecMassPairsVsDeltaEta_2D[iPool]->GetXaxis()->GetNbins());
-      hCorrectedMassPairs[iPool]->Scale(ratio_correction);
-      if (fDebug > 0) {
-        VecTempCorrectedMassVsDeltaEta.push_back(reinterpret_cast<TH1D*>(hCorrectedMassPairs[iPool]->Clone(Form("hCorrectedMassPairs_Pool%d", iPool))));
-        VecTempCorrectedMassVsDeltaEta.back()->SetTitle(Form("Corrected associated pairs mass, Pool %d, DeltaEta %f - %f", iPool, hCorrected_Sign[iPool]->GetXaxis()->GetBinLowEdge(1), hCorrected_Sign[iPool]->GetXaxis()->GetBinUpEdge(hCorrected_Sign[iPool]->GetXaxis()->GetNbins())));
-        hTempCorrectedRatioVsDeltaEta = new TH1D(Form("hCorrectedRatioVsDeltaEta_Pool%d", iPool), Form("Correction ratio vs DeltaEta, DeltaPhi %f - %f, Pool %d", fDeltaPhiBins.front(), fDeltaPhiBins.back(), iPool),
-                                              hCorrected_Sign[iPool]->GetXaxis()->GetNbins(), hCorrected_Sign[iPool]->GetXaxis()->GetXmin(), hCorrected_Sign[iPool]->GetXaxis()->GetXmax());
-        hTempCorrectedRatioVsDeltaEta->SetTitle(Form("Correction ratio vs DeltaEta, DeltaPhi %f - %f, Pool %d", fDeltaPhiBins.front(), fDeltaPhiBins.back(), iPool));
-        // for (int iEtaBin = 1; iEtaBin <= hCorrected_Sign[iPool]->GetXaxis()->GetNbins(); iEtaBin++) {
-        //   Double_t original_content_bin = hSE_Sign[iPool]->Integral(iEtaBin, iEtaBin, hSE_Sign[iPool]->GetYaxis()->FindBin(fDeltaPhiBins.front()), hSE_Sign[iPool]->GetYaxis()->FindBin(fDeltaPhiBins.back()));
-        //   if (original_content_bin == 0) {
-        //     hTempCorrectedRatioVsDeltaEta->SetBinContent(iEtaBin, 0);
-        //     continue;
-        //   }
-        //   Double_t corrected_content_bin = hCorrected_Sign[iPool]->Integral(iEtaBin, iEtaBin, hCorrected_Sign[iPool]->GetYaxis()->FindBin(fDeltaPhiBins.front()), hCorrected_Sign[iPool]->GetYaxis()->FindBin(fDeltaPhiBins.back()));
-        //   Double_t ratio_correction_bin = corrected_content_bin / original_content_bin;
-          hTempCorrectedRatioVsDeltaEta->SetBinContent(1, ratio_correction);
-        // }
-        fVecCorrectedRatioVsDeltaEta.push_back(reinterpret_cast<TH1D*>(hTempCorrectedRatioVsDeltaEta->Clone(Form("hCorrectedRatioVsDeltaEta_Pool%d", iPool))));
-        fVecVecCorrectedMassPairsVsDeltaEta.push_back(VecTempCorrectedMassVsDeltaEta);
-        delete hTempCorrectedRatioVsDeltaEta;
-        VecTempCorrectedMassVsDeltaEta.clear();
-      }
-      // Apply the correction in each deltaEta bin and sum up the corrected mass histograms
-      // for (int iEtaBin = 1; iEtaBin <= hCorrected_Sign[iPool]->GetXaxis()->GetNbins(); iEtaBin++) {
-      //   TH1D* hTempCorrectedMass = nullptr;
-      //   Double_t original_content = hSE_Sign[iPool]->Integral(iEtaBin, iEtaBin, 
-      //                                                         hCorrected_Sign[iPool]->GetYaxis()->FindBin(fDeltaPhiBins.front()),
-      //                                                         hCorrected_Sign[iPool]->GetYaxis()->FindBin(fDeltaPhiBins.back())
-      //                                                       );
-      //   if (original_content == 0) {
-      //     continue;
-      //   }
-      //   Double_t corrected_content = hCorrected_Sign[iPool]->Integral(iEtaBin, iEtaBin, 
-      //                                                                 hCorrected_Sign[iPool]->GetYaxis()->FindBin(fDeltaPhiBins.front()), 
-      //                                                                 hCorrected_Sign[iPool]->GetYaxis()->FindBin(fDeltaPhiBins.back())
-      //                                                               );
-      //   Double_t ratio_correction = corrected_content / original_content;
-      //   TH2D* tempClone = reinterpret_cast<TH2D*>(fVecMassPairsVsDeltaEta_2D[iPool]->Clone(Form("hCorrectedMassPairs_Pool%d_EtaBin%d", iPool, iEtaBin)));
-      //   hTempCorrectedMass = tempClone->ProjectionY(Form("hCorrectedMassPairs_ProjY_Pool%d_EtaBin%d", iPool, iEtaBin), iEtaBin, iEtaBin);
-      //   hTempCorrectedMass->Scale(ratio_correction);
-      //   if (iEtaBin == 1) {
-      //     hCorrectedMassPairs[iPool] = reinterpret_cast<TH1D*>(hTempCorrectedMass->Clone(Form("hCorrectedMassPairs_Pool%d", iPool)));
-      //   } else {
-      //     hCorrectedMassPairs[iPool]->Add(hTempCorrectedMass);
-      //   }
-      //   if (fDebug > 0) {
-      //     VecTempCorrectedMassVsDeltaEta.push_back(reinterpret_cast<TH1D*>(hTempCorrectedMass->Clone(Form("hCorrectedMassPairs_Pool%d_EtaBin%d", iPool, iEtaBin))));
-      //     VecTempCorrectedMassVsDeltaEta.back()->SetTitle(Form("Corrected associated pairs mass, Pool %d, DeltaEta %f - %f", iPool, hCorrected_Sign[iPool]->GetXaxis()->GetBinLowEdge(iEtaBin), hCorrected_Sign[iPool]->GetXaxis()->GetBinUpEdge(iEtaBin)));
-      //     if (iEtaBin == 1) {
-      //       hTempCorrectedRatioVsDeltaEta = new TH1D(Form("hCorrectedRatioVsDeltaEta_Pool%d", iPool), Form("Correction ratio vs DeltaEta, DeltaPhi %f - %f, Pool %d", fDeltaPhiBins.front(), fDeltaPhiBins.back(), iPool),
-      //                                             hCorrected_Sign[iPool]->GetXaxis()->GetNbins(), hCorrected_Sign[iPool]->GetXaxis()->GetXmin(), hCorrected_Sign[iPool]->GetXaxis()->GetXmax());
-      //       hTempCorrectedRatioVsDeltaEta->SetTitle(Form("Correction ratio vs DeltaEta, DeltaPhi %f - %f, Pool %d", fDeltaPhiBins.front(), fDeltaPhiBins.back(), iPool));
-      //     }
-      //     hTempCorrectedRatioVsDeltaEta->SetBinContent(iEtaBin, ratio_correction);
-      //   }
-      //   delete tempClone;
-      //   delete hTempCorrectedMass;
-      // }
-      // fVecCorrectedRatioVsDeltaEta.push_back(reinterpret_cast<TH1D*>(hTempCorrectedRatioVsDeltaEta->Clone(Form("hCorrectedRatioVsDeltaEta_Pool%d", iPool))));
-      // fVecVecCorrectedMassPairsVsDeltaEta.push_back(VecTempCorrectedMassVsDeltaEta);
-
-      // delete hTempCorrectedRatioVsDeltaEta;
-      // VecTempCorrectedMassVsDeltaEta.clear();
-    }
-
-    // Set proper number of entries after ME correction
-    Double_t N_SEsign = 0, N_sign = 0, N_massPairs = 0;
-    for (int i = 1; i <= hCorrected_Sign[iPool]->GetXaxis()->GetNbins(); i++) {
-      for (int j = 1; j <= hCorrected_Sign[iPool]->GetYaxis()->GetNbins(); j++) {
-        N_SEsign += hSE_Sign[iPool]->GetBinContent(i, j);
-        N_sign += hCorrected_Sign[iPool]->GetBinContent(i, j);
-      }
-      for (int k = 1; k <= hCorrectedMassPairs[iPool]->GetXaxis()->GetNbins(); k++) {
-        N_massPairs += hCorrectedMassPairs[iPool]->GetBinContent(i, k);
-      }
-    }
-    hSE_Sign[iPool]->SetEntries(N_SEsign);
-    hCorrected_Sign[iPool]->SetEntries(N_sign);
-    hCorrectedMassPairs[iPool]->SetEntries(N_massPairs);
-    std::cout << "[Debug] ramdomly check the number of entries after ME correction: " << hCorrectedMassPairs[iPool]->GetBinContent(5) << std::endl;
+    hSE_2D_Raw[iPool]->SetEntries(hSE_2D_Raw[iPool]->Integral());
+    hCorrectedCorrel_2D[iPool]->SetEntries(hCorrectedCorrel_2D[iPool]->Integral());
 
     // debug: normalized ME and corrected correlation histos pool by pool
-    if (fDebug > 0) {
-      fVecCorrel_ME_norm_2D.push_back(reinterpret_cast<TH2D*>(hME_Normalized[iPool]->Clone(Form("hNorm_Correl_ME_Pool%s_2D", fDoPoolByPool ? Form("%d", iPool) : "All"))));
-      fVecCorrectedCorrel_2D.push_back(reinterpret_cast<TH2D*>(hCorrected_Sign[iPool]->Clone(Form("hCorrected_Correl_2D_Pool%s", fDoPoolByPool ? Form("%d", iPool) : "All"))));
+    if (fDebug > 0 && fDoPoolByPool) {
+      fPoolVec_CorrectedCorrel_2D.push_back(SetTH2HistoStyle(
+        reinterpret_cast<TH2D*>(hCorrectedCorrel_2D[iPool]->Clone(Form("hCorrected_Correl_2D_Pool%s", fDoPoolByPool ? Form("%d", iPool) : "All"))),
+        Form("Corrected %s with %s", fTitleCorrel, fDeltaEtaGap), "#Delta#eta", "#Delta#phi (rad)", AxisLables::kRawYieldRad
+      ));
     }
  
     // Pools integration
     if (iPool == 0) {
-      h2D_SE = reinterpret_cast<TH2D*>(hSE_Sign[0]->Clone("h2D_SE"));
-      h2D_ME = reinterpret_cast<TH2D*>(hME_Sign[0]->Clone("h2D_ME"));
-      h2D_ME_norm = reinterpret_cast<TH2D*>(hME_Normalized[0]->Clone("h2D_ME_norm"));
-      h2D_Sign = reinterpret_cast<TH2D*>(hCorrected_Sign[0]->Clone("h2D_Sign"));
-      h1D_correctedMassPairs = reinterpret_cast<TH1D*>(hCorrectedMassPairs[0]->Clone("h1D_correctedMassPairs"));
-      h1D_correctedMassPairs->SetTitle("Corrected associated pairs mass distribution");
-      h1D_correctedRatioVsDeltaEta = reinterpret_cast<TH1D*>(fVecCorrectedRatioVsDeltaEta[0]->Clone("h1D_correctedRatioVsDeltaEta"));
-      h1D_correctedRatioVsDeltaEta->SetTitle(Form("Correction ratio vs DeltaEta, DeltaPhi %f - %f", fDeltaPhiBins.front(), fDeltaPhiBins.back()));
-      h2D_SE->Sumw2();
-      h2D_ME->Sumw2();
-      h2D_ME_norm->Sumw2();
-      h2D_Sign->Sumw2();
+      h2D_SE = reinterpret_cast<TH2D*>(hSE_2D_Raw[0]->Clone("h2D_SE"));
+      h2D_ME = reinterpret_cast<TH2D*>(hME_2D_Raw[0]->Clone("h2D_ME"));
+      h2D_ME_norm = reinterpret_cast<TH2D*>(hME_2D_Normalized[0]->Clone("h2D_ME_norm"));
+      h2D_CorrectedCorrel = reinterpret_cast<TH2D*>(hCorrectedCorrel_2D[0]->Clone("h2D_CorrectedCorrel"));
+      h1D_CorrectedPairsMass = reinterpret_cast<TH1D*>(hCorrectedPairsMass[0]->Clone("h1D_CorrectedPairsMass"));
+      h1D_correctedRatioVsDeltaEta = reinterpret_cast<TH1D*>(fPoolVec_CorrectionRatio[0]->Clone("h1D_correctedRatioVsDeltaEta"));
     } else {
-      h2D_Sign->Add(hCorrected_Sign[iPool]);
-      h2D_SE->Add(hSE_Sign[iPool]);
-      h2D_ME->Add(hME_Sign[iPool]);
-      h2D_ME_norm->Add(hME_Normalized[iPool]);
-      h1D_correctedMassPairs->Add(hCorrectedMassPairs[iPool]);
-      h1D_correctedRatioVsDeltaEta->Add(fVecCorrectedRatioVsDeltaEta[iPool]);
+      h2D_SE->Add(hSE_2D_Raw[iPool]);
+      h2D_ME->Add(hME_2D_Raw[iPool]);
+      h2D_ME_norm->Add(hME_2D_Normalized[iPool]);
+      h2D_CorrectedCorrel->Add(hCorrectedCorrel_2D[iPool]);
+      h1D_CorrectedPairsMass->Add(hCorrectedPairsMass[iPool]);
+      h1D_correctedRatioVsDeltaEta->Add(fPoolVec_CorrectionRatio[iPool]);
     }
   } // end pool loop
 
-  // clean up pool histos
-  for (int iPool = 0; iPool < fNpools; iPool++) {
-    delete hSE_Sign[iPool];
-    hSE_Sign[iPool] = nullptr;
-    delete hME_Sign[iPool];
-    hME_Sign[iPool] = nullptr;
-    delete hME_Normalized[iPool];
-    hME_Normalized[iPool] = nullptr;
-    delete hCorrected_Sign[iPool];
-    hCorrected_Sign[iPool] = nullptr;
-    delete hME_Sign_SoftPi[iPool];
-    hME_Sign_SoftPi[iPool] = nullptr;
-    delete hCorrectedMassPairs[iPool];
-    hCorrectedMassPairs[iPool] = nullptr;
+  if (fMethod == kDeltaPhiBinning) {
+    fCorrectedPairsMass = SetTH1HistoStyle(reinterpret_cast<TH1D*>(h1D_CorrectedPairsMass->Clone("hCorrectedPairsMass")), 
+      Form("Corrected pairs mass distribution with %s", fDeltaEtaGap), "Invariant Mass (GeV/c^{2})", "Corrected pairs / GeV/c^{2}");
+    fCorrectionRatio = SetTH1HistoStyle(reinterpret_cast<TH1D*>(h1D_correctedRatioVsDeltaEta->Clone("hCorrectionRatio")),
+      Form("Correction ratio with %s", fDeltaEtaGap), "#Delta#eta", "Ratio (corrected SE / SE)");
   }
 
-  std::cout << "[Debug] ramdomly check the bin content after pool integration: " << h1D_correctedMassPairs->GetBinContent(5) << std::endl;
-  fCorrectedMassPairs = reinterpret_cast<TH1D*>(h1D_correctedMassPairs->Clone("hCorrectedMassPairs_AllPools"));
-  fCorrectedRatioVsDeltaEta = reinterpret_cast<TH1D*>(h1D_correctedRatioVsDeltaEta->Clone("hCorrectedRatioVsDeltaEta_AllPools"));
+  // clean up pool histos
+  for (int iPool = 0; iPool < fNpools; iPool++) {
+    delete hSE_2D_Raw[iPool];           hSE_2D_Raw[iPool] = nullptr;
+    delete hME_2D_Raw[iPool];           hME_2D_Raw[iPool] = nullptr;
+    delete hME_2D_Normalized[iPool];    hME_2D_Normalized[iPool] = nullptr;
+    delete hME_Sign_SoftPi[iPool];      hME_Sign_SoftPi[iPool] = nullptr;
+    delete hCorrectedCorrel_2D[iPool];  hCorrectedCorrel_2D[iPool] = nullptr;
+    delete hCorrectedPairsMass[iPool];       hCorrectedPairsMass[iPool] = nullptr;
+  }
 
   // debug: integrated SE, ME, normalized ME and corrected correlation histos
   if (fDebug > 0) {
-    fCorrel_SE_2D = reinterpret_cast<TH2D*>(h2D_SE->Clone(Form("hCorrel_SE_allPools")));
-    fCorrel_ME_2D = reinterpret_cast<TH2D*>(h2D_ME->Clone(Form("hCorrel_ME_allPools")));
-    fCorrel_ME_norm_2D = reinterpret_cast<TH2D*>(h2D_ME_norm->Clone(Form("hCorrel_ME_norm_allPools")));
-    fCorrectedCorrel_2D = reinterpret_cast<TH2D*>(h2D_Sign->Clone(Form("hCorrectedCorrel_allPools")));
+    fCorrel_SE_2D = SetTH2HistoStyle(reinterpret_cast<TH2D*>(h2D_SE->Clone("hCorrel_SE_2D")), Form("SE %s with %s", fTitleCorrel, fDeltaEtaGap), "#Delta#eta", "#Delta#phi (rad)", AxisLables::kRawYieldRad);
+    fCorrel_ME_2D = SetTH2HistoStyle(reinterpret_cast<TH2D*>(h2D_ME->Clone("hCorrel_ME_2D")), Form("ME %s with %s", fTitleCorrel, fDeltaEtaGap), "#Delta#eta", "#Delta#phi (rad)", AxisLables::kRawYieldRad);
+    fCorrectedCorrel_2D = SetTH2HistoStyle(reinterpret_cast<TH2D*>(h2D_CorrectedCorrel->Clone("hCorrectedCorrel_2D")), Form("Corrected %s with %s", fTitleCorrel, fDeltaEtaGap), "#Delta#eta", "#Delta#phi (rad)", AxisLables::kRawYieldRad);
+    fNormalizedCorrel_ME_2D = SetTH2HistoStyle(reinterpret_cast<TH2D*>(h2D_ME_norm->Clone("hNormalizedCorrel_ME_2D")), Form("Normalized ME %s with %s", fTitleCorrel, fDeltaEtaGap), "#Delta#eta", "#Delta#phi (rad)", "ME correction ratio");
   }
 
   // clean up integrated SE, ME and normalized ME histos
@@ -476,39 +337,36 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations()
   h2D_ME = nullptr;
   delete h2D_ME_norm;
   h2D_ME_norm = nullptr;
-  delete h1D_correctedMassPairs;
-  h1D_correctedMassPairs = nullptr;
+  delete h1D_CorrectedPairsMass;
+  h1D_CorrectedPairsMass = nullptr;
+  delete h1D_correctedRatioVsDeltaEta;
+  h1D_correctedRatioVsDeltaEta = nullptr;
 
   //==========================================================================================================================
   // 1D projection
-  h1D_Sign = reinterpret_cast<TH1D*>(h2D_Sign->ProjectionY("h1D_Sign")); // projection on deltaPhi axis
-  h1D_Sign->Sumw2();
+  h1D_CorrectedCorrel = reinterpret_cast<TH1D*>(h2D_CorrectedCorrel->ProjectionY("h2D_CorrectedCorrel"), 'e'); // projection on deltaPhi axis
+
+  fCorrectedCorrel = SetTH1HistoStyle(reinterpret_cast<TH1D*>(h1D_CorrectedCorrel->Clone("hCorrectedCorrel")),
+    Form("Corrected %s with %s", fTitleCorrel, fDeltaEtaGap), "#Delta#phi (rad)", AxisLabels::kRawYieldRad_DP);
 
   // Apply normalization to number of triggers - NOT DONE
-  h1D_Norm = reinterpret_cast<TH1D*>(h1D_Sign->Clone("h1D_triggerNorm_Sign"));
-  h1D_Norm->Sumw2();
+  h1D_NormalizedCorrectedCorrel = reinterpret_cast<TH1D*>(h1D_CorrectedCorrel->Clone("h1D_NormalizedCorrectedCorrel"));
   if (!fMassVsPt_2D) {
     ProjMassVsPt();
   }
   Double_t N_triggers = CalculateTriggerNormalizationFactor(fMassVsPt_2D, fPtCandBins[0], fPtCandBins[1], fInvMassBins[0], fInvMassBins[1]);
-  if (fDebug > 0) {
-    TH1D* hDebug_CorrBeforeNorm = reinterpret_cast<TH1D*>(h1D_Sign->Clone("hCorrectedCorr_BeforeNorm"));
-    fNonNormalizedCorrHisto = reinterpret_cast<TH1D*>(h1D_Sign->Clone("hNonNormalizedCorrHisto"));
-    SetTH1HistoStyle(fNonNormalizedCorrHisto, Form("%s-h Correlation - Before trigger [%.0f], %.0f < p_{T} < %.0f GeV/c", fDmesonLabel.Data(), N_triggers, fPtCandBins[0], fPtCandBins[1]), "#Delta#phi [rad]", "dN/d#Delta#phi");
-    hDebug_CorrBeforeNorm = nullptr;
-    delete hDebug_CorrBeforeNorm;
-  }
-  h1D_Norm->Scale(1. / N_triggers);
-  h1D_Norm->SetTitle(Form("%s-h Correlation - Normalized to number of triggers, %.0f", fDmesonLabel.Data(), N_triggers));
-  SetTH1HistoStyle(h1D_Norm, Form("%.0f < p_{T} < %.0f GeV/c", fPtCandBins[0], fPtCandBins[1]), "#Delta#phi [rad]", "1/N_{trig} dN/d#Delta#phi");
+  h1D_NormalizedCorrectedCorrel->Scale(1. / N_triggers);
+
+  fNormalizedCorrectedCorrel = SetTH1HistoStyle(reinterpret_cast<TH1D*>(h1D_NormalizedCorrectedCorrel->Clone("hNormalizedCorrectedCorrel")),
+    Form("Normalized corrected %s with %s", fTitleCorrel, fDeltaEtaGap), "#Delta#phi (rad)", AxisLabels::kPerTrigYield_DP);
 
   // clean up
-  delete h2D_Sign;
-  h2D_Sign = nullptr;
-  delete h1D_Sign;
-  h1D_Sign = nullptr;
+  delete h2D_CorrectedCorrel;
+  h2D_CorrectedCorrel = nullptr;
+  delete h1D_CorrectedCorrel;
+  h1D_CorrectedCorrel = nullptr;
 
-  // Secondary particle contamination
+  /*// Secondary particle contamination
   if (fdoSecPartContamination) {
     h1D_PrimaryPartCorr = ProjCorrelHistoSecondaryPart(kPrimaryPart, fPtCandBins[0], fPtCandBins[1], fPtHadBins[0], fPtHadBins[1]);
     h1D_AllPartCorr = ProjCorrelHistoSecondaryPart(kAllPart, fPtCandBins[0], fPtCandBins[1], fPtHadBins[0], fPtHadBins[1]);
@@ -551,8 +409,9 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations()
   h1D_Norm->SetLineColor(kBlue + 1);
   h1D_Norm->SetMarkerColor(kBlue + 1);
   h1D_Norm->SetMarkerStyle(kFullCircle);
-  h1D_Norm->SetMinimum(0);
-  if (fdoSecPartContamination) {
+  h1D_Norm->SetMinimum(0);*/
+
+  /*if (fdoSecPartContamination) {
     h1D_Norm_SecPart->SetLineColor(kRed + 1);
     h1D_Norm_SecPart->SetMarkerColor(kRed + 1);
     h1D_Norm_SecPart->SetMarkerStyle(kFullCircle);
@@ -562,54 +421,7 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations()
     fCorrectedCorrHisto = reinterpret_cast<TH1D*>(h1D_Norm_SecPart->Clone("hCorrectedCorr"));
   } else {
     fCorrectedCorrHisto = reinterpret_cast<TH1D*>(h1D_Norm->Clone("hCorrectedCorr"));
-  }
-
-  // Baseline subtraction
-  Double_t BaselineData, BaselineDataErr;
-  TH1D* hBaseline = reinterpret_cast<TH1D*>(h1D_Norm->Clone("hBaseline"));
-  hBaseline->Sumw2();
-
-  if (fdoSecPartContamination) {
-    BaselineData = CalculateBaseline(h1D_Norm_SecPart, kTRUE, kFALSE);
-    BaselineDataErr = CalculateBaselineError(h1D_Norm_SecPart, kTRUE, kFALSE);
-    for (int iBin = 0; iBin < hBaseline->GetNbinsX(); iBin++) {
-      hBaseline->SetBinContent(iBin + 1, BaselineData);
-      hBaseline->SetBinError(iBin + 1, BaselineDataErr);
-    }
-    h1D_BaselineSubtr = reinterpret_cast<TH1D*>(h1D_Norm_SecPart->Clone("h1D_BaselineSubtr"));
-    h1D_BaselineSubtr->Add(hBaseline, -1.);
-  } else {
-    BaselineData = CalculateBaseline(h1D_Norm, kTRUE, kFALSE);
-    BaselineDataErr = CalculateBaselineError(h1D_Norm, kTRUE, kFALSE);
-    for (int iBin = 0; iBin < hBaseline->GetNbinsX(); iBin++) {
-      hBaseline->SetBinContent(iBin + 1, BaselineData);
-      hBaseline->SetBinError(iBin + 1, BaselineDataErr);
-    }
-    h1D_BaselineSubtr = reinterpret_cast<TH1D*>(h1D_Norm->Clone("h1D_BaselineSubtr"));
-    h1D_BaselineSubtr->Add(hBaseline, -1.);
-  }
-
-  h1D_BaselineSubtr->SetMarkerColor(kOrange + 8);
-  h1D_BaselineSubtr->SetLineColor(kOrange + 8);
-  h1D_BaselineSubtr->GetYaxis()->SetRangeUser(-0.2, 8.);
-  fCorrectedCorrHisto_BaselineSubtr = reinterpret_cast<TH1D*>(h1D_BaselineSubtr->Clone(Form("hCorrectedCorrBaselineSubtr_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMass%.0fto%.0f", fPtCandBins[0], fPtCandBins[1], fPtHadBins[0], fPtHadBins[1], fInvMassBins[0], fInvMassBins[1])));
-
-  hBaseline->SetMarkerColor(kPink - 6);
-  hBaseline->SetMarkerStyle(kFullSquare);
-  hBaseline->SetLineColor(kPink - 6);
-  fBaselineHisto = reinterpret_cast<TH1D*>(hBaseline->Clone(Form("hBaseline_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMass%.0fto%.0f", fPtCandBins[0], fPtCandBins[1], fPtHadBins[0], fPtHadBins[1], fInvMassBins[0], fInvMassBins[1])));
-
-  // clean up
-  delete hBaseline;
-  hBaseline = nullptr;
-  delete h1D_BaselineSubtr;
-  h1D_BaselineSubtr = nullptr;
-
-  if (fdoSecPartContamination) {
-    h1D_ReflCorr = ReflectCorrHistogram(h1D_Norm_SecPart);
-  } else {
-    h1D_ReflCorr = ReflectCorrHistogram(h1D_Norm);
-  }
+  }*/
 
   /* used as control using Run2 reflection function
   if (fFDsubtraction) {
@@ -620,52 +432,17 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations()
     h1D_ReflCorr = ReflectHistoRun2(h1D_SubtrNorm, 0.5);
   }*/
 
-  h1D_ReflCorr->SetMinimum(0);
-  SetTH1HistoStyle(h1D_ReflCorr, Form("%.0f < p_{T} < %.0f GeV/c", fPtCandBins[0], fPtCandBins[1]), "#Delta#phi [rad]", "#frac{1}{N_{D}}#frac{dN^{assoc}}{d#Delta#phi} [rad^{-1}]", kFullCircle, kOrange + 8, 1.6, kOrange + 8, 3);
-  fCorrectedCorrHisto_Reflected = reinterpret_cast<TH1D*>(h1D_ReflCorr->Clone(Form("hCorrectedCorrReflected_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMass%.0fto%.0f", fPtCandBins[0], fPtCandBins[1], fPtHadBins[0], fPtHadBins[1], fInvMassBins[0], fInvMassBins[1])));
-
-  // Reflected histograms baseline subtracted
-  TH1D* hBaseline_Refl = reinterpret_cast<TH1D*>(h1D_ReflCorr->Clone("hBaseline_Refl"));
-  hBaseline_Refl->Sumw2();
-  BaselineData = CalculateBaseline(h1D_ReflCorr, kFALSE, kTRUE);
-  BaselineDataErr = CalculateBaselineError(h1D_ReflCorr, kFALSE, kTRUE);
-
-  for (int iBin = 0; iBin < hBaseline_Refl->GetNbinsX(); iBin++) {
-    hBaseline_Refl->SetBinContent(iBin + 1, BaselineData);
-    hBaseline_Refl->SetBinError(iBin + 1, BaselineDataErr);
-  }
-  h1D_ReflCorr_BaselineSubtr = reinterpret_cast<TH1D*>(h1D_ReflCorr->Clone("h1D_ReflCorr_BaselineSubtr"));
-  h1D_ReflCorr_BaselineSubtr->Sumw2();
-  h1D_ReflCorr_BaselineSubtr->Add(hBaseline_Refl, -1.);
-
-  TF1* fConstZero = new TF1("fConstZero", "[0]", 0., TMath::Pi());
-  fConstZero->SetParameter(0, 0.);
-  fConstZero->SetLineColor(kMagenta);
-  fConstZero->SetLineStyle(9);
-  fConstZero->SetLineWidth(4);
-  fConstZero->SetTitle("");
-
-  hBaseline_Refl->SetMarkerColor(kOrange);
-  hBaseline_Refl->SetMarkerStyle(kFullSquare);
-  hBaseline_Refl->SetLineColor(kOrange);
-  fBaselineHisto_Reflected = reinterpret_cast<TH1D*>(hBaseline_Refl->Clone(Form("hBaselineReflected_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMass%.0fto%.0f", fPtCandBins[0], fPtCandBins[1], fPtHadBins[0], fPtHadBins[1], fInvMassBins[0], fInvMassBins[1])));
-
-  SetTH1HistoStyle(h1D_ReflCorr_BaselineSubtr, Form("%.0f < p_{T} < %.0f GeV/c", fPtCandBins[0], fPtCandBins[1]), "#Delta#phi [rad]", "#frac{1}{N_{D}}#frac{dN^{assoc}}{d#Delta#phi} [rad^{-1}]", kFullCircle, kRed + 1, 1.6, kRed + 1, 3);
-  h1D_ReflCorr_BaselineSubtr->SetStats(0);
-  fCorrectedCorrHisto_Reflected_BaselineSubtr = reinterpret_cast<TH1D*>(h1D_ReflCorr_BaselineSubtr->Clone(Form("hCorrectedCorrReflected_BaselineSubtr_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMass%.0fto%.0f", fPtCandBins[0], fPtCandBins[1], fPtHadBins[0], fPtHadBins[1],fInvMassBins[0], fInvMassBins[1])));
-  fTFConstZero = reinterpret_cast<TF1*>(fConstZero->Clone(Form("fConstZero_PtCand%.0fto%.0f_PtAssoc%.0fto%.0f_InvMass%.0fto%.0f", fPtCandBins[0], fPtCandBins[1], fPtHadBins[0], fPtHadBins[1], fInvMassBins[0], fInvMassBins[1])));
-
   // clean up
   delete h1D_Norm;
   h1D_Norm = nullptr;
-  if (fdoSecPartContamination) {
+  /*if (fdoSecPartContamination) {
     delete h1D_Norm_SecPart;
     h1D_Norm_SecPart = nullptr;
   }
   delete h1D_ReflCorr;
   h1D_ReflCorr = nullptr;
   delete hBaseline_Refl;
-  hBaseline_Refl = nullptr;
+  hBaseline_Refl = nullptr;*/
 
   return kTRUE;
 }
@@ -750,21 +527,21 @@ if (fDebug > 0) {
         h2D_Original_MassVsDeltaEta = static_cast<TH2D*>(hSparse->Projection(kMass, kDeltaEta));
     }
 
-    if (fDebug > 1) {
+    if (fDebug > 1  && fDoPoolByPool) {
       if (SEorME == kSE) {
-        h2D_Original->SetName(Form("hOriginal_Correl_SE_Pool%s_2D", poolStr.Data()));
-        fPoolVec_OriginalCorrel_SE_2D.push_back(SetTH2HistoStyle(h2D_Original, 
-          Form("Original Correlation from SE THnSparse projection for Pool %s", poolStr.Data()), 
-          "#Delta#eta", "#Delta#phi (rad)", AxisLabels::kRawYieldRad));
+          h2D_Original->SetName(Form("hOriginal_Correl_SE_2D_Pool%s", poolStr.Data()));
+          fPoolVec_OriginalCorrel_SE_2D.push_back(SetTH2HistoStyle(h2D_Original, 
+            Form("Original Correlation from SE THnSparse projection for Pool %s", poolStr.Data()), 
+            "#Delta#eta", "#Delta#phi (rad)", AxisLabels::kRawYieldRad));
 
         if (h2D_Original_MassVsDeltaEta) {
-          h2D_Original_MassVsDeltaEta->SetName(Form("hOriginal_MassVsDeltaEta_SE_Pool%s_2D", poolStr.Data()));
+          h2D_Original_MassVsDeltaEta->SetName(Form("hOriginal_MassVsDeltaEta_SE_2D_Pool%s", poolStr.Data()));
           fPoolVec_OriginalMassVsDeltaEta_SE_2D.push_back(SetTH2HistoStyle(h2D_Original_MassVsDeltaEta, 
             Form("Original Mass vs DeltaEta from SE THnSparse projection for Pool %s", poolStr.Data()), 
             "#Delta#eta", "Mass (GeV/#it{c}^{2})", "Counts"));
         }
-      } else { // ME
-        h2D_Original->SetName(Form("hOriginal_Correl_ME_Pool%s_2D", poolStr.Data()));
+      } else if (fDoPoolByPool) { // ME
+        h2D_Original->SetName(Form("hOriginal_Correl_ME_2D_Pool%s", poolStr.Data()));
         fPoolVec_OriginalCorrel_ME_2D.push_back(SetTH2HistoStyle(h2D_Original, 
           Form("Original Correlation from ME THnSparse projection for Pool %s", poolStr.Data()), 
           "#Delta#eta", "#Delta#phi (rad)", AxisLabels::kRawYieldRad));
@@ -848,19 +625,19 @@ if (fDebug > 0) {
     TString titleCorrel = Form("Raw %s %s with |#Delta#eta| > %.1f for Pool %s", fTitleCorrel.Data(), SEorME ? "SE" : "ME", fDeltaEtaRightMin, poolStr.Data());
     if (SEorME == kSE) {
       fPoolVec_RawCorrel_SE_2D.push_back(SetTH2HistoStyle(reinterpret_cast<TH2D*>(hFinal->Clone(titleCorrel)),
-        Form("hRaw_Correl_SE_Pool%s_2D", poolStr.Data()), "#Delta#eta", "#Delta#phi (rad)", AxisLabels::kRawYieldRad));
+        Form("hRaw_Correl_SE_2D_Pool%s", poolStr.Data()), "#Delta#eta", "#Delta#phi (rad)", AxisLabels::kRawYieldRad));
       if (fMethod == kDeltaPhiBinning) {
         TString titleMass = Form("Raw Mass vs DeltaEta with |#Delta#eta| > %.1f for Pool %s", fDeltaEtaRightMin, poolStr.Data());
         fPoolVec_RawMassVsDeltaEta_SE_2D.push_back(SetTH2HistoStyle(reinterpret_cast<TH2D*>(hFinalMass->Clone(titleMass)),
-          Form("hRaw_MassVsDeltaEta_SE_Pool%s_2D", poolStr.Data()), "#Delta#eta", "Mass (GeV/#it{c}^{2})", "Counts"));
+          Form("hRaw_MassVsDeltaEta_SE_2D_Pool%s", poolStr.Data()), "#Delta#eta", "Mass (GeV/#it{c}^{2})", "Counts"));
       }
     } else {
       fPoolVec_RawCorrel_ME_2D.push_back(SetTH2HistoStyle(reinterpret_cast<TH2D*>(hFinal->Clone(titleCorrel)), 
-        Form("hRaw_Correl_ME_Pool%s_2D", poolStr.Data()), "#Delta#eta", "#Delta#phi (rad)", AxisLabels::kRawYieldRad));
+        Form("hRaw_Correl_ME_2D_Pool%s", poolStr.Data()), "#Delta#eta", "#Delta#phi (rad)", AxisLabels::kRawYieldRad));
     }
   }
 
-  h2D = hFinal->Clone(Form("hCorrel_%s_Pool%s_2D", (SEorME == kSE) ? "SE" : "ME", fDoPoolByPool ? Form("%d", pool) : "All"));
+  h2D = hFinal->Clone(Form("hCorrel_%s_2D_Pool%s", (SEorME == kSE) ? "SE" : "ME", fDoPoolByPool ? Form("%d", pool) : "All"));
 
   // clean up
   delete hFinal;
@@ -925,16 +702,151 @@ THnSparseF* DhCorrelationExtraction::GetCorrelSparse(Int_t SEorME, Int_t pool)
   return hSparse;
 }
 
-void DhCorrelationExtraction::NormalizeMEplot(TH2D*& histoME, TH2D*& histoMEsoftPi)
+void DhCorrelationExtraction::NormalizeMEplot(TH2D*& histoME, TH2D*& histoMEsoftPi, Int_t pool)
 {
   // apply the normalization
-  histoME->Scale(1. / factorNorm);
-  histoME->SetTitle(Form("ME normalized to %.2f bin (%.2f, %.2f)", factorNorm, histoME->GetXaxis()->GetBinCenter(bin0eta), histoME->GetYaxis()->GetBinCenter(bin0phi)));
-
+  histoME->Scale(1. / fFactorsNormME(pool));
+  if (fDebug > 0) {
+    fPoolVec_NormalizedCorrel_ME_2D->push_back(SetTH2HistoStyle(reinterpret_cast<TH2D*>(histoME->Clone(Form("NormalizedCorrel_ME_2D_Pool%s", fDoPoolByPool ? Form("%d", pool) : "All")), 
+      Form("Correction ratio normalized from ME for Pool %s", fDoPoolByPool ? Form("%d", pool) : "All"), "#Delta#eta", "#Delta#phi (rad)", "ME correction ratio")));
+  }
   return;
 }
 
-/*TH1D* DhCorrelationExtraction::ProjCorrelHistoSecondaryPart(Int_t PartType, Double_t PtCandMin, Double_t PtCandMax, Double_t PtHadMin, Double_t PtHadMax)*/
+TH1D* DhCorrelationExtraction::CorrectedPairsMassDistr(TH2D* hRawSE, TH2D* hCorrectedCorrel, Int_t iPool)
+{
+  TH1D* hCorrectedMass = nullptr;
+
+  // find the bin index
+  Int_t binDeltaEtaLeftMin = hRawSE->GetXaxis()->FindBin(fDeltaEtaLeftMin + 0.01);
+  Int_t binDeltaEtaRightMax = hRawSE->GetXaxis()->FindBin(fDeltaEtaRightMax - 0.01);
+  Int_t nBinDeltaEta = hCorrectedCorrel->GetXaxis()->GetNbins();
+
+  Int_t binDeltaPhiMin = hRawSE->GetYaxis()->FindBin(fDeltaPhiBins.front());
+  Int_t binDeltaPhiMax = hRawSE->GetYaxis()->FindBin(fDeltaPhiBins.back());
+
+  if (fDeltaEtaIntegrated) {
+    // --- Integrated ---
+    Double_t original_content = hRawSE->Integral(binDeltaEtaLeftMin, binDeltaEtaRightMax, binDeltaPhiMin, binDeltaPhiMax);
+    if (original_content == 0) return nullptr;
+
+    Double_t corrected_content = hCorrectedCorrel->Integral(binDeltaEtaLeftMin, binDeltaEtaRightMax, binDeltaPhiMin, binDeltaPhiMax);
+    Double_t ratio_correction = corrected_content / original_content;
+
+    hCorrectedMass = fPoolVec_RawMassVsDeltaEta_2D[iPool]->ProjectionY(Form("hCorrectedMass_ProjY_Pool%d", iPool), binDeltaEtaLeftMin, binDeltaEtaRightMax, "e");
+    hCorrectedMass->Scale(ratio_correction);
+    hCorrectedMass->SetEntries(hCorrectedMass->Integral());
+
+    TH1D* correctionRatio = new TH1D(Form("hTempRatio_Pool%d", iPool), Form("Correction ratio vs #Delta#eta, Pool %d", iPool), 1, fDeltaEtaLeftMin, fDeltaEtaRightMax);
+    correctionRatio->SetBinContent(1, ratio_correction);
+    TString titleCorrectionRatio = Form("#Delta#phi integrated correction ratio with |#Delta#eta| > %.1f for Pool %s", fDeltaEtaRightMin, fDoPoolByPool ? Form("%d", iPool) : "All")
+    fPoolVec_CorrectionRatio.push_back(SetTH1HistoStyle(reinterpret_cast<TH1D*>(correctionRatio->Clone(titleCorrectionRatio.Data())), 
+      Form("hCorrectionRatio_Pool%d", iPool), "#Delta#eta", "Ratio"));
+    delete correctionRatio;
+
+    // --- Debug ---
+    if (fDebug > 1) {
+      TString titleCorrectedMass = Form("Corrected pairs' mass distribution with %s for Pool %s", fDeltaEtaGap, fDeltaEtaRightMin, fDoPoolByPool ? Form("%d", iPool) : "All")
+      fPoolVec_CorrectedMass.push_back(SetTH1HistoStyle(reinterpret_cast<TH1D*>(hCorrectedMass->Clone(titleCorrectedMass.Data())),
+        Form("hCorrectedMass_Pool%d", iPool), "Mass (GeV/#it{c}^{2})", "Counts"));
+    }
+
+  } else {
+    hCorrectedMass = fPoolVec_RawMassVsDeltaEta_2D[iPool]->ProjectionY(Form("hCorrectedMass_ProjY_Pool%d", iPool), "e");
+    hCorrectedMass->Reset();
+
+    TH1D* hCorrectionRatio = nullptr;
+    hCorrectionRatio = hRawSE->ProjectionX(Form("hTempRatio_BinByBin_Pool%d", iPool));
+    hCorrectionRatio->Reset();
+
+    for (int iEtaBin = 1; iEtaBin <= nBinDeltaEta; iEtaBin++) {
+      Double_t original_content = hRawSE->Integral(iEtaBin, iEtaBin, binDeltaPhiMin, binDeltaPhiMax);
+      if (original_content == 0) continue;
+
+      Double_t corrected_content = hCorrectedCorrel->Integral(iEtaBin, iEtaBin, binDeltaPhiMin, binDeltaPhiMax);
+      Double_t ratio_correction = corrected_content / original_content;
+
+      hCorrectionRatio->SetBinContent(iEtaBin, ratio_correction);
+
+      TH1D* hTempCorrectedMass = fPoolVec_RawMassVsDeltaEta_2D[iPool]->ProjectionY(Form("hCorrectedMassPairs_ProjY_Pool%d_EtaBin%d", iPool, iEtaBin), iEtaBin, iEtaBin, "e");
+      hTempCorrectedMass->Scale(ratio_correction);
+      hCorrectedMass->Add(hTempCorrectedMass);
+
+      delete hTempCorrectedMass;
+    }
+    hCorrectedMass->SetEntries(hCorrectedMass->Integral());
+
+    TString titleCorrectionRatio = Form("Correction ratio (Bin-by-bin) with %s for Pool %s", fDeltaEtaGap, fDeltaEtaRightMin, fDoPoolByPool ? Form("%d", iPool) : "All")
+    fPoolVec_CorrectionRatio.push_back(SetTH1HistoStyle(reinterpret_cast<TH1D*>(hCorrectionRatio->Clone(titleCorrectionRatio.Data())), 
+      Form("hCorrectionRatio_Pool%d", iPool), "#Delta#eta", "Ratio"));      
+    delete hCorrectionRatio;
+
+    // --- Debug ---
+    if (fDebug > 1) {
+      TString titleCorrectedMass = Form("Corrected pairs' mass distribution (Bin-by-bin) with |#Delta#eta| > %.1f for Pool %s", fDeltaEtaRightMin, fDoPoolByPool ? Form("%d", iPool) : "All")
+      fPoolVec_CorrectedMass.push_back(SetTH1HistoStyle(reinterpret_cast<TH1D*>(hCorrectedMass->Clone(titleCorrectedMass.Data())), 
+        Form("hCorrectedMass_Pool%d", iPool), "Mass (GeV/#it{c}^{2})", "Counts"));
+    }
+  }
+
+  return hCorrectedMass;
+}
+
+TH1D* DhCorrelationExtraction::SetTH1HistoStyle(TH1D*& histo, TString hTitle, TString hXaxisTitle, TString hYaxisTitle,
+                                               Style_t markerStyle, Color_t markerColor, Double_t markerSize,
+                                               Color_t lineColor, Int_t lineWidth, Float_t hTitleXaxisOffset, Float_t hTitleYaxisOffset,
+                                               Float_t hTitleXaxisSize, Float_t hTitleYaxisSize, Float_t hLabelXaxisSize, Float_t hLabelYaxisSize,
+                                               Bool_t centerXaxisTitle, Bool_t centerYaxisTitle)
+{
+
+  histo->SetTitle(hTitle.Data());
+  histo->GetXaxis()->SetTitle(hXaxisTitle.Data());
+  histo->GetYaxis()->SetTitle(hYaxisTitle.Data());
+  histo->SetMarkerStyle(markerStyle);
+  histo->SetMarkerColor(markerColor);
+  histo->SetMarkerSize(markerSize);
+  histo->SetLineColor(lineColor);
+  histo->SetLineWidth(lineWidth);
+  histo->GetXaxis()->SetTitleOffset(hTitleXaxisOffset);
+  histo->GetYaxis()->SetTitleOffset(hTitleYaxisOffset);
+  histo->GetXaxis()->SetTitleSize(hTitleXaxisSize);
+  histo->GetYaxis()->SetTitleSize(hTitleYaxisSize);
+  histo->GetXaxis()->SetLabelSize(hLabelXaxisSize);
+  histo->GetYaxis()->SetLabelSize(hLabelYaxisSize);
+  histo->GetXaxis()->CenterTitle(centerXaxisTitle);
+  histo->GetYaxis()->CenterTitle(centerYaxisTitle);
+
+  return histo;
+}
+
+TH2D* DhCorrelationExtraction::SetTH2HistoStyle(TH2D*& histo, TString hTitle, TString hXaxisTitle, TString hYaxisTitle, TString hZaxisTitle,
+                                               Float_t hTitleXaxisOffset, Float_t hTitleYaxisOffset, Float_t hTitleZaxisOffset,
+                                               Float_t hTitleXaxisSize, Float_t hTitleYaxisSize, Float_t hTitleZaxisSize,
+                                               Float_t hLabelXaxisSize, Float_t hLabelYaxisSize, Float_t hLabelZaxisSize,
+                                               Bool_t centerXaxisTitle, Bool_t centerYaxisTitle)
+{
+
+  histo->SetTitle(hTitle.Data());
+  histo->GetXaxis()->SetTitle(hXaxisTitle.Data());
+  histo->GetYaxis()->SetTitle(hYaxisTitle.Data());
+  histo->GetZaxis()->SetTitle(hZaxisTitle.Data());
+  histo->GetXaxis()->SetTitleOffset(hTitleXaxisOffset);
+  histo->GetYaxis()->SetTitleOffset(hTitleYaxisOffset);
+  histo->GetZaxis()->SetTitleOffset(hTitleZaxisOffset);
+  histo->GetXaxis()->SetTitleSize(hTitleXaxisSize);
+  histo->GetYaxis()->SetTitleSize(hTitleYaxisSize);
+  histo->GetZaxis()->SetTitleSize(hTitleZaxisSize);
+  histo->GetXaxis()->SetLabelSize(hLabelXaxisSize);
+  histo->GetYaxis()->SetLabelSize(hLabelYaxisSize);
+  histo->GetZaxis()->SetLabelSize(hLabelZaxisSize);
+  histo->GetXaxis()->CenterTitle(centerXaxisTitle);
+  histo->GetYaxis()->CenterTitle(centerYaxisTitle);
+
+  return histo;
+}
+
+
+/*TH1D* DhCorrelationExtraction::ProjCorrelHistoSecondaryPart(Int_t PartType, Double_t PtCandMin, Double_t PtCandMax, Double_t PtHadMin, Double_t PtHadMax)
 {
 
   TH1D* h1D = new TH1D(); // pointer to be returned
@@ -1040,7 +952,7 @@ void DhCorrelationExtraction::ProjMassVsPt() {
 
   fileMass -> Close();
   delete sparseMass;
-}
+}*/
 
 // calculate the number of trigger D mesons in given pt range from mass vs pt histogram
 Double_t DhCorrelationExtraction::CalculateTriggerNormalizationFactor(TH2D* hMassVsPt, Double_t ptMin, Double_t ptMax, Double_t massMin, Double_t massMax) {
@@ -1054,270 +966,11 @@ Double_t DhCorrelationExtraction::CalculateTriggerNormalizationFactor(TH2D* hMas
 
   TH1D* hMassProj = hMassVsPt->ProjectionX("hMassProj", ptBinMin, ptBinMax);
 
-  Int_t lowEdgeBin = hMassProj->GetXaxis()->FindBin(1.72);
-  Int_t upEdgeBin = hMassProj->GetXaxis()->FindBin(2.02);
-  Double_t Ntrigegr = hMassProj->Integral(lowEdgeBin, upEdgeBin);
-
   Int_t massBinMin = hMassProj->GetXaxis()->FindBin(massMin);
   Int_t massBinMax = hMassProj->GetXaxis()->FindBin(massMax);
 
-  // Double_t triggerCount = hMassProj->Integral(massBinMin, massBinMax) * fNpairs / Ntrigger;
   Double_t triggerCount = hMassProj->Integral(massBinMin, massBinMax);
   delete hMassProj;
 
   return triggerCount;
-}
-
-TH1D* DhCorrelationExtraction::ReflectCorrHistogram(TH1D*& histo)
-{
-
-  // nBinsPhi must be a multple of 4 in order to reflect correcty the histogram
-  Int_t nBinsPhi = histo->GetNbinsX();
-  Int_t nBinsPhiRefl = nBinsPhi / 2;
-  Int_t bin0Phi = nBinsPhi / 4 + 1;
-  Int_t binPiPhi = 3 * nBinsPhi / 4;
-
-  TH1D* h1D = new TH1D("h1D_Reflected", "", nBinsPhiRefl, 0., TMath::Pi()); // pointer to be returned
-  h1D->Sumw2();
-  // TH1D* h1D = reinterpret_cast<TH1D*> histo -> Clone("h1D_Reflected");
-  // h1D -> GetXaxis() -> SetRange(bin0Phi, binPiPhi);
-
-  // reflection
-  Double_t reflectedContent, reflectedContentError;
-  for (int iBin = 0; iBin < nBinsPhiRefl / 2; iBin++) {
-    reflectedContent = (histo->GetBinContent(bin0Phi - iBin - 1) + histo->GetBinContent(bin0Phi + iBin)) / 2;
-    reflectedContentError = 0.5 * TMath::Sqrt(TMath::Power(histo->GetBinError(iBin + 1), 2) + TMath::Power(histo->GetBinError(bin0Phi + iBin), 2));
-    h1D->SetBinContent(iBin + 1, reflectedContent);
-    h1D->SetBinError(iBin + 1, reflectedContentError);
-  }
-  for (int iBin = nBinsPhiRefl / 2; iBin < nBinsPhiRefl; iBin++) {
-    reflectedContent = (histo->GetBinContent(bin0Phi + iBin) + histo->GetBinContent(binPiPhi + 2 * bin0Phi - iBin - 2)) / 2;
-    reflectedContentError = 0.5 * TMath::Sqrt(TMath::Power(histo->GetBinError(bin0Phi + iBin), 2) + TMath::Power(histo->GetBinError(binPiPhi + 2 * bin0Phi - iBin - 2), 2));
-    h1D->SetBinContent(iBin + 1, reflectedContent);
-    h1D->SetBinError(iBin + 1, reflectedContentError);
-  }
-
-  return h1D;
-}
-
-TH1D* DhCorrelationExtraction::ReflectHistoRun2(TH1D* h, Double_t scale)
-{
-
-  TH1D* h2 = new TH1D(Form("%sReflected", h->GetName()), Form("%sReflected", h->GetName()), h->GetNbinsX() / 2., 0., TMath::Pi());
-  for (Int_t j = 1; j <= h->GetNbinsX(); j++) {
-    Double_t x = h->GetBinCenter(j);
-    Double_t y0 = h->GetBinContent(j);
-    Double_t ey0 = h->GetBinError(j);
-    Int_t j2;
-    if (x > 0 && x < TMath::Pi()) {
-      j2 = h2->FindBin(x);
-    } else if (x < 0) {
-      j2 = h2->FindBin(-1. * x);
-    } else if (x > TMath::Pi()) {
-      j2 = h2->FindBin(2. * TMath::Pi() - x);
-    } else {
-      printf("Point %d excluded \n", j);
-      continue;
-    }
-    Double_t y = h2->GetBinContent(j2);
-    Double_t ey = h2->GetBinError(j2);
-    h2->SetBinContent(j2, (y + y0));
-    h2->SetBinError(j2, TMath::Sqrt(ey0 * ey0 + ey * ey));
-  }
-  h2->Scale(scale);
-
-  return h2;
-}
-
-
-
-Double_t DhCorrelationExtraction::CalculateBaseline(TH1D*& histo, Bool_t totalRange, Bool_t reflected)
-{
-
-  // total range = 2*Pi
-  // half range = Pi , for histogram reflected under symmetric assumption
-
-  Double_t baseline, errBaseline;
-  Int_t nBinsPhi = histo->GetNbinsX();
-  Int_t binPhiHalf = nBinsPhi / 2;
-  Int_t binPhiHalfMinus1 = nBinsPhi / 2 - 1;
-  Int_t binPhiHalfPlus1 = nBinsPhi / 2 + 1;
-  Int_t binPhiHalfPlus2 = nBinsPhi / 2 + 1;
-
-  if (totalRange) {
-    // baseline evaluated considering: the two first points, the last two points and four points in the middle (corresponding to the outer points)
-    if (nBinsPhi >= 32) {
-      baseline =
-        ((histo->GetBinContent(1)) * (1. / TMath::Power(histo->GetBinError(1), 2)) +
-         (histo->GetBinContent(2)) * (1. / TMath::Power(histo->GetBinError(2), 2)) +
-         (histo->GetBinContent(binPhiHalfMinus1)) * (1. / TMath::Power(histo->GetBinError(binPhiHalfMinus1), 2)) +
-         (histo->GetBinContent(binPhiHalf)) * (1. / TMath::Power(histo->GetBinError(binPhiHalf), 2)) +
-         (histo->GetBinContent(binPhiHalfPlus1)) * (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus1), 2)) +
-         (histo->GetBinContent(binPhiHalfPlus2)) * (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus2), 2)) +
-         (histo->GetBinContent(nBinsPhi - 1)) * (1. / TMath::Power(histo->GetBinError(nBinsPhi - 1), 2)) +
-         (histo->GetBinContent(nBinsPhi)) * (1. / TMath::Power(histo->GetBinError(nBinsPhi), 2))) /
-        ((1. / TMath::Power(histo->GetBinError(1), 2)) +
-         (1. / TMath::Power(histo->GetBinError(2), 2)) +
-         (1. / TMath::Power(histo->GetBinError(binPhiHalfMinus1), 2)) +
-         (1. / TMath::Power(histo->GetBinError(binPhiHalf), 2)) +
-         (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus1), 2)) +
-         (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus2), 2)) +
-         (1. / TMath::Power(histo->GetBinError(nBinsPhi - 1), 2)) +
-         (1. / TMath::Power(histo->GetBinError(nBinsPhi), 2)));
-    } else {
-      baseline =
-        ((histo->GetBinContent(1)) * (1. / TMath::Power(histo->GetBinError(1), 2)) +
-         (histo->GetBinContent(binPhiHalf)) * (1. / TMath::Power(histo->GetBinError(binPhiHalf), 2)) +
-         (histo->GetBinContent(binPhiHalfPlus1)) * (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus1), 2)) +
-         (histo->GetBinContent(nBinsPhi)) * (1. / TMath::Power(histo->GetBinError(nBinsPhi), 2))) /
-        ((1. / TMath::Power(histo->GetBinError(1), 2)) +
-         (1. / TMath::Power(histo->GetBinError(binPhiHalf), 2)) +
-         (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus1), 2)) +
-         (1. / TMath::Power(histo->GetBinError(nBinsPhi), 2)));
-    }
-  } else {
-    if (reflected) {
-      baseline =
-        ((histo->GetBinContent(binPhiHalfMinus1)) * (1. / TMath::Power(histo->GetBinError(binPhiHalfMinus1), 2)) +
-         (histo->GetBinContent(binPhiHalf)) * (1. / TMath::Power(histo->GetBinError(binPhiHalf), 2)) +
-         (histo->GetBinContent(binPhiHalfPlus1)) * (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus1), 2)) +
-         (histo->GetBinContent(binPhiHalfPlus2)) * (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus2), 2))) /
-        ((1. / TMath::Power(histo->GetBinError(binPhiHalfMinus1), 2)) +
-         (1. / TMath::Power(histo->GetBinError(binPhiHalf), 2)) +
-         (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus1), 2)) +
-         (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus2), 2)));
-    } else {
-      // baseline evaluated using the 4 middle points in the transverese region
-      if (nBinsPhi >= 32) {
-        baseline =
-          ((histo->GetBinContent(binPhiHalfMinus1)) * (1. / TMath::Power(histo->GetBinError(binPhiHalfMinus1), 2)) +
-           (histo->GetBinContent(binPhiHalf)) * (1. / TMath::Power(histo->GetBinError(binPhiHalf), 2)) +
-           (histo->GetBinContent(binPhiHalfPlus1)) * (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus1), 2)) +
-           (histo->GetBinContent(binPhiHalfPlus2)) * (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus2), 2))) /
-          ((1. / TMath::Power(histo->GetBinError(binPhiHalfMinus1), 2)) +
-           (1. / TMath::Power(histo->GetBinError(binPhiHalf), 2)) +
-           (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus1), 2)) +
-           (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus2), 2)));
-      } else {
-        baseline =
-          ((histo->GetBinContent(binPhiHalf)) * (1. / TMath::Power(histo->GetBinError(binPhiHalf), 2)) +
-           (histo->GetBinContent(binPhiHalfPlus1)) * (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus1), 2))) /
-          ((1. / TMath::Power(histo->GetBinError(binPhiHalf), 2)) +
-           (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus1), 2)));
-      }
-    }
-  }
-
-  return baseline;
-}
-
-Double_t DhCorrelationExtraction::CalculateBaselineError(TH1D*& histo, Bool_t totalRange, Bool_t reflected)
-{
-
-  // total range = 2*Pi
-  // half range = Pi , for histogram reflected under symmetric assumption
-
-  Double_t errBaseline;
-  Int_t nBinsPhi = histo->GetNbinsX();
-  Int_t binPhiHalf = nBinsPhi / 2;
-  Int_t binPhiHalfMinus1 = nBinsPhi / 2 - 1;
-  Int_t binPhiHalfPlus1 = nBinsPhi / 2 + 1;
-  Int_t binPhiHalfPlus2 = nBinsPhi / 2 + 1;
-
-  if (totalRange) {
-    // baseline evaluated considering: the two first points, the last two points and four points in the middle (corresponding to the outer points)
-    if (nBinsPhi >= 32) {
-      errBaseline = 1. /
-                    TMath::Sqrt((1. / TMath::Power(histo->GetBinError(1), 2)) +
-                                (1. / TMath::Power(histo->GetBinError(2), 2)) +
-                                (1. / TMath::Power(histo->GetBinError(binPhiHalfMinus1), 2)) +
-                                (1. / TMath::Power(histo->GetBinError(binPhiHalf), 2)) +
-                                (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus1), 2)) +
-                                (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus2), 2)) +
-                                (1. / TMath::Power(histo->GetBinError(nBinsPhi - 1), 2)) +
-                                (1. / TMath::Power(histo->GetBinError(nBinsPhi), 2)));
-    } else { // fon nBinsPhi = 16 (rebin 4)
-      errBaseline = 1. /
-                    TMath::Sqrt((1. / TMath::Power(histo->GetBinError(1), 2)) +
-                                (1. / TMath::Power(histo->GetBinError(binPhiHalf), 2)) +
-                                (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus1), 2)) +
-                                (1. / TMath::Power(histo->GetBinError(nBinsPhi), 2)));
-    }
-  } else {
-    // baseline evaluated using the 4 middle points in the transverese region
-    if (reflected) {
-      errBaseline = 1. /
-                    TMath::Sqrt((1. / TMath::Power(histo->GetBinError(binPhiHalfMinus1), 2)) +
-                                (1. / TMath::Power(histo->GetBinError(binPhiHalf), 2)) +
-                                (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus1), 2)) +
-                                (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus2), 2)));
-    } else {
-      if (nBinsPhi >= 32) {
-        errBaseline = 1. /
-                      TMath::Sqrt((1. / TMath::Power(histo->GetBinError(binPhiHalfMinus1), 2)) +
-                                  (1. / TMath::Power(histo->GetBinError(binPhiHalf), 2)) +
-                                  (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus1), 2)) +
-                                  (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus2), 2)));
-      } else {
-        errBaseline = 1. /
-                      TMath::Sqrt((1. / TMath::Power(histo->GetBinError(binPhiHalf), 2)) +
-                                  (1. / TMath::Power(histo->GetBinError(binPhiHalfPlus1), 2)));
-      }
-    }
-  }
-
-  return errBaseline;
-}
-
-void DhCorrelationExtraction::SetTH1HistoStyle(TH1D*& histo, TString hTitle, TString hXaxisTitle, TString hYaxisTitle,
-                                               Style_t markerStyle, Color_t markerColor, Double_t markerSize,
-                                               Color_t lineColor, Int_t lineWidth, Float_t hTitleXaxisOffset, Float_t hTitleYaxisOffset,
-                                               Float_t hTitleXaxisSize, Float_t hTitleYaxisSize, Float_t hLabelXaxisSize, Float_t hLabelYaxisSize,
-                                               Bool_t centerXaxisTitle, Bool_t centerYaxisTitle)
-{
-
-  histo->SetTitle(hTitle.Data());
-  histo->GetXaxis()->SetTitle(hXaxisTitle.Data());
-  histo->GetYaxis()->SetTitle(hYaxisTitle.Data());
-  histo->SetMarkerStyle(markerStyle);
-  histo->SetMarkerColor(markerColor);
-  histo->SetMarkerSize(markerSize);
-  histo->SetLineColor(lineColor);
-  histo->SetLineWidth(lineWidth);
-  histo->GetXaxis()->SetTitleOffset(hTitleXaxisOffset);
-  histo->GetYaxis()->SetTitleOffset(hTitleYaxisOffset);
-  histo->GetXaxis()->SetTitleSize(hTitleXaxisSize);
-  histo->GetYaxis()->SetTitleSize(hTitleYaxisSize);
-  histo->GetXaxis()->SetLabelSize(hLabelXaxisSize);
-  histo->GetYaxis()->SetLabelSize(hLabelYaxisSize);
-  histo->GetXaxis()->CenterTitle(centerXaxisTitle);
-  histo->GetYaxis()->CenterTitle(centerYaxisTitle);
-
-  return;
-}
-
-void DhCorrelationExtraction::SetTH2HistoStyle(TH2D*& histo, TString hTitle, TString hXaxisTitle, TString hYaxisTitle, TString hZaxisTitle,
-                                               Float_t hTitleXaxisOffset, Float_t hTitleYaxisOffset, Float_t hTitleZaxisOffset,
-                                               Float_t hTitleXaxisSize, Float_t hTitleYaxisSize, Float_t hTitleZaxisSize,
-                                               Float_t hLabelXaxisSize, Float_t hLabelYaxisSize, Float_t hLabelZaxisSize,
-                                               Bool_t centerXaxisTitle, Bool_t centerYaxisTitle)
-{
-
-  histo->SetTitle(hTitle.Data());
-  histo->GetXaxis()->SetTitle(hXaxisTitle.Data());
-  histo->GetYaxis()->SetTitle(hYaxisTitle.Data());
-  histo->GetZaxis()->SetTitle(hZaxisTitle.Data());
-  histo->GetXaxis()->SetTitleOffset(hTitleXaxisOffset);
-  histo->GetYaxis()->SetTitleOffset(hTitleYaxisOffset);
-  histo->GetZaxis()->SetTitleOffset(hTitleZaxisOffset);
-  histo->GetXaxis()->SetTitleSize(hTitleXaxisSize);
-  histo->GetYaxis()->SetTitleSize(hTitleYaxisSize);
-  histo->GetZaxis()->SetTitleSize(hTitleZaxisSize);
-  histo->GetXaxis()->SetLabelSize(hLabelXaxisSize);
-  histo->GetYaxis()->SetLabelSize(hLabelYaxisSize);
-  histo->GetZaxis()->SetLabelSize(hLabelZaxisSize);
-  histo->GetXaxis()->CenterTitle(centerXaxisTitle);
-  histo->GetYaxis()->CenterTitle(centerYaxisTitle);
-
-  return;
 }
