@@ -105,6 +105,10 @@ class DhCorrelationExtraction : public TObject
     fNpools = nPools;
     fDoPoolByPool = doPoolByPool;
   }
+  void SetDeltaEtaIntegrated(Bool_t deltaEtaIntegrated)
+  {
+    fDeltaEtaIntegrated = deltaEtaIntegrated;
+  }
   // deltaEta bin for correlation histograms
   void SetBinDeltaEtaLeft(Double_t etaMin, Double_t etaMax)
   {
@@ -154,7 +158,9 @@ class DhCorrelationExtraction : public TObject
   void ProjMassVsPt();
   TH2D* ProjCorrelHisto(Int_t SEorME, Int_t pool);
   /*TH1D* ProjCorrelHistoSecondaryPart(Int_t PrimaryPart, Double_t PtCandMin, Double_t PtCandMax, Double_t PtHadMin, Double_t PtHadMax);*/
-  void NormalizeMEplot(TH2D*& histoME, TH2D*& histoMEsoftPi);
+  void CalculateNormaliztionFactorME(TH2D*& histoME, Int_t pool);
+  void NormalizeMEplot(TH2D*& histoME, TH2D*& histoMEsoftPi, Int_t pool);
+  TH1D* CorrectedPairsMassDistr(TH2D* hRawSE, TH2D* hCorrectedCorrel, Int_t iPool);
   Double_t CalculateTriggerNormalizationFactor(TH2D* hMassVsPt, Double_t PtCandMin, Double_t PtCandMax, Double_t InvMassMin, Double_t InvMassMax);
   /*TH1D* ReflectCorrHistogram(TH1D*& histo);
   TH1D* ReflectHistoRun2(TH1D* h, Double_t scale);
@@ -167,14 +173,14 @@ class DhCorrelationExtraction : public TObject
   // final results, debug level 0
   TH1D* GetCorrectedCorrel() { return fCorrectedCorrel; }
   TH1D* GetNormalizedCorrectedCorrel() { return fNormalizedCorrectedCorrel; }
-  TH1D* GetCorrectedPairsMass() { return fCorrectedMassPairs; }
+  TH1D* GetCorrectedPairsMass() { return fCorrectedPairsMass; }
   TH1D* GetCorrectionRatio() { return fCorrectionRatio; }
 
   // intermediate results, debug level 1
   TH2D* GetRawCorrel_SE_2D() { return fCorrel_SE_2D; }
   TH2D* GetRawCorrel_ME_2D() { return fCorrel_ME_2D; }
   TH2D* GetCorrectedCorrel_2D() { return fCorrectedCorrel_2D; }
-  TH1D* GetNormalizedCorrel_ME_2D() { return fNormalizedCorrel_ME_2D; }
+  TH2D* GetNormalizedCorrel_ME_2D() { return fNormalizedCorrel_ME_2D; }
   TH2D* GetOriginalCorrel_SE_2D() { return fOriginalCorrel_SE_2D; }
   TH2D* GetOriginalCorrel_ME_2D() { return fOriginalCorrel_ME_2D; }
   TH2D* GetOriginalMassVsDeltaEta_2D() { return fOriginalMassVsDeltaEta_2D; }
@@ -184,15 +190,16 @@ class DhCorrelationExtraction : public TObject
   TH1D* GetCorrectedCorrHisto_Before_SecPart() { return fCorrectedCorrHisto_Before_SecPart; }*/
 
   // original data histograms, debug level 2
-  std::vector<TH2D*> GetPoolVec_OriginalCorrel_SE_2D() { return fVecOriginalCorrel_SE_2D; }
-  std::vector<TH2D*> GetPoolVec_OriginalCorrel_ME_2D() { return fVecOriginalCorrel_ME_2D; }
-  std::vector<TH2D*> GetPoolVec_RawCorrel_SE_2D() { return fVecCorrel_SE_2D; }
-  std::vector<TH2D*> GetPoolVec_RawCorrel_ME_2D() { return fVecCorrel_ME_2D; }
-  std::vector<TH2D*> GetPoolVec_NormalizedCorrel_ME_2D() { return fVecCorrel_ME_norm_2D; }
-  std::vector<TH2D*> GetPoolVec_CorrectedCorrel_2D() { return fVecCorrectedCorrel_2D; }
-  std::vector<TH2D*> GetPoolVec_OriginalMassVsDeltaEta_2D() { return fVecMassVsDeltaEta_2D; }
-  std::vector<TH1D*> GetPoolVec_CorrectedMass() { return fVecVecCorrectedMassPairsVsDeltaEta; }
-  std::vector<TH1D*> GetPoolVec_CorrectionRatio() { return fVecCorrectedRatioVsDeltaEta; }
+  std::vector<TH2D*> GetPoolVec_OriginalCorrel_SE_2D() { return fPoolVec_OriginalCorrel_SE_2D; }
+  std::vector<TH2D*> GetPoolVec_OriginalCorrel_ME_2D() { return fPoolVec_OriginalCorrel_ME_2D; }
+  std::vector<TH2D*> GetPoolVec_RawCorrel_SE_2D() { return fPoolVec_RawCorrel_SE_2D; }
+  std::vector<TH2D*> GetPoolVec_RawCorrel_ME_2D() { return fPoolVec_RawCorrel_ME_2D; }
+  std::vector<TH2D*> GetPoolVec_NormalizedCorrel_ME_2D() { return fPoolVec_NormalizedCorrel_ME_2D; }
+  std::vector<TH2D*> GetPoolVec_CorrectedCorrel_2D() { return fPoolVec_CorrectedCorrel_2D; }
+  std::vector<TH2D*> GetPoolVec_OriginalMassVsDeltaEta_2D() { return fPoolVec_OriginalMassVsDeltaEta_2D; }
+  std::vector<TH2D*> GetPoolVec_RawMassVsDeltaEta_2D() {return fPoolVec_RawMassVsDeltaEta_2D; }
+  std::vector<TH1D*> GetPoolVec_CorrectedMass() { return fPoolVec_CorrectedMass; }
+  std::vector<TH1D*> GetPoolVec_CorrectionRatio() { return fPoolVec_CorrectionRatio; }
   /*TH1D* GetOriginalCorrel_PrimaryPart() { return fOriginalCorrel_PrimaryPart; }
   TH1D* GetOriginalCorrel_AllPart() { return fOriginalCorrel_AllPart; }*/
 
@@ -224,6 +231,7 @@ class DhCorrelationExtraction : public TObject
   
   Int_t fNpools;                         // Number of pools used for the ME correction
   Bool_t fDoPoolByPool;                  // Possibility to do the ME correction pool-by-pool (kTRUE) or merging all pools (kFALSE)
+  Bool_t fDeltaEtaIntegrated;         // Option to correct the pairs mass distribution by the deltaEta integrated ratio or not
   Double_t fDeltaEtaLeftMin;                // DeltaEta min value
   Double_t fDeltaEtaLeftMax;                 // DeltaEta max value
   Double_t fDeltaEtaRightMin;                // DeltaEta min value
@@ -231,9 +239,9 @@ class DhCorrelationExtraction : public TObject
   Double_t fValDeltaPhiMEnorm;                // Delta phi value to ME normalisation if (0,0) bin is empty
   Double_t fValDeltaEtaMEnorm;                // Delta eta value to ME normalisation if (0,0) bin is empty
   
-  Bool_t fdoSubtractSoftPiME;       // Soft pion subtraction (for D0 case)
+  /*Bool_t fdoSubtractSoftPiME;       // Soft pion subtraction (for D0 case)
   Bool_t fdoRebinSecPart;           // Rebin secondary particle contamination histogram
-  Bool_t fdoSecPartContamination;   // Enable seconday particle contamination correction
+  Bool_t fdoSecPartContamination;   // Enable seconday particle contamination correction*/
 
   Int_t fDebug;                          // Debug level
 
@@ -249,10 +257,10 @@ class DhCorrelationExtraction : public TObject
   std::vector<Double_t> fPtHadBins;    // Pt bins of the hadron
   std::vector<Double_t> fInvMassBins;  // Inv mass bins, whole range for deltaPhi binning method
   std::vector<Double_t> fDeltaPhiBins; // Delta phi bins, only for deltaPhi binning method
+  std::vector<Double_t> fFactorsNormME;    // Normalization factors for ME histograms, pool by pool
   Int_t fRebinAxisDeltaEta; // Rebin deltaEta axis value
   Int_t fRebinAxisDeltaPhi; // Rebin deltaPhi axis value
 
-  Double_t fNpairsError;    // Error on number of pairs
   method fMethod; // Method to be used for the analysis
 
   // Results---------------------------------------------------------------------------------------------------------------//

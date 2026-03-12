@@ -210,13 +210,11 @@ def ExtractOutputCorrel(cfgFile):
         os.makedirs(outdirMass)
     
     # mass vs pt
-    print("I am here5")
     tempExtractor.ProjMassVsPt()
     hMassVsPt = tempExtractor.GetMassVsPtHist2D()
     outMassVsPtFile = ROOT.TFile(os.path.join(outdirMass, f"InvMassVsPt.root"), "RECREATE")
     hMassVsPt.Write()
     outMassVsPtFile.Close()
-    print("I am here6")
 
     # extract for all pt bins, associated hadron pt bins, and inv. mass bins
     tasks = []
