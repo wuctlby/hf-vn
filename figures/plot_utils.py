@@ -712,7 +712,7 @@ def DrawStatSystEmpty(graph, gsyst, gfd, leg):
     PlotEmptyClone(graph, leg)
 
 
-def SaveCanvas(canv, title, suffix='', formats=('pdf', 'png', 'eps')):
+def SaveCanvas(canv, title, suffix='', formats=['pdf']):
     """
     Saves canvas in multiple formats.
 

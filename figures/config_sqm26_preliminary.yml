@@ -1,6 +1,7 @@
-plot_invmass_fit: false
+plot_invmass_fit: true
 plot_charm: true
-plot_lf: false
+plot_lf: true
+zipfiles: true
 
 # input files and objects
 input:
@@ -20,17 +21,17 @@ input:
     graph: 'gvn_prompt_stat'
     syst: 'tot_syst'
   Lambda:
-    v2file: '/home/spolitan/alice/alice-correlation/figures/comparison_v2_k0_ft0m.root'
+    v2file: '/home/spolitan/alice/alice-correlation/figures/lf_v2_vscent_systfrombase.root'
     graph: 'gist_lambda_010'
-    syst: 'gsyst_lambda_010'
+    syst: 'syst_lambda_010'
   K0:
-    v2file: '/home/spolitan/alice/alice-correlation/figures/comparison_v2_k0_ft0m.root'
+    v2file: '/home/spolitan/alice/alice-correlation/figures/lf_v2_vscent_systfrombase.root'
     graph: 'gist_k0_010'
-    syst: 'gsyst_k0_010'
+    syst: 'syst_k0_010'
   Phi:
-    v2file: false #'/home/spolitan/alice/alice-correlation/figures/comparison_v2_k0_ft0m.root'
+    v2file: false #'/home/spolitan/alice/alice-correlation/figures/lf_v2_vscent_systfrombase.root'
     graph: 'gist_phi_010'
-    syst: 'gsyst_phi_010'
+    syst: 'syst_phi_010'
   Katz:
     v2file: '/home/spolitan/alice/hf-vn/figures/models/oo_v2_D0_katz.txt'
   Langevin:
@@ -55,7 +56,7 @@ simfit_style:
     latex:
       pad1:
         - [0.25, 0.84, 'ALICE Preliminary', 0.07]
-        - [0.25, 0.76, 'OO, 0#minus20%, #sqrt{#it{s}_{NN}} = 5.36 TeV', 0.058]
+        - [0.25, 0.76, 'OO, FT0C 0#minus20%, #sqrt{#it{s}_{NN}} = 5.36 TeV', 0.058]
         - [0.25, 0.68, 'D^{0} #rightarrow K^{#font[122]{-}}#pi^{+} and charge conj.', 0.058]
         - [0.25, 0.60, '3.0 < #it{p}_{T} < 3.5 GeV/#it{c}', 0.058]
       pad2:
@@ -74,7 +75,7 @@ simfit_style:
     latex:
       pad1:
         - [0.25, 0.84, 'ALICE Preliminary', 0.07]
-        - [0.25, 0.76, 'OO, 0#minus20%, #sqrt{#it{s}_{NN}} = 5.36 TeV', 0.058]
+        - [0.25, 0.76, 'OO, FT0C 0#minus20%, #sqrt{#it{s}_{NN}} = 5.36 TeV', 0.058]
         - [0.25, 0.68, 'D^{+} #rightarrow K^{-}#pi^{+}#pi^{+} and charge conj.', 0.058]
         - [0.25, 0.60, '3.0 < #it{p}_{T} < 3.5 GeV/#it{c}', 0.058]
       pad2:
@@ -93,7 +94,7 @@ simfit_style:
     latex:
       pad1:
         - [0.25, 0.84, 'ALICE Preliminary', 0.07]
-        - [0.25, 0.76, 'OO, 0#minus20%, #sqrt{#it{s}_{NN}} = 5.36 TeV', 0.058]
+        - [0.25, 0.76, 'OO, FT0C 0#minus20%, #sqrt{#it{s}_{NN}} = 5.36 TeV', 0.058]
         - [0.25, 0.68, 'D_{s}^{+} #rightarrow #phi#pi^{+} #rightarrow K^{-}K^{+}#pi^{+} and charge conj.', 0.058]
         - [0.25, 0.60, '2.0 < #it{p}_{T} < 3.0 GeV/#it{c}', 0.058]
       pad2:
@@ -109,19 +110,35 @@ charm_v2_style:
   setlogx: false
   latex:
     - [0.20, 0.86, 'ALICE Preliminary', 0.06]
-    - [0.20, 0.81, 'OO #sqrt{#it{s}_{NN}} = 5.36 TeV, 0#minus20%', 0.04]
+    - [0.20, 0.81, 'OO #sqrt{#it{s}_{NN}} = 5.36 TeV, FT0C 0#minus20%', 0.04]
 
 # style for final light-flavor v2 plot
 lf_v2_style:
   axisname: ";#it{p}_{T} (GeV/#it{c}); #it{v}_{2}"
   ymin: -0.04
-  ymax: 0.30
+  ymax: 0.35
   xmin: -0.5
   xmax: 8.5
   setlogx: false
   latex:
     - [0.20, 0.86, 'ALICE Preliminary', 0.06]
-    - [0.20, 0.81, 'OO #sqrt{#it{s}_{NN}} = 5.36 TeV, 0#minus20%', 0.04]
+    - [0.20, 0.81, 'OO #sqrt{#it{s}_{NN}} = 5.36 TeV', 0.04]
+  leg_hf:
+    header: 'SP, FT0C 0#minus20%, |#Delta#it{#eta}| > 1.3'
+    xmax: 0.4
+    ncolumns: 1
+    ymin: 0.54
+    textsize: 0.033
+    xmin: 0.196
+    ymax: 0.68
+  leg_lf:
+    header: '2PC, FT0C 0#minus10%, 1.2 < |#Delta#it{#eta}| < 1.8'
+    xmax: 0.6
+    ncolumns: 2
+    ymin: 0.68
+    textsize: 0.033
+    xmin: 0.196
+    ymax: 0.78
 
 # global style
 style:
@@ -174,4 +191,5 @@ style:
 
 # output
 outdir: './preliminary_sqm26/'
-suffix: 'oo_barlow'
+suffix: 'oo_v2_preliminary_v0'
+output_formats: ['pdf']

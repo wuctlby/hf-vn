@@ -1,4 +1,5 @@
 import os
+import zipfile
 import yaml
 from ROOT import TFile, TLatex, TColor, TGraph
 
@@ -202,7 +203,7 @@ if plot_invmass_fit:
     hV2VsMassDs.Draw('esame')
     fV2BkgDs.Draw('same')
     fV2TotDs.Draw('same')
-    SaveCanvas(cDsv2run3, f'{outdir}Ds_invmassfit', suffix)
+    SaveCanvas(cDsv2run3, f'{outdir}Ds_invmassfit', suffix, formats=config.get('output_formats', ['pdf']))
     input('Simulation fit canvases done. Press Enter to continue.')
 
 #______________________________________________________________________________
@@ -279,7 +280,7 @@ if plot_charm:
         latex.DrawLatexNDC(text[0], text[1], text[2])
     line.Draw('same')
     cDv2run3.Update()
-    SaveCanvas(cDv2run3, f'{outdir}charm_v2_3050', suffix)
+    SaveCanvas(cDv2run3, f'{outdir}charm_v2_020', suffix, formats=config.get('output_formats', ['pdf']))
     input('Charm v2 done. Press Enter to continue.')
 
 #_____________________________________________________________________________________
@@ -329,13 +330,16 @@ if plot_lf:
     DrawStatSystEmpty(gist_phi, gist_phi_syst, False, False) if config['input']['Phi']['v2file'] else None
     DrawStatSystEmpty(gist_d0, gist_d0_syst, False, False)
 
-    leg = GetLegend(header='SP, |#Delta#it{#eta}| > 1.3', xmax=0.6, ncolumns=2,
-                    ymin=0.68, textsize=0.033, xmin=0.196, ymax=0.78)
-    legempty = GetLegend(header='', xmax=0.9, ncolumns=4, ymin=0.74,
-                         textsize=0.033, xmin=0.196, ymax=0.88)
-    leg.AddEntry(gist_d0, 'Prompt D^{0}', 'p')
-    leglf = GetLegend(header='2PC, |#Delta#it{#eta}| > 1.2', xmax=0.8,
-                      ncolumns=1, ymin=0.6, textsize=0.033, xmin=0.7, ymax=0.76)
+    leg = GetLegend(header=config['lf_v2_style']['leg_hf']['header'], xmax=config['lf_v2_style']['leg_hf']['xmax'],
+                    ncolumns=config['lf_v2_style']['leg_hf']['ncolumns'], ymin=config['lf_v2_style']['leg_hf']['ymin'], textsize=config['lf_v2_style']['leg_hf']['textsize'],
+                    xmin=config['lf_v2_style']['leg_hf']['xmin'], ymax=config['lf_v2_style']['leg_hf']['ymax'])
+    legempty = GetLegend(header='', xmax=0.9, ncolumns=4, ymin=0.74, textsize=0.033, xmin=0.196, ymax=0.88)
+    leg.AddEntry(gist_d0, 'Prompt D^{0}', 'p') 
+    leg.AddEntry(gist_d0, "      ", " ")  # empty entry for spacing
+    leglf = GetLegend(header=config['lf_v2_style']['leg_lf']['header'], xmax=config['lf_v2_style']['leg_lf']['xmax'],
+                      ncolumns=config['lf_v2_style']['leg_lf']['ncolumns'], ymin=config['lf_v2_style']['leg_lf']['ymin'],
+                      textsize=config['lf_v2_style']['leg_lf']['textsize'], xmin=config['lf_v2_style']['leg_lf']['xmin'],
+                      ymax=config['lf_v2_style']['leg_lf']['ymax'])
     leglf.AddEntry(gist_k0, 'K^{0}_{S}', 'p')
     leglf.AddEntry(gist_phi, '#phi', 'p') if config['input']['Phi']['v2file'] else None
     leglf.AddEntry(gist_lambda, '#Lambda', 'p')
@@ -351,7 +355,14 @@ if plot_lf:
 
     line.Draw('same')
     cDv2run3.Update()
-    SaveCanvas(cDv2run3, f'{outdir}charm_v2_3050_lf', suffix)
+    SaveCanvas(cDv2run3, f'{outdir}charm_v2_020_lf', suffix, formats=config.get('output_formats', ['pdf']))
     input('Light-flavor vs D0 v2 done. Press Enter to continue.')
+
+if config.get('zipfiles', False):
+    with zipfile.ZipFile(f'{outdir}figures_{suffix}.zip', 'w') as zipf:
+        for fmt in config.get('output_formats', ['pdf']):
+            for filename in os.listdir(outdir):
+                if filename.endswith(fmt) and suffix in filename:
+                    zipf.write(os.path.join(outdir, filename), arcname=filename)
 
 input('Plotting complete! Press any key to continue.')
