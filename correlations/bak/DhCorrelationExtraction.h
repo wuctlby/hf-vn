@@ -222,7 +222,7 @@ class DhCorrelationExtraction : public TObject
   TString fCorrelSparseNameME;               // THnSparse name containing ME
 
   // TString fTitleCorrel;                   // Title for correlation histograms
-  TString fDeltaEtaGap;                   // TString for the delta eta gap
+  // TString fDeltaEtaGap;                   // TString for the delta eta gap
 
   /*TString fFileSecPartName;              // File name contaning secondary particle correction output
   TString fDirSecPartName;               // Directory in the file containing secondary particle correction output

@@ -68,7 +68,6 @@ def process_correlation_task(tempExtractor, task):
         deltaPhiMin = task["deltaPhiMin"]
         deltaPhiMax = task["deltaPhiMax"]
         extractor.SetDeltaPhiBins((deltaPhiMin, deltaPhiMax))
-    print("I am here 4")
     extractor.ExtractCorrelations()
 
 #     results['hCorrectedCorrHisto'] = extractor.GetCorrectedCorrHisto()
@@ -128,7 +127,6 @@ def process_correlation_task(tempExtractor, task):
 
 def ExtractOutputCorrel(cfgFile):
     SetCanvasStyle()
-
     with open(cfgFile, 'r') as f:
         config = yaml.safe_load(f)
 
@@ -210,13 +208,11 @@ def ExtractOutputCorrel(cfgFile):
         os.makedirs(outdirMass)
     
     # mass vs pt
-    print("I am here5")
     tempExtractor.ProjMassVsPt()
     hMassVsPt = tempExtractor.GetMassVsPtHist2D()
     outMassVsPtFile = ROOT.TFile(os.path.join(outdirMass, f"InvMassVsPt.root"), "RECREATE")
     hMassVsPt.Write()
     outMassVsPtFile.Close()
-    print("I am here6")
 
     # extract for all pt bins, associated hadron pt bins, and inv. mass bins
     tasks = []

@@ -43,7 +43,6 @@ DhCorrelationExtraction::DhCorrelationExtraction() : // default constructor
   fMassSparseName(""),
   fCorrelSparseNameSE(""),
   fCorrelSparseNameME(""),
-  fDeltaEtaGap(""),
   fNpools(10),
   fDebug(0),
   fDoPoolByPool(kTRUE),
@@ -122,7 +121,6 @@ DhCorrelationExtraction::DhCorrelationExtraction(const DhCorrelationExtraction& 
   fMassSparseName(source.fMassSparseName),
   fCorrelSparseNameSE(source.fCorrelSparseNameSE),
   fCorrelSparseNameME(source.fCorrelSparseNameME),
-  fDeltaEtaGap(source.fDeltaEtaGap),
   fNpools(source.fNpools),
   fDebug(source.fDebug),
   fDoPoolByPool(source.fDoPoolByPool),
@@ -235,13 +233,14 @@ Bool_t DhCorrelationExtraction::Init()
     return kFALSE;
   }
   // fTitleCorrel = Form("%s-h correlation", fDmesonLabel.Data());
-  fDeltaEtaGap = Form("|#Delta#eta| > %.1f", fDeltaEtaRightMin);
+  // fDeltaEtaGap = Form("|#Delta#eta| > %.1f", fDeltaEtaRightMin);
   return kTRUE;
 }
 
 Bool_t DhCorrelationExtraction::ExtractCorrelations()
 {
   TH1::AddDirectory(kFALSE);
+  TString fDeltaEtaGap = Form("|#Delta#eta| > %.1f", fDeltaEtaRightMin);
   if (Init() == kFALSE) { // todo: reload file evry time
     return kFALSE;
   }
@@ -269,6 +268,8 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations()
 
   TH1D* h1D_CorrectedCorrel = nullptr;
   TH1D* h1D_NormalizedCorrectedCorrel = nullptr;
+
+  std::cout << "[debug] I am here" << std::endl;
 
   for (int iPool = 0; iPool < fNpools; iPool++) {
     // Retrieve 2D plots for SE and ME, signal and bkg regions, for each pTbin and pool
@@ -310,27 +311,15 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations()
       h2D_ME = reinterpret_cast<TH2D*>(hME_2D_Raw[0]->Clone("h2D_ME"));
       h2D_ME_norm = reinterpret_cast<TH2D*>(hME_2D_Normalized[0]->Clone("h2D_ME_norm"));
       h2D_CorrectedCorrel = reinterpret_cast<TH2D*>(hCorrectedCorrel_2D[0]->Clone("h2D_CorrectedCorrel"));
-      if (fMethod == kDeltaPhiBinning) {
-        if (!hCorrectedPairsMass[0] || fPoolVec_CorrectionRatio.empty()) {
-          std::cerr << "[WARNING] Empty SE for pool 0, skipping task." << std::endl;
-          return kFALSE;
-        }
-        h1D_CorrectedPairsMass = reinterpret_cast<TH1D*>(hCorrectedPairsMass[0]->Clone("h1D_CorrectedPairsMass"));
-        h1D_correctedRatioVsDeltaEta = reinterpret_cast<TH1D*>(fPoolVec_CorrectionRatio[0]->Clone("h1D_correctedRatioVsDeltaEta"));
-      }
+      h1D_CorrectedPairsMass = reinterpret_cast<TH1D*>(hCorrectedPairsMass[0]->Clone("h1D_CorrectedPairsMass"));
+      h1D_correctedRatioVsDeltaEta = reinterpret_cast<TH1D*>(fPoolVec_CorrectionRatio[0]->Clone("h1D_correctedRatioVsDeltaEta"));
     } else {
       h2D_SE->Add(hSE_2D_Raw[iPool]);
       h2D_ME->Add(hME_2D_Raw[iPool]);
       h2D_ME_norm->Add(hME_2D_Normalized[iPool]);
       h2D_CorrectedCorrel->Add(hCorrectedCorrel_2D[iPool]);
-      if (fMethod == kDeltaPhiBinning) {
-        if (!hCorrectedPairsMass[iPool] || iPool >= (Int_t)fPoolVec_CorrectionRatio.size()) {
-          std::cerr << "[WARNING] Empty SE for pool " << iPool << ", skipping task." << std::endl;
-          return kFALSE;
-        }
-        h1D_CorrectedPairsMass->Add(hCorrectedPairsMass[iPool]);
-        h1D_correctedRatioVsDeltaEta->Add(fPoolVec_CorrectionRatio[iPool]);
-      }
+      h1D_CorrectedPairsMass->Add(hCorrectedPairsMass[iPool]);
+      h1D_correctedRatioVsDeltaEta->Add(fPoolVec_CorrectionRatio[iPool]);
     }
   } // end pool loop
 
@@ -373,7 +362,7 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations()
 
   //==========================================================================================================================
   // 1D projection
-  h1D_CorrectedCorrel = h2D_CorrectedCorrel->ProjectionY("hCorrectedCorrel_1D", 1, -1, "e"); // projection on deltaPhi axis
+  h1D_CorrectedCorrel = reinterpret_cast<TH1D*>(h2D_CorrectedCorrel->ProjectionY("h2D_CorrectedCorrel"), 'e'); // projection on deltaPhi axis
 
   fCorrectedCorrel = SetTH1HistoStyle(reinterpret_cast<TH1D*>(h1D_CorrectedCorrel->Clone("hCorrectedCorrel")),
     Form("Corrected %s-h correlation with %s", fDmesonLabel.Data(), fDeltaEtaGap.Data()), "#Delta#phi (rad)", AxisLabels::kRawYieldRad_DP);
@@ -478,6 +467,7 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations()
 
 Bool_t DhCorrelationExtraction::ReadInputSEandME()
 {
+  std::cout << "[debug] I am here2" << std::endl;
   fFileSE = TFile::Open(fFileNameSE.Data());
   if (!fFileSE) {
     std::cerr << "[ERROR] File " << fFileNameSE << " cannot be opened! check your file path!";
@@ -492,6 +482,7 @@ Bool_t DhCorrelationExtraction::ReadInputSEandME()
 
   fDirSE = reinterpret_cast<TDirectoryFile*>(fFileSE->Get(fDirNameSE.Data()));
   fDirME = reinterpret_cast<TDirectoryFile*>(fFileME->Get(fDirNameME.Data()));
+  std::cout << "[debug] I am here3" << std::endl;
   return kTRUE;
 }
 
@@ -739,7 +730,7 @@ void DhCorrelationExtraction::CalculateNormaliztionFactorME(TH2D*& histoME, Int_
 //   return hSparse;
 // }
 
-void DhCorrelationExtraction::NormalizeMEplot(TH2D*& histoME, TH2D*& histoMEsoftPi, Int_t pool)
+void DhCorrelationExtraction::NormalizeMEplot(TH2D* histoME, TH2D* histoMEsoftPi, Int_t pool)
 {
   // apply the normalization
   histoME->Scale(1. / fFactorsNormME[pool]);
@@ -752,6 +743,7 @@ void DhCorrelationExtraction::NormalizeMEplot(TH2D*& histoME, TH2D*& histoMEsoft
 TH1D* DhCorrelationExtraction::CorrectedPairsMassDistr(TH2D* hRawSE, TH2D* hCorrectedCorrel, Int_t iPool)
 {
   TH1D* hCorrectedMass = nullptr;
+  TString fDeltaEtaGap = Form("|#Delta#eta| > %.1f", fDeltaEtaRightMin);
 
   // find the bin index
   Int_t binDeltaEtaLeftMin = hRawSE->GetXaxis()->FindBin(fDeltaEtaLeftMin + 0.01);
@@ -881,44 +873,6 @@ TH2D* DhCorrelationExtraction::SetTH2HistoStyle(TH2D* histo, TString hTitle, TSt
   return histo;
 }
 
-// load and project mass THnSparse to get mass vs pt histogram
-void DhCorrelationExtraction::ProjMassVsPt() {
-  TFile* fileMass = TFile::Open(fFileNameMass.Data());
-  if (!fileMass || fileMass->IsZombie()) {
-    std::cerr << "[ERROR] Could not open file: " << fFileNameMass.Data() << std::endl;
-    return;
-  }
-
-  THnSparseF* sparseMass = reinterpret_cast<THnSparseF*>(fileMass->Get(fMassSparseName.Data()));
-  TH2D* hMassVsPt = reinterpret_cast<TH2D*>(sparseMass->Projection(1,0));
-  hMassVsPt -> SetDirectory(0);
-  hMassVsPt -> SetName("hMassVsPt");
-  fMassVsPt_2D = hMassVsPt;
-
-  fileMass -> Close();
-  delete sparseMass;
-}
-
-// calculate the number of trigger D mesons in given pt range from mass vs pt histogram
-Double_t DhCorrelationExtraction::CalculateTriggerNormalizationFactor(TH2D* hMassVsPt, Double_t ptMin, Double_t ptMax, Double_t massMin, Double_t massMax) {
-  if (!hMassVsPt) {
-    std::cerr << "[ERROR] hMassVsPt is null!" << std::endl;
-    return 0.0;
-  }
-
-  Int_t ptBinMin = hMassVsPt->GetYaxis()->FindBin(ptMin + 1e-6);
-  Int_t ptBinMax = hMassVsPt->GetYaxis()->FindBin(ptMax - 1e-6);
-
-  TH1D* hMassProj = hMassVsPt->ProjectionX("hMassProj", ptBinMin, ptBinMax);
-
-  Int_t massBinMin = hMassProj->GetXaxis()->FindBin(massMin);
-  Int_t massBinMax = hMassProj->GetXaxis()->FindBin(massMax);
-
-  Double_t triggerCount = hMassProj->Integral(massBinMin, massBinMax);
-  delete hMassProj;
-
-  return triggerCount;
-}
 
 /*TH1D* DhCorrelationExtraction::ProjCorrelHistoSecondaryPart(Int_t PartType, Double_t PtCandMin, Double_t PtCandMax, Double_t PtHadMin, Double_t PtHadMax)
 {
@@ -1009,3 +963,42 @@ Double_t DhCorrelationExtraction::CalculateTriggerNormalizationFactor(TH2D* hMas
 
   return h1D;
 }*/
+
+// load and project mass THnSparse to get mass vs pt histogram
+void DhCorrelationExtraction::ProjMassVsPt() {
+  TFile* fileMass = TFile::Open(fFileNameMass.Data());
+  if (!fileMass || fileMass->IsZombie()) {
+    std::cerr << "[ERROR] Could not open file: " << fFileNameMass.Data() << std::endl;
+    return;
+  }
+
+  THnSparseF* sparseMass = reinterpret_cast<THnSparseF*>(fileMass->Get(fMassSparseName.Data()));
+  TH2D* hMassVsPt = reinterpret_cast<TH2D*>(sparseMass->Projection(1,0));
+  hMassVsPt -> SetDirectory(0);
+  hMassVsPt -> SetName("hMassVsPt");
+  fMassVsPt_2D = hMassVsPt;
+
+  fileMass -> Close();
+  delete sparseMass;
+}
+
+// calculate the number of trigger D mesons in given pt range from mass vs pt histogram
+Double_t DhCorrelationExtraction::CalculateTriggerNormalizationFactor(TH2D* hMassVsPt, Double_t ptMin, Double_t ptMax, Double_t massMin, Double_t massMax) {
+  if (!hMassVsPt) {
+    std::cerr << "[ERROR] hMassVsPt is null!" << std::endl;
+    return 0.0;
+  }
+
+  Int_t ptBinMin = hMassVsPt->GetYaxis()->FindBin(ptMin + 1e-6);
+  Int_t ptBinMax = hMassVsPt->GetYaxis()->FindBin(ptMax - 1e-6);
+
+  TH1D* hMassProj = hMassVsPt->ProjectionX("hMassProj", ptBinMin, ptBinMax);
+
+  Int_t massBinMin = hMassProj->GetXaxis()->FindBin(massMin);
+  Int_t massBinMax = hMassProj->GetXaxis()->FindBin(massMax);
+
+  Double_t triggerCount = hMassProj->Integral(massBinMin, massBinMax);
+  delete hMassProj;
+
+  return triggerCount;
+}
