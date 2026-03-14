@@ -25,6 +25,7 @@ with open('/home/spolitan/alice/hf-vn/figures/config_sqm26_preliminary.yml', 'r'
 plot_invmass_fit = config.get('plot_invmass_fit', False)
 plot_charm = config.get('plot_charm', False)
 plot_lf = config.get('plot_lf', False)
+plot_pbpb = config.get('plot_pbpb', False)
 outdir = config.get('outdir', './preliminary_sqm26')
 os.makedirs(outdir, exist_ok=True)
 suffix = config.get('suffix', 'oo_barlow')
@@ -357,6 +358,56 @@ if plot_lf:
     cDv2run3.Update()
     SaveCanvas(cDv2run3, f'{outdir}charm_v2_020_lf', suffix, formats=config.get('output_formats', ['pdf']))
     input('Light-flavor vs D0 v2 done. Press Enter to continue.')
+
+# D0 v2 PbPb vs OO
+if plot_pbpb:
+    cDv2PbPb, hframe = GetCanvas(
+        'cDv2PbPb', config['pbpb_v2_style']['axisname'],
+        ymax=config['pbpb_v2_style']['ymax'], xmin=config['pbpb_v2_style']['xmin'],
+        ymin=config['pbpb_v2_style']['ymin'], xmax=config['pbpb_v2_style']['xmax'],
+        setlogx=config['pbpb_v2_style']['setlogx']
+    )
+    cDv2PbPb.SetTopMargin(0.05)
+    hframe.GetYaxis().SetTitleOffset(1.4)
+    hframe.GetYaxis().SetLabelSize(0.04)
+    hframe.GetXaxis().SetLabelSize(0.04)
+
+    # load PbPb D0 v2 graph
+    gist_d0_pbpb_6080, gist_d0_pbpb_syst_6080 = LoadGraphAndSyst(
+        config['input']['Dzero_PbPb_6080']['v2file'], config['input']['Dzero_PbPb_6080']['graph'],
+        config['input']['Dzero_PbPb_6080']['syst'], config['style']['Dzero_PbPb_6080']['color'],
+        config['style']['Dzero_PbPb_6080']['marker'], markersize=config['style']['Dzero_PbPb_6080']['markersize'], alpha=config['style']['Dzero_PbPb_6080']['alpha']
+    )
+    gist_d0_pbpb_3050, gist_d0_pbpb_syst_3050 = LoadGraphAndSyst(
+        config['input']['Dzero_PbPb_3050']['v2file'], config['input']['Dzero_PbPb_3050']['graph'],
+        config['input']['Dzero_PbPb_3050']['syst'], config['style']['Dzero_PbPb_3050']['color'],
+        config['style']['Dzero_PbPb_3050']['marker'], markersize=config['style']['Dzero_PbPb_3050']['markersize'],
+        alpha=config['style']['Dzero_PbPb_3050']['alpha']
+    )
+
+    DrawStatSystEmpty(gist_d0_pbpb_3050, gist_d0_pbpb_syst_3050, False, False)
+    DrawStatSystEmpty(gist_d0_pbpb_6080, gist_d0_pbpb_syst_6080, False, False)
+    DrawStatSystEmpty(gist_d0, gist_d0_syst, False, False)
+
+    leg = GetLegend(header=config['pbpb_v2_style']['leg']['header'], xmax=config['pbpb_v2_style']['leg']['xmax'],
+                    ncolumns=config['pbpb_v2_style']['leg']['ncolumns'], ymin=config['pbpb_v2_style']['leg']['ymin'], textsize=config['pbpb_v2_style']['leg']['textsize'],
+                    xmin=config['pbpb_v2_style']['leg']['xmin'], ymax=config['pbpb_v2_style']['leg']['ymax'])
+    leg.AddEntry(gist_d0_pbpb_3050, config['pbpb_v2_style']['leg']['entry_pbpb_3050'], 'p')
+    leg.AddEntry(gist_d0_pbpb_6080, config['pbpb_v2_style']['leg']['entry_pbpb_6080'], 'p')
+    leg.AddEntry(gist_d0, config['pbpb_v2_style']['leg']['entry_oo'], 'p')
+    leg.Draw('same')
+
+    line = DrawLineAt0(
+        config['pbpb_v2_style']['xmin'], config['pbpb_v2_style']['xmax']-0.2)
+
+    latexdetail = config['pbpb_v2_style']['latex']
+    for text in latexdetail:
+        latex.SetTextSize(text[-1])
+        latex.DrawLatexNDC(text[0], text[1], text[2])
+    line.Draw('same')
+    cDv2PbPb.Update()
+    SaveCanvas(cDv2PbPb, f'{outdir}D0_PbPb_vs_OO', suffix, formats=config.get('output_formats', ['pdf']))
+    input('PbPb vs OO v2 done. Press Enter to continue.')
 
 if config.get('zipfiles', False):
     with zipfile.ZipFile(f'{outdir}figures_{suffix}.zip', 'w') as zipf:

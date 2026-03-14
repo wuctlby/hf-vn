@@ -1,6 +1,7 @@
-plot_invmass_fit: true
-plot_charm: true
-plot_lf: true
+plot_invmass_fit: false
+plot_charm: false
+plot_lf: false
+plot_pbpb: true
 zipfiles: true
 
 # input files and objects
@@ -38,6 +39,14 @@ input:
     v2file: '/home/spolitan/alice/hf-vn/figures/models/oo_v2_D0_langevin.txt'
   Epos4HQ:
     v2file: '/home/spolitan/alice/hf-vn/figures/models/oo_v2_D0_epos4hq.txt'
+  Dzero_PbPb_6080:
+      v2file: '/home/spolitan/alice/hcv2-prl-figures/ste/finalresults/Dzero/v2_wsyst/v2_prompt_wsyst_D0_6080.root'
+      graph: 'gvn_prompt_stat'
+      syst: 'tot_syst'
+  Dzero_PbPb_3050:
+      v2file: '/home/spolitan/alice/hcv2-prl-figures/input/input-data/lc-d0-data/v2_prompt_wsyst_D0_3050_finer_updated_x.root'
+      graph: 'gvn_prompt_stat'
+      syst: 'tot_syst'
 
 # simfit style
 simfit_style:
@@ -110,7 +119,7 @@ charm_v2_style:
   setlogx: false
   latex:
     - [0.20, 0.86, 'ALICE Preliminary', 0.06]
-    - [0.20, 0.81, 'OO #sqrt{#it{s}_{NN}} = 5.36 TeV, FT0C 0#minus20%', 0.04]
+    - [0.20, 0.81, 'OO, #sqrt{#it{s}_{NN}} = 5.36 TeV, FT0C 0#minus20%', 0.04]
 
 # style for final light-flavor v2 plot
 lf_v2_style:
@@ -122,7 +131,7 @@ lf_v2_style:
   setlogx: false
   latex:
     - [0.20, 0.86, 'ALICE Preliminary', 0.06]
-    - [0.20, 0.81, 'OO #sqrt{#it{s}_{NN}} = 5.36 TeV', 0.04]
+    - [0.20, 0.81, 'OO, #sqrt{#it{s}_{NN}} = 5.36 TeV', 0.04]
   leg_hf:
     header: 'SP, FT0C 0#minus20%, |#Delta#it{#eta}| > 1.3'
     xmax: 0.4
@@ -140,10 +149,33 @@ lf_v2_style:
     xmin: 0.196
     ymax: 0.78
 
+# style for final D0 v2 PbPb vs OO plot
+pbpb_v2_style:
+  axisname: ";#it{p}_{T} (GeV/#it{c}); #it{v}_{2}{SP, |#Delta#it{#eta}| > 1.3}"
+  ymin: -0.04
+  ymax: 0.35
+  xmin: -0.5
+  xmax: 8.5
+  setlogx: false
+  latex:
+    - [0.20, 0.86, 'ALICE Preliminary', 0.06]
+    - [0.20, 0.81, '#sqrt{#it{s}_{NN}} = 5.36 TeV', 0.04]
+  leg:
+    header: 'Prompt D^{0}'
+    entry_oo: 'OO, FT0C 0#minus20%'
+    entry_pbpb_6080: 'Pb#minusPb, FT0C 60#minus80%'
+    entry_pbpb_3050: 'Pb#minusPb, FT0C 30#minus50%'
+    xmax: 0.4
+    ncolumns: 1
+    ymin: 0.62
+    textsize: 0.033
+    xmin: 0.196
+    ymax: 0.78
+
 # global style
 style:
   Dplus:
-    color: 'kOrange+7'
+    color: 'kGreen+3'
     marker: 'kFullSquare'
     markersize: 1.2
     alpha: 0.8
@@ -158,12 +190,12 @@ style:
     markersize: 1.8
     alpha: 0.7
   Lambda:
-    color: 'kTeal-6'
+    color: 'kAzure+4'
     marker: 'kFullCross'
     markersize: 1.4
     alpha: 0.8
   K0:
-    color: 'kOrange+7'
+    color: 'kRed+3'
     marker: 'kFullSquare'
     markersize: 1.2
     alpha: 0.8
@@ -178,18 +210,28 @@ style:
     linewidth: 4
     alpha: 0.7
   Langevin:
-    color: 'kAzure+4'
+    color: 'kOrange+7'
     alpha: 0.7
     linestyle: 3
     linewidth: 6
   Epos4HQ:
-    color: 'kTeal-6'
+    color: 'kViolet-8'
     alpha: 0.7
     linestyle: 7
     linewidth: 4
+  Dzero_PbPb_6080:
+    color: 'kCyan+2'
+    marker: 'kFullCross'
+    markersize: 1.2
+    alpha: 0.8
+  Dzero_PbPb_3050:
+    color: 'kBlue+2'
+    marker: 'kFullSquare'
+    markersize: 1.2
+    alpha: 0.8
 
 
 # output
 outdir: './preliminary_sqm26/'
-suffix: 'oo_v2_preliminary_v0'
+suffix: 'oo_v2_preliminary_v1'
 output_formats: ['pdf']
