@@ -626,7 +626,8 @@ class RawYieldFitter:
                                                 logy=logy,
                                                 extra_info_loc=loc if loc is not None else ["lower right", "lower left"]
                                                 )
-            fig.savefig(path, dpi=300, bbox_inches="tight")
+            # fig.savefig(path, dpi=300, bbox_inches="tight")
+            return fig
         else:
             # --- Bin setup ---
             self.rebin = 2 if self.rebin is None else self.rebin
