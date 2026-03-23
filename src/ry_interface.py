@@ -61,15 +61,23 @@ def build_raw_yield_fitter(task, fitConfig):
 
     return fitter
 
-def fit_task(task, fitConfig, inFilePath):
+def fit_task(task, fitConfig, inFilePath, doMassFit=False):
     try:
         inFile = TFile.Open(inFilePath)
         histo_path = task['histoPath']
-        histo = inFile.Get(histo_path)
-        if not histo:
+        raw_histo = inFile.Get(histo_path)
+        if not raw_histo:
             raise ValueError(f"Histogram {histo_path} not found in file {inFilePath}")
-        histo.SetDirectory(0)
+        raw_histo.SetDirectory(0)
         inFile.Close()
+
+        if doMassFit:
+            mass_histo = raw_histo.ProjectionX(f"{raw_histo.GetName()}_MassProj", 
+                                               raw_histo.GetYaxis().FindBin(task['ptMin']), 
+                                               raw_histo.GetYaxis().FindBin(task['ptMax']))
+            histo = mass_histo
+        else:
+            histo = raw_histo
 
         fitter = build_raw_yield_fitter(task, fitConfig)
         fitter.set_data_to_fit_hist(histo)
@@ -80,24 +88,39 @@ def fit_task(task, fitConfig, inFilePath):
         fig.savefig(task['pdfPath'], dpi=300, bbox_inches="tight")
         plt.close(fig)
         fig_residuals = fitter.plot_raw_residuals()
-        fig_residuals.savefig(task['pdfPath'].with_name(task['pdfPath'].stem + "_Residuals.pdf"), dpi=300, bbox_inches="tight")
+        residuals_path = task['pdfPath'].with_name(task['pdfPath'].stem + "_Residuals.pdf")
+        fig_residuals.savefig(residuals_path, dpi=300, bbox_inches="tight")
         plt.close(fig_residuals)
 
         fit_info, _, _, _, _ = fitter.get_fit_info()
-        return {
+        result = {
             'taskID': task['taskID'],
             'iPtCand': task['iPtCand'],
             'iPtHad': task['iPtHad'],
-            'iDeltaPhi': task['iDeltaPhi'],
             'ry': fit_info['sgn']['ry'],
             'ry_unc': fit_info['sgn']['ry_unc'],
             'pdfPath': task['pdfPath'],
-            'pdfPathResiduals': task['pdfPath'].with_name(task['pdfPath'].stem + "_Residuals.pdf")
+            'pdfPathResiduals': residuals_path
         }
+
+        if doMassFit:
+            result.update({
+                'ptMin': task['ptMin'],
+                'ptMax': task['ptMax']
+            })
+        else:
+            result.update({
+                'iDeltaPhi': task['iDeltaPhi'],
+            })
+
+        return result
+
     finally:
         plt.close('all')
         if 'fitter' in locals():
             del fitter
+        if 'mass_histo' in locals():
+            del mass_histo
         if 'histo' in locals():
             del histo
         gc.collect()
@@ -144,39 +167,6 @@ def combine_pdfs(pdf_paths, suffix=""):
         if pdf_path.exists():
             print(f"Warning: Failed to remove {pdf_path}")
 
-def _combine_for_key(key, pdfs_deltaPhi, pdfs_residuals_deltaPhi):
-    deltaPhi_dict = pdfs_deltaPhi
-    sorted_deltaPhi = sorted(deltaPhi_dict.keys())
-    pdf_paths = [deltaPhi_dict[iDeltaPhi] for iDeltaPhi in sorted_deltaPhi]
-    combine_pdfs(pdf_paths)
-
-    residuals = pdfs_residuals_deltaPhi
-    pdf_paths_residuals = [residuals[iDeltaPhi] for iDeltaPhi in sorted_deltaPhi]
-    combine_pdfs(pdf_paths_residuals, suffix="_residuals")
-    return key
-
-#     fitters.sort(key=lambda x: (int(x.fit_name.split("_")[0])))
-#     pdfs = []
-#     for i, fitter in enumerate(fitters):
-#         # task_id = int(fitter.fit_name.split("_")[0])
-#         task = tasks[i]
-#         iPtCand = task['iPtCand']
-#         iPtHad = task['iPtHad']
-#         iDeltaPhi = task['iDeltaPhi']
-#         bin_idx = task['iDeltaPhi'] + 1
-
-#         fig = fitter.plot_fit(False, True, loc=["lower left", "upper left"])
-#         fig.savefig(outFilePath / task['pdfPath'], dpi=300, bbox_inches="tight")
-#         fit_info, _, _, _, _ = fitter.get_fit_info()
-#         hPairsYields_vs_DeltaPhi.SetBinContent(bin_idx, fit_info['sgn']['ry'])
-#         hPairsYields_vs_DeltaPhi.SetBinError(bin_idx, fit_info['sgn']['ry_unc'])
-
-#         plt.close(fig)
-#         pdfs.append(task['pdfPath'])
-#         if iDeltaPhi == len(deltaPhiBins) - 2:
-#             combine_pdfs(pdfs, suffix="")
-#             pdfs = []
-
 def interface_raw_yield_fitter(config_path):
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
@@ -201,7 +191,9 @@ def interface_raw_yield_fitter(config_path):
 
     # build tasks
     tasks = []
+    mass_tasks = []
     hPairsYields_vs_DeltaPhi = {}
+    hTriggerYields = {}
     print("Building tasks...")
     for iPtCand, (ptMin, ptMax) in enumerate(zip(ptBinsCand[:-1], ptBinsCand[1:])):
         strPtCand = f"PtCandBin_{int(ptMin*10)}_{int(ptMax*10)}"
@@ -214,6 +206,7 @@ def interface_raw_yield_fitter(config_path):
                 len(deltaPhiBins)-1, 
                 np.array(deltaPhiBins, dtype='double'))
             hPairsYields_vs_DeltaPhi[(iPtCand, iPtHad)] = hTemp
+            hTriggerYields[iPtCand, iPtHad] = 0
             (outFilePath / strPtCand / strPtHad).mkdir(parents=True, exist_ok=True)
             
             for iDeltaPhi, (deltaPhiMin, deltaPhiMax) in enumerate(zip(deltaPhiBins[:-1], deltaPhiBins[1:])):
@@ -232,6 +225,18 @@ def interface_raw_yield_fitter(config_path):
                 }
                 tasks.append(task)
 
+            mass_task = {
+                "taskID": len(mass_tasks),
+                "taskName": f"MassFit_PtCand_{int(ptMin*10)}_{int(ptMax*10)}",
+                "iPtCand": iPtCand, "ptMin": ptMin, "ptMax": ptMax,
+                "iPtHad": iPtHad, "ptHadMin": ptHadMin, "ptHadMax": ptHadMax,
+                "Dmeson": Dmeson,
+                "pdfPath": outFilePath / strPtCand / f"TempMassFitResult_{strPtCand}.pdf",
+                "histoPath": f"hMassVsPt"
+            }
+            mass_tasks.append(mass_task)
+
+    # build and execute fitting tasks in parallel
     pdfs = defaultdict(dict)
     pdfs_residuals = defaultdict(dict)
     with alive_bar(len(tasks), title="Fitting tasks") as bar:
@@ -251,6 +256,7 @@ def interface_raw_yield_fitter(config_path):
             futures.clear()
             gc.collect()
 
+    # combine PDFs for each (PtCand, PtHad) bin and their residuals in parallel
     with alive_bar(len(pdfs)+len(pdfs_residuals), title="Combining PDFs") as bar:
         with ProcessPoolExecutor(max_workers=min(len(pdfs)+len(pdfs_residuals), nWorkers)) as combiner:
             futures = []
@@ -267,12 +273,28 @@ def interface_raw_yield_fitter(config_path):
             futures.clear()
             gc.collect()
 
+    ry_trigger = {}
+    # build task and perform the fit for inv mass distribution of trigger candidates
+    inFileMassPath = str(outdir / "InvMass/InvMassVsPt.root")
+    with alive_bar(len(mass_tasks), title="Fitting mass distribution tasks") as bar:
+        with ProcessPoolExecutor(max_workers=min(len(mass_tasks), nWorkers)) as executor:
+            futures = {executor.submit(fit_task, task, config["fitConfig"], inFileMassPath, doMassFit=True): task for task in mass_tasks}
+            for future in as_completed(futures):
+                result = future.result()
+                ry_trigger[(result['iPtCand'], result['iPtHad'])] = result['ry']
+                del future
+                bar()
+            futures.clear()
+            gc.collect()
+
+    # collect results into ROOT file
     outROOT = TFile.Open(str(outFilePath / f"PairYieldsVsPhi.root"), "RECREATE")
     for (iPtCand, iPtHad), histo in hPairsYields_vs_DeltaPhi.items():
         subdir_pt = f"PtCandBin_{int(ptBinsCand[iPtCand]*10)}_{int(ptBinsCand[iPtCand+1]*10)}"
         subdir_had = f"PtHadBin_{int(ptBinsHad[iPtHad]*10)}_{int(ptBinsHad[iPtHad+1]*10)}"
         outROOT.mkdir(subdir_pt + "/" + subdir_had)
         outROOT.cd(subdir_pt + "/" + subdir_had)
+        histo.Scale(1.0 / ry_trigger[(iPtCand, iPtHad)] if ry_trigger[(iPtCand, iPtHad)] != 0 else 1.0)
         histo.Write('hPairsYields_vs_DeltaPhi')
     outROOT.Close()
 
