@@ -19,7 +19,8 @@
 
 #include <TF1.h>
 #include <TH1.h>
-
+#include <TGraphErrors.h>
+#include <TSpline.h>
 #include <RtypesCore.h>
 
 #include <cstdio>
@@ -36,7 +37,8 @@ class DhCorrelationFitter
                       kSingleVonMises = 6,
                       kTwoGausPeriodicityPlusV2modulation = 7,
                       kV2DeltaModulationLowMult = 8,
-                      kV2DeltaModulationHighMult = 9 };
+                      kV2DeltaModulationHighMult = 9,
+                      kTemplateFit = 10};
 
   /// Constructors
   DhCorrelationFitter();
@@ -70,16 +72,20 @@ class DhCorrelationFitter
     fv2AssocPart = v2AssocPart;
     fv2Dmeson = v2Dmeson;
   }
+  void SetLMTemplate(TH1D* tempHisto) { fTempHisto = tempHisto; }
 
   /// Functions for fitting
   void Fitting(Bool_t drawSplitTerm = kTRUE, Bool_t useExternalPars = kFALSE);
   void SetFitFunction();
+  Double_t TotalTemplateFitFunction(Double_t* x, Double_t* par);
+  Double_t TemplateFitFunction(Double_t* x, Double_t* par);
   void CalculateYieldsAboveBaseline();
   void FitBaselineWv2();
   Double_t CalculateBaseline(TH1F*& histo, Bool_t totalRange = kTRUE);
   Double_t CalculateBaselineError(TH1F*& histo, Bool_t totalRange = kTRUE);
   void SetSingleTermsForDrawing(Bool_t draw);
   Double_t FindBaseline();
+  void intepolateTemp();
 
   /// Getters
   Double_t GetNSSigma() { return fFit->GetParameter("NS #sigma"); } // TODO: case kConstThreeGausPeriodicity
@@ -117,12 +123,17 @@ class DhCorrelationFitter
 
  private:
   TH1F* fHist; // 1D azimuthal correlation histogram
+  TH1D* fTempHisto; // 1D histogram for the template fit function
+  TGraphErrors* fGraph; // Graph created from the template histogram for interpolation in the fit function
+  TSpline3* fSpline;
 
   TF1* fFit;           // Total fit function
   TF1* fGausNS;        // Near-Side (NS) Gaussian
   TF1* fGausAS;        // Away-Side (AS) Gaussian
   TF1* fPed;           // Baseline function
   TF1* fBaseTransvReg; // Baseline function with v2
+  TF1* fLM;            // Template function for the low-mult. v2 modulation
+  TF1* fFlow;          // Flow modulation function for the low-mult. v2 modulation
   TF1* fv1;            // v1 flow coefficient
   TF1* fv2;            // v2 flow coefficient
   TF1* fv3;            // v3 flow coefficient

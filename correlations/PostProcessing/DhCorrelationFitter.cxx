@@ -57,6 +57,9 @@ DhCorrelationFitter::DhCorrelationFitter() : // default constructor
                                              fNbasleinePoints(0),
                                              fBinsBaseline(0x0),
                                              fHist(0x0),
+                                             fTempHisto(0x0),
+                                             fGraph(0x0),
+                                             fSpline(0x0),
                                              fMinCorr(0),
                                              fMaxCorr(0),
                                              fBaseline(0.),
@@ -65,6 +68,8 @@ DhCorrelationFitter::DhCorrelationFitter() : // default constructor
                                              fGausNS(0x0),
                                              fGausAS(0x0),
                                              fPed(0x0),
+                                             fLM(0x0),
+                                             fFlow(0x0),
                                              fv1(0x0),
                                              fv2(0x0),
                                              fv3(0x0),
@@ -105,6 +110,9 @@ DhCorrelationFitter::DhCorrelationFitter(TH1F* histoToFit, Double_t min, Double_
                                                                                          fNbasleinePoints(0),
                                                                                          fBinsBaseline(0x0),
                                                                                          fHist(0x0),
+                                                                                         fTempHisto(0x0),
+                                                                                         fGraph(0x0),
+                                                                                         fSpline(0x0),
                                                                                          fMinCorr(0.),
                                                                                          fMaxCorr(0.),
                                                                                          fBaseline(0.),
@@ -113,6 +121,8 @@ DhCorrelationFitter::DhCorrelationFitter(TH1F* histoToFit, Double_t min, Double_
                                                                                          fGausNS(0x0),
                                                                                          fGausAS(0x0),
                                                                                          fPed(0x0),
+                                                                                                                                      fLM(0x0),
+                                             fFlow(0x0),
                                                                                          fv1(0x0),
                                                                                          fv2(0x0),
                                                                                          fv3(0x0),
@@ -138,6 +148,7 @@ DhCorrelationFitter::DhCorrelationFitter(TH1F* histoToFit, Double_t min, Double_
 }
 
 DhCorrelationFitter::DhCorrelationFitter(const DhCorrelationFitter& source) : // copy constructor
+
                                                                               fIsReflected(source.fIsReflected),
                                                                               fTypeOfFitFunc(source.fTypeOfFitFunc),
                                                                               fFixBase(source.fFixBase),
@@ -165,6 +176,8 @@ DhCorrelationFitter::DhCorrelationFitter(const DhCorrelationFitter& source) : //
                                                                               fGausNS(source.fGausNS),
                                                                               fGausAS(source.fGausAS),
                                                                               fPed(source.fPed),
+                                                                                                                           fLM(source.fLM),
+                                             fFlow(source.fFlow),
                                                                               fv1(source.fv1),
                                                                               fv2(source.fv2),
                                                                               fv3(source.fv3),
@@ -195,6 +208,10 @@ DhCorrelationFitter::~DhCorrelationFitter()
     delete fHist;
     fHist = 0;
   }
+  if (fTempHisto) {
+    delete fTempHisto;
+    fTempHisto = 0;
+  }
   if (fFit) {
     delete fFit;
     fFit = 0;
@@ -207,6 +224,14 @@ DhCorrelationFitter::~DhCorrelationFitter()
   if (fPed) {
     delete fPed;
     fPed = 0;
+  }
+  if (fLM) {
+    delete fLM;
+    fLM = 0;
+  }
+  if (fFlow) {
+    delete fFlow;
+    fFlow = 0;
   }
 }
 
@@ -244,6 +269,8 @@ DhCorrelationFitter& DhCorrelationFitter::operator=(const DhCorrelationFitter& c
   fErrNSyieldBinCount = cfit.fErrNSyieldBinCount;
   fASyieldBinCount = cfit.fASyieldBinCount;
   fErrASyieldBinCount = cfit.fErrASyieldBinCount;
+  fLM = cfit.fLM;
+  fFlow = cfit.fFlow;
 
   return *this;
 }
@@ -268,6 +295,10 @@ void DhCorrelationFitter::SetExternalValsAndBounds(Int_t nPars, Double_t* vals, 
 
 void DhCorrelationFitter::Fitting(Bool_t drawSplitTerm, Bool_t useExternalPars)
 {
+  if (fHist == nullptr) {
+    Error("DhCorrelationFitter::Fitting", "No histogram to fit!");
+    return;
+  }
   // -> fFixBase = 0 : baseline free
   //             = 1 : fix the baseline to the minimum of the histogram
   //             < 0 : fix the baseline to the weighted average of the abs(fFixBaseline) lower points
@@ -283,14 +314,14 @@ void DhCorrelationFitter::Fitting(Bool_t drawSplitTerm, Bool_t useExternalPars)
   if (useExternalPars)
     fUseExternalPars = kTRUE;
 
-  if (fFixBase != 0 && fFixBase != 6) {
+  /*if (fFixBase != 0 && fFixBase != 6) {
     Printf("[INFO] DhCorrelationFitter::Fitting, Finding baseline");
     FindBaseline();
-  }
-  if (fFixBase == 0) {
+  }*/
+  /*if (fFixBase == 0) {
     // set initial value of the fBaseline
     fBaseline = CalculateBaseline(fHist, fIsTotal);
-  }
+  }*/
   Printf("[INFO] DhCorrelationFitter::Fitting, Setting Function");
   if (fTypeOfFitFunc == 7) { // case for v2 modulation
     FitBaselineWv2();        // to contrain the B parameter in the fit function for the pedestal
@@ -298,7 +329,7 @@ void DhCorrelationFitter::Fitting(Bool_t drawSplitTerm, Bool_t useExternalPars)
   }
   SetFitFunction();
 
-  if (fFixBase != 0 && fTypeOfFitFunc != 8 && fTypeOfFitFunc != 9) {
+  /*if (fFixBase != 0 && fTypeOfFitFunc != 8 && fTypeOfFitFunc != 9) {
     fFit->FixParameter(0, fBaseline);
   }
   if ((fFixMean == 1 || fFixMean == 3) && fTypeOfFitFunc != 8 && fTypeOfFitFunc != 9) {
@@ -309,10 +340,15 @@ void DhCorrelationFitter::Fitting(Bool_t drawSplitTerm, Bool_t useExternalPars)
       fFit->FixParameter(5, TMath::Pi());
     if (fTypeOfFitFunc == 3 || fTypeOfFitFunc == 6)
       fFit->FixParameter(2, TMath::Pi());
-  }
+  }*/
+  printf("[INFO] DhCorrelationFitter::Fitting, Starting fit with function type: %d \n", fTypeOfFitFunc);
+  printf("[INFO] DhCorrelationFitter::Fitting, Fit range: %.3f to %.3f \n", fMinCorr, fMaxCorr);
+  printf("[INFO] DhCorrelationFitter::Fitting, bins in fit range: %d to %d \n", fHist->GetXaxis()->FindBin(fMinCorr), fHist->GetXaxis()->FindBin(fMaxCorr));
+  printf("[INFO] DhCorrelationFitter::Fitting, Number of points in histogram: %d \n", fHist->GetNbinsX());
+  printf("[INFO] DhCorrelationFitter::Fitting, Name of histogram: %s \n", fHist->GetName());
 
   Printf("[INFO] DhCorrelationFitter::Fitting, Fitting");
-  TVirtualFitter::SetMaxIterations(20000);
+  TVirtualFitter::SetMaxIterations(50000);
   TFitResultPtr fitptr = fHist->Fit(fFit, "RIMES", "", fMinCorr, fMaxCorr);
   if (fitptr.Get() == nullptr || fitptr->Status() != 0) {
     std::cout << "[ERROR] Fit failed or invalid TFitResult!" << std::endl;
@@ -335,7 +371,7 @@ void DhCorrelationFitter::Fitting(Bool_t drawSplitTerm, Bool_t useExternalPars)
   Printf("[INFO] DhCorrelationFitter::Fitting, Now drawing, if requested");
   SetSingleTermsForDrawing(drawSplitTerm);
 
-  // NS yield from bin counting
+  /*// NS yield from bin counting
   double fNSyield = 0.;
   double fNSyieldErr = 0.;
   double baselinBinCount = 0;
@@ -355,7 +391,7 @@ void DhCorrelationFitter::Fitting(Bool_t drawSplitTerm, Bool_t useExternalPars)
   }
   fASyieldErr = TMath::Sqrt(fASyieldErr);
 
-  printf("[RESULT MINE] Bin counting results: NS Yield = %.3f +- %.3f \n[RESULT MINE] Bin counting results: AS Yield: %.3f +- %.3f \n[RESULT MINE] baseline = %.3f \n", fNSyield, fNSyieldErr, fASyield, fASyieldErr, baselinBinCount);
+  printf("[RESULT MINE] Bin counting results: NS Yield = %.3f +- %.3f \n[RESULT MINE] Bin counting results: AS Yield: %.3f +- %.3f \n[RESULT MINE] baseline = %.3f \n", fNSyield, fNSyieldErr, fASyield, fASyieldErr, baselinBinCount);*/
 }
 
 void DhCorrelationFitter::SetFitFunction()
@@ -634,10 +670,16 @@ void DhCorrelationFitter::SetFitFunction()
 
       case 8: // case 2 Gaus w periodicity + v2 modulation (delta) low mult
 
-      fFit = new TF1("fTotFit", "[0]+[1]*(1 + 2*[2]*TMath::Cos(x)  + 2*[3] *TMath::Cos(2*x) + 2*[4] *TMath::Cos(3*x))", fMinCorr, fMaxCorr);
-      fv1 = new TF1("fv1", "2*[0]*[1]*TMath::Cos(x)", fMinCorr, fMaxCorr);
-      fv2 = new TF1("fv2", "2*[0]*[1]*TMath::Cos(2*x)", fMinCorr, fMaxCorr);
-      fv3 = new TF1("fv3", "2*[0]*[1]*TMath::Cos(3*x)", fMinCorr, fMaxCorr);
+      fFit = new TF1("fTotFit", "[0] + [1]* (1 + 2*[2]*TMath::Cos(x) + 2*[3]*TMath::Cos(2*x) + 2*[4]*TMath::Cos(3*x))", fMinCorr, fMaxCorr);
+      fv1 = new TF1("fv1", "[0]  * 2*[1]*TMath::Cos(x)", fMinCorr, fMaxCorr);
+      fv2 = new TF1("fv2", "[0]  * 2*[1]*TMath::Cos(2*x)", fMinCorr, fMaxCorr);
+      fv3 = new TF1("fv3", "[0]  * 2*[1]*TMath::Cos(3*x)", fMinCorr, fMaxCorr);
+      // fFit = new TF1("fTotFit", "[0] + [1] / 2 / TMath::Pi() * (1 + 2*[2]*TMath::Cos(x) + 2*[3]*TMath::Cos(2*x) + 2*[4]*TMath::Cos(3*x))", fMinCorr, fMaxCorr);
+      // fv1 = new TF1("fv1", "[1]  / 2 / TMath::Pi() * 2*[2]*TMath::Cos(x)", fMinCorr, fMaxCorr);
+      // fv2 = new TF1("fv2", "[1]  / 2 / TMath::Pi() * 2*[3]*TMath::Cos(2*x)", fMinCorr, fMaxCorr);
+      // fv3 = new TF1("fv3", "[1]  / 2 / TMath::Pi() * 2*[4]*TMath::Cos(3*x)", fMinCorr, fMaxCorr);
+      // fv4 = new TF1("fv4", "2*[0]*[1]/2/TMath::Pi()*TMath::Cos(4*x)", fMinCorr, fMaxCorr);
+      // fv5 = new TF1("fv5", "2*[0]*[1]*TMath::Cos(5*x)", fMinCorr, fMaxCorr);
       /*fv4 = new TF1("fv4", "2*[0]*[1]*TMath::Cos(4*x)", fMinCorr, fMaxCorr);
       fv5 = new TF1("fv5", "2*[0]*[1]*TMath::Cos(5*x)", fMinCorr, fMaxCorr);*/
 
@@ -649,7 +691,14 @@ void DhCorrelationFitter::SetFitFunction()
       }
 
       fFit->FixParameter(0, 0.0);
-      fFit->SetParameter(1, fBaseline);
+      fFit->SetParameter(1, 0.5);
+      // Double_t ave = 0.;
+      // for (int i = 1; i < fHist->GetNbinsX(); i++) {
+      //   ave += fHist->GetBinContent(i);
+      // }
+      // ave /= fHist->GetNbinsX();
+      // std::cout << "Average bin content: " << ave << std::endl;
+      // fFit->FixParameter(1, ave);
 
       fFit->SetParName(0, "czyam");
       fFit->SetParName(1, "ped");
@@ -691,8 +740,74 @@ void DhCorrelationFitter::SetFitFunction()
       /*fFit->SetParName(13, "v_{4}_lm");
       fFit->SetParName(14, "v_{5}_lm");*/
 
+      case 10: // template fit
+      intepolateTemp();
+      fFit = new TF1("fTotFit", this, &DhCorrelationFitter::TotalTemplateFitFunction, fMinCorr, fMaxCorr, 5);
+      
+      fFit->SetParName(0, "F (LM Scale)");
+      fFit->SetParName(1, "G (Flow Scale)");
+      fFit->SetParName(2, "v_{2} delta");
+      fFit->SetParName(3, "v_{3} delta");
+      // fFit->SetParName(4, "v_{1} delta");
+      fFit->SetParameter(0, 1.1);
+      fFit->SetParLimits(0, 1., 5.);
+      fFit->SetParameter(1, fHist->GetMinimum());
+      fFit->SetParameter(2, 0.05);
+      fFit->SetParameter(3, 0.01);
+      // fFit->SetParameter(4, 0.01);
+
+      fLM = new TF1("fLM", this, &DhCorrelationFitter::TemplateFitFunction, fMinCorr, fMaxCorr, 1);
+      fFlow = new TF1("fFlow", "[0] * (1 + 2*[1]*TMath::Cos(2*x) + 2*[2]*TMath::Cos(3*x))", fMinCorr, fMaxCorr);
+      fv2 = new TF1("fv2", "[0] * 2*[1]*TMath::Cos(2*x)", fMinCorr, fMaxCorr);
+      fv3 = new TF1("fv3", "[0] * 2*[1]*TMath::Cos(3*x)", fMinCorr, fMaxCorr);
+
       break;
   }
+}
+
+void DhCorrelationFitter::intepolateTemp()
+{
+  if (!fTempHisto) {
+    Printf("[ERROR] No template histogram set for template fit! Please set it with SetTemplateHisto(TH1* histo) method");
+    return;
+  }
+  
+  if (fGraph) { delete fGraph; fGraph = nullptr; }
+  if (fSpline) { delete fSpline; fSpline = nullptr; }
+
+  fGraph = new TGraphErrors(fTempHisto->GetNbinsX());
+  for (int i = 1; i <= fTempHisto->GetNbinsX(); i++) {
+    fGraph->SetPoint(i - 1, fTempHisto->GetBinCenter(i), fTempHisto->GetBinContent(i));
+    fGraph->SetPointError(i - 1, 0, fTempHisto->GetBinError(i));
+  }
+
+  fSpline = new TSpline3("tempSpline", fGraph);
+}
+
+Double_t DhCorrelationFitter::TemplateFitFunction(Double_t* x, Double_t* par)
+{
+  if (!fSpline) return 0.0; 
+  
+  return par[0] * fSpline->Eval(x[0]); 
+}
+
+Double_t DhCorrelationFitter::TotalTemplateFitFunction(Double_t* x, Double_t* par)
+{
+    // par[0] = F (template scaling factor)
+    // par[1] = G (flow scaling factor)
+    // par[2] = V_{2\Delta}
+    // par[3] = V_{3\Delta}
+
+    Double_t dphi = x[0];
+    
+    // F * Y_LM + G * [ 1 + 2*V2*cos(2x) + 2*V3*cos(3x) ]
+    Double_t template_term = TemplateFitFunction(x, par); // par[0] * fTempHisto->Interpolate(x[0])
+    Double_t flow_term = par[1] * (1.0 + 2.0 * par[2] * TMath::Cos(2.0 * dphi) 
+                                       + 2.0 * par[3] * TMath::Cos(3.0 * dphi)
+                                      //  + 2.0 * par[4] * TMath::Cos(1.0 * dphi)
+                                       );
+                                       
+    return template_term + flow_term;
 }
 
 void DhCorrelationFitter::SetPointsForBaseline(Int_t nBaselinePoints, Int_t* binsBaseline)
@@ -933,6 +1048,10 @@ void DhCorrelationFitter::CalculateYieldsAboveBaseline()
 Double_t DhCorrelationFitter::CalculateBaseline(TH1F*& histo, Bool_t totalRange)
 {
 
+  if (histo == nullptr) {
+    printf("[ERROR] DhCorrelationFitter::CalculateBaseline. Null pointer for input histogram \n");
+    return -1.;
+  }
   // total range = 2*Pi
   // half range = Pi , for histogram reflected under symmetric assumption
 
@@ -1005,7 +1124,10 @@ Double_t DhCorrelationFitter::CalculateBaseline(TH1F*& histo, Bool_t totalRange)
 
 Double_t DhCorrelationFitter::CalculateBaselineError(TH1F*& histo, Bool_t totalRange)
 {
-
+  if (histo == nullptr) {
+    printf("[ERROR] DhCorrelationFitter::CalculateBaselineError. Null pointer for input histogram \n");
+    return -1.;
+  }
   // total range = 2*Pi
   // half range = Pi , for histogram reflected under symmetric assumption
 
@@ -1068,6 +1190,8 @@ void DhCorrelationFitter::SetSingleTermsForDrawing(Bool_t draw)
     par = new Double_t[5];
   } else if (fTypeOfFitFunc == 9) {
     par = new Double_t[11];
+  } else if (fTypeOfFitFunc == 10) {
+    par = new Double_t[4];
   } else {
     Printf("[ERROR] DhCorrelationFitter::SetSingleTermsForDrawing, wrong type of function");
     return;
@@ -1243,19 +1367,66 @@ void DhCorrelationFitter::SetSingleTermsForDrawing(Bool_t draw)
     fv5->SetLineStyle(7);
     fv5->SetLineWidth(4);*/
 
-    TPaveText* pvStatTests1 = new TPaveText(0.603, 0.184, 0.943, 0.553, "NDC");
+    TPaveText* pvStatTests1 = new TPaveText(0.603, 0.284, 0.943, 0.753, "NDC");
     pvStatTests1->SetFillStyle(0);
     pvStatTests1->SetTextSize(0.045);
     pvStatTests1->SetBorderSize(0);
     TText *t0, *t1, *t2, *t3, *t4;
     t0 = pvStatTests1->AddText(0., 1.00, Form("#chi^{2}/ndf = %.1f/%d ", fFit->GetChisquare(), fFit->GetNDF()));
-    t2 = pvStatTests1->AddText(0., 0.80, Form("v1 = %.3f#pm%.3f ", fFit->GetParameter("v_{1}"), fFit->GetParError(fFit->GetParNumber("v_{1}"))));
-    t3 = pvStatTests1->AddText(0., 0.65, Form("v2 = %.3f#pm%.3f ", fFit->GetParameter("v_{2} delta"), fFit->GetParError(fFit->GetParNumber("v_{2} delta"))));
-    t4 = pvStatTests1->AddText(0., 0.50, Form("v3 = %.3f#pm%.3f ", fFit->GetParameter("v_{3}"), fFit->GetParError(fFit->GetParNumber("v_{3}"))));
+    t2 = pvStatTests1->AddText(0., 0.80, Form("v1 = %.5f#pm%.5f ", fFit->GetParameter("v_{1}"), fFit->GetParError(fFit->GetParNumber("v_{1}"))));
+    t3 = pvStatTests1->AddText(0., 0.65, Form("v2 = %.5f#pm%.5f ", fFit->GetParameter("v_{2} delta"), fFit->GetParError(fFit->GetParNumber("v_{2} delta"))));
+    t4 = pvStatTests1->AddText(0., 0.50, Form("v3 = %.5f#pm%.5f ", fFit->GetParameter("v_{3}"), fFit->GetParError(fFit->GetParNumber("v_{3}"))));
 
     if (draw) {
       fFit->Draw("same");
       fv1->Draw("same");
+      fv2->Draw("same");
+      fv3->Draw("same");
+      pvStatTests1->Draw("same");
+    }
+  } else if (fTypeOfFitFunc == 10) { 
+    fFit->GetParameters(par);
+    fFit->SetLineWidth(4);
+
+    fLM->SetParameter(0, par[0]);
+    fLM->SetLineColor(kGray+2);
+    fLM->SetLineStyle(9); // dashed
+    fLM->SetLineWidth(4);
+
+    fFlow->SetParameter(0, par[1]);
+    fFlow->SetParameter(1, par[2]);
+    fFlow->SetParameter(2, par[3]);
+    fFlow->SetLineColor(kGreen); 
+    fFlow->SetLineStyle(8); // dotted
+    fFlow->SetLineWidth(4);
+
+    fv2->SetParameter(0, par[1]); 
+    fv2->SetParameter(1, par[2]);
+    fv2->SetLineColor(kOrange+7);
+    fv2->SetLineStyle(8);
+    fv2->SetLineWidth(4);
+
+    fv3->SetParameter(0, par[1]);
+    fv3->SetParameter(1, par[3]);
+    fv3->SetLineColor(kGreen+2);
+    fv3->SetLineStyle(8);
+    fv3->SetLineWidth(4);
+
+    TPaveText* pvStatTests1 = new TPaveText(0.603, 0.284, 0.943, 0.653, "NDC");
+    pvStatTests1->SetFillStyle(0);
+    pvStatTests1->SetTextSize(0.045);
+    pvStatTests1->SetBorderSize(0);
+    
+    pvStatTests1->AddText(0., 1.00, Form("#chi^{2}/ndf = %.1f/%d ", fFit->GetChisquare(), fFit->GetNDF()));
+    pvStatTests1->AddText(0., 0.80, Form("LM Factor = %.3f #pm %.3f ", fFit->GetParameter(0), fFit->GetParError(0)));
+    pvStatTests1->AddText(0., 0.65, Form("Flow Factor = %.3f #pm %.3f ", fFit->GetParameter(1), fFit->GetParError(1)));
+    pvStatTests1->AddText(0., 0.55, Form("v_{2#Delta} = %.5f #pm %.5f ", fFit->GetParameter(2), fFit->GetParError(2)));
+    pvStatTests1->AddText(0., 0.45, Form("v_{3#Delta} = %.5f #pm %.5f ", fFit->GetParameter(3), fFit->GetParError(3)));
+
+    if (draw) {
+      fFit->Draw("same");
+      fLM->Draw("same");
+      fFlow->Draw("same");
       fv2->Draw("same");
       fv3->Draw("same");
       pvStatTests1->Draw("same");
