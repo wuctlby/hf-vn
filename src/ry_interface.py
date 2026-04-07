@@ -84,13 +84,16 @@ def fit_task(task, fitConfig, inFilePath, doMassFit=False):
         fitter.setup()
         fitter.fit()
 
-        fig = fitter.plot_fit(False, True, loc=["lower left", "upper left"])
-        fig.savefig(task['pdfPath'], dpi=300, bbox_inches="tight")
-        plt.close(fig)
-        fig_residuals = fitter.plot_raw_residuals()
-        residuals_path = task['pdfPath'].with_name(task['pdfPath'].stem + "_Residuals.pdf")
-        fig_residuals.savefig(residuals_path, dpi=300, bbox_inches="tight")
-        plt.close(fig_residuals)
+        if fitConfig.get("minimizer") == "RooFit":
+            fitter.plot_fit(logy=False, path=str(task['pdfPath']), show_extra_info=False)
+        else:
+            fig = fitter.plot_fit(False, True, loc=["lower left", "upper left"])
+            fig.savefig(task['pdfPath'], dpi=300, bbox_inches="tight")
+            plt.close(fig)
+            fig_residuals = fitter.plot_raw_residuals()
+            residuals_path = task['pdfPath'].with_name(task['pdfPath'].stem + "_Residuals.pdf")
+            fig_residuals.savefig(residuals_path, dpi=300, bbox_inches="tight")
+            plt.close(fig_residuals)
 
         fit_info, _, _, _, _ = fitter.get_fit_info()
         result = {
@@ -100,7 +103,7 @@ def fit_task(task, fitConfig, inFilePath, doMassFit=False):
             'ry': fit_info['sgn']['ry'],
             'ry_unc': fit_info['sgn']['ry_unc'],
             'pdfPath': task['pdfPath'],
-            'pdfPathResiduals': residuals_path
+            'pdfPathResiduals': residuals_path if fitConfig.get("minimizer") != "RooFit" else None
         }
 
         if doMassFit:
@@ -174,6 +177,7 @@ def interface_raw_yield_fitter(config_path):
     if method != "DeltaPhiBinning":
         raise ValueError(f"Unsupported method: {method}. Only 'DeltaPhiBinning' is supported in this interface.")
     nWorkers = config.get("nWorkers", int(os.cpu_count()/0.6))
+    minimizer = config["fitConfig"].get("minimizer", "flarefly")
 
     Dmeson = config["Dmeson"]
     ptBinsCand = config["ptBinsCand"]
@@ -214,6 +218,7 @@ def interface_raw_yield_fitter(config_path):
                 # build task
                 task_id = len(tasks)
                 task = {
+                    "minimizer": minimizer,
                     "taskID": task_id, 
                     "taskName": f"CandPt_{int(ptMin*10)}_{int(ptMax*10)}_HadPt_{int(ptHadMin*10)}_{int(ptHadMax*10)}_dPhi_{int(deltaPhiMin*1000)}_{int(deltaPhiMax*1000)}",
                     "iPtCand": iPtCand, "ptMin": ptMin, "ptMax": ptMax,
@@ -226,6 +231,7 @@ def interface_raw_yield_fitter(config_path):
                 tasks.append(task)
 
             mass_task = {
+                "minimizer": minimizer,
                 "taskID": len(mass_tasks),
                 "taskName": f"MassFit_PtCand_{int(ptMin*10)}_{int(ptMax*10)}",
                 "iPtCand": iPtCand, "ptMin": ptMin, "ptMax": ptMax,
@@ -256,22 +262,23 @@ def interface_raw_yield_fitter(config_path):
             futures.clear()
             gc.collect()
 
+    if minimizer == "flarefly":
     # combine PDFs for each (PtCand, PtHad) bin and their residuals in parallel
-    with alive_bar(len(pdfs)+len(pdfs_residuals), title="Combining PDFs") as bar:
-        with ProcessPoolExecutor(max_workers=min(len(pdfs)+len(pdfs_residuals), nWorkers)) as combiner:
-            futures = []
-            for key in pdfs.keys():
-                sorted_pdfs = [pdfs[key][iDeltaPhi] for iDeltaPhi in sorted(pdfs[key].keys())]
-                futures.append(combiner.submit(combine_pdfs, sorted_pdfs))
-            for key in pdfs_residuals.keys():
-                sorted_pdfs = [pdfs_residuals[key][iDeltaPhi] for iDeltaPhi in sorted(pdfs_residuals[key].keys())]
-                futures.append(combiner.submit(combine_pdfs, sorted_pdfs, suffix="_residuals"))
-            for future in as_completed(futures):
-                future.result()
-                del future
-                bar()
-            futures.clear()
-            gc.collect()
+        with alive_bar(len(pdfs)+len(pdfs_residuals), title="Combining PDFs") as bar:
+            with ProcessPoolExecutor(max_workers=min(len(pdfs)+len(pdfs_residuals), nWorkers)) as combiner:
+                futures = []
+                for key in pdfs.keys():
+                    sorted_pdfs = [pdfs[key][iDeltaPhi] for iDeltaPhi in sorted(pdfs[key].keys())]
+                    futures.append(combiner.submit(combine_pdfs, sorted_pdfs))
+                for key in pdfs_residuals.keys():
+                    sorted_pdfs = [pdfs_residuals[key][iDeltaPhi] for iDeltaPhi in sorted(pdfs_residuals[key].keys())]
+                    futures.append(combiner.submit(combine_pdfs, sorted_pdfs, suffix="_residuals"))
+                for future in as_completed(futures):
+                    future.result()
+                    del future
+                    bar()
+                futures.clear()
+                gc.collect()
 
     ry_trigger = {}
     # build task and perform the fit for inv mass distribution of trigger candidates

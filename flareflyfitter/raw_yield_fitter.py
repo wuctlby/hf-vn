@@ -20,6 +20,7 @@ import numpy as np
 msg_service = ROOT.RooMsgService.instance()
 msg_service.setGlobalKillBelow(RooFit.FATAL)  # Only show FATAL errors (you can also use RooFit.ERROR or INFO)
 os.environ["CUDA_VISIBLE_DEVICES"] = ""  # pylint: disable=wrong-import-position
+ROOT.gROOT.SetBatch(True)  # Run in batch mode to avoid opening canvases
 
 class RawYieldFitter:
     """ 
@@ -79,7 +80,7 @@ class RawYieldFitter:
             self.x_axis_label = r"$M(\mathrm{\pi^+ K^- \pi^+})\ \mathrm{(GeV/}c^2)$"
             self.sgn_main_label = "DplusToPiKPi"
             self.particle_pdg = 411
-        elif particle_name == "D0":
+        elif particle_name == "D0" or particle_name == "Dzero":
             self.x_axis_label = r"$M(\mathrm{K^- \pi^+})\ \mathrm{(GeV/}c^2)$"
             self.sgn_main_label = "D0ToKPi"
             self.particle_pdg = 421
@@ -648,7 +649,7 @@ class RawYieldFitter:
             self.legend.SetTextSize(0.035)
 
             # --- Plot data ---
-            self.data_sp_cut.plotOn(
+            self.data.plotOn(
                 frame,
                 RooFit.Range("fit"),
                 RooFit.Binning(int(1000 * (self.fit_range_max - self.fit_range_min))),
@@ -733,10 +734,12 @@ class RawYieldFitter:
             self.legend.Draw()
 
                 # --- Optional: Canvas title using TLatex ---
+            # canva_title = f"{self.pt_min} < #it{{p}}_{{T}} < {self.pt_max} GeV/#it{{c}}, " \
+            #               f"{self.sp_range_min:.2f} < SP < {self.sp_range_max:.2f}" \
+            #               if self.sp_range_min != -4. or self.sp_range_max != 4. \
+            #               else f"{self.pt_min} < #it{{p}}_{{T}} < {self.pt_max} GeV/#it{{c}}"
             canva_title = f"{self.pt_min} < #it{{p}}_{{T}} < {self.pt_max} GeV/#it{{c}}, " \
-                          f"{self.sp_range_min:.2f} < SP < {self.sp_range_max:.2f}" \
-                          if self.sp_range_min != -4. or self.sp_range_max != 4. \
-                          else f"{self.pt_min} < #it{{p}}_{{T}} < {self.pt_max} GeV/#it{{c}}"
+                             f"{self.pt_min} < #it{{p}}_{{T}} < {self.pt_max} GeV/#it{{c}}"
             latex = ROOT.TLatex()
             latex.SetNDC()
             latex.SetTextAlign(22)
@@ -1030,10 +1033,10 @@ class RawYieldFitter:
             # self.data = self.data.reduce(RooFit.Range(self.fit_range_min, self.fit_range_max))
 
         # Dataset with sp cut
-        self.data_sp_cut = self.data.reduce(
-            RooFit.Cut(f"fScalarProd >= {self.sp_range_min} && fScalarProd < {self.sp_range_max}"),
-            # RooFit.Range(self.sp_range_min, self.sp_range_max)
-        )
+        # self.data_sp_cut = self.data.reduce(
+        #     RooFit.Cut(f"fScalarProd >= {self.sp_range_min} && fScalarProd < {self.sp_range_max}"),
+        #     # RooFit.Range(self.sp_range_min, self.sp_range_max)
+        # )
         if self.rebin != 1 and isinstance(self.hist, ROOT.TH1):
             self.roofit_fit_var.setBins(50)   # new number of bins
             self.data = ROOT.RooDataHist(
@@ -1043,7 +1046,7 @@ class RawYieldFitter:
                 self.hist
             )
         self.fit_result = self.model.fitTo(
-            self.data_sp_cut,
+            self.data,
             RooFit.Extended(True),
             RooFit.Range("fit"),
             RooFit.Save(True),
