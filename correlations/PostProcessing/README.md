@@ -31,3 +31,33 @@ To run the full analysis, execute:
 To merge the output files corresponding to positive and negative Δη, use:
 
 <pre> ```bash ./run_hadd.sh ``` </pre>
+
+## New Execution Instructions
+To run the full analysis, follow these steps:
+- configure `cfg.json` and `input_derived_data.txt` first, then in `correlations/Distributions/run.sh`, set `$OPTION`, `$MEMORY`, and `$OUTPUT` as needed. Finally, execute:
+    ```
+    bash correlations/Distributions/run.sh
+    ```
+    for both SE and ME.
+
+- configure `config_CorrAnalysis_v2_010_negDeta.yaml` and `config_CorrAnalysis_v2_010_negDeta.json` first, then execute:
+    ```
+    python3 correlations/PostProcessing/ExtractOutputCorrel.py correlations/PostProcessing/config_CorrAnalysis_v2_010_negDeta.yaml
+    ```
+    to obtain the correlation distributions.
+- execute:
+    ```
+    bash src/ry_interface.py correlations/PostProcessing/config_CorrAnalysis_v2_010_negDeta.json
+    ```
+    to perform the mass fits and extract the raw yields.
+- execute:
+    ```
+    bash correlations/PostProcessing/AnalysisExecution.sh
+    ```
+    to perform the correlation fits and extract the vn values.
+
+**Or** execute the full workflow which locates in `correlations/PostProcessing/debug.ipynb` (note that the configuration files `config_CorrAnalysis_v2_010_negDeta.yaml` need to be set up properly before running the notebook):
+    ```
+    jupyter notebook correlations/PostProcessing/debug.ipynb
+    ```
+
