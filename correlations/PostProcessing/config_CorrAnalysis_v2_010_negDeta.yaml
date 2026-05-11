@@ -4,7 +4,7 @@ outdir: "/home/wuct/MetaData/DATA/OO/apass2/corr/results/fifth/k020/firstlook"
 pathFileSE: "/home/wuct/MetaData/DATA/OO/apass2/corr/results/fifth/large/SE/k020/AnalysisResults.root"
 pathFileME: "/home/wuct/MetaData/DATA/OO/apass2/corr/results/fifth/large/ME/k020/AnalysisResults.root"
 pathFileMass: "/home/wuct/MetaData/DATA/OO/apass2/corr/results/fifth/large/SE/k020/AnalysisResults.root"
-method: "DeltaPhiBinning" # "MassBinning" or "DeltaPhiBinning"
+method: "MassBinning" # "MassBinning" or "DeltaPhiBinning"
 nWorkers: 18
 
 task_LM:
