@@ -67,6 +67,7 @@ if __name__ == "__main__":
     # —————— Get pt weights and cent di for MC projections ————————————————————
     if operations.get("proj_mc"):
         sPtWeightsD, sPtWeightsB, Bspeciesweights = get_pt_weights(config["projections"]) if config['projections'].get('PtWeightsFile') else (None, None, None)
+        sPtWeights = (sPtWeightsD, sPtWeightsB, Bspeciesweights)
         if config['projections'].get('CentDiffBinsMCYieldsStep'):
             proj_mc_cent_diff = True
             _, (centLowLim, centMaxLim) = get_centrality_bins(config['centrality'])
@@ -89,22 +90,24 @@ if __name__ == "__main__":
                 for key, sparse_data in sparses_data.items():
                     sparse_data.GetAxis(thn_infos[key].axis_id['ScoreBkg']).SetRangeUser(bkg_min, bkg_max)
                     sparse_data.GetAxis(thn_infos[key].axis_id['ScoreFD']).SetRangeUser(fd_min, fd_max)
-                for process in config["projections"].get("process", "proj_data"):
+                for process in config["projections"]["proj_data"].get("process", ["proj_data"]):
                     proj_data(i_pt, process, sparses_data, thn_infos, config["projections"]["proj_data"], pt_label, write_opt_data, outfile)
                 logger("Projected data!")
 
+            outfile.cd(pt_label)
             # —————— Project MC ————————————————————————————————————————
             if operations.get("proj_mc"):
                 for key, i_sparse in sparses_reco.items():
                     i_sparse.GetAxis(thn_infos[key].axis_id['ScoreBkg']).SetRangeUser(bkg_min, bkg_max)
                     i_sparse.GetAxis(thn_infos[key].axis_id['ScoreFD']).SetRangeUser(fd_min, fd_max)
 
-                proj_mc_reco(sparses_reco, sPtWeightsD, sPtWeightsB, Bspeciesweights, write_opt_mc, thn_infos, pt_min, pt_max, save_centrality=proj_mc_cent_diff)
-                logger("Projected mc reco!")
-                proj_mc_gen(sparses_gen, sPtWeightsD, sPtWeightsB, Bspeciesweights, write_opt_mc, thn_infos, pt_min, pt_max, save_centrality=proj_mc_cent_diff)
-                logger("Projected mc gen!\n\n")
+                for process in config["projections"]["proj_mc"].get("process", ["proj_mc"]):
+                    proj_mc_reco(sparses_reco, sPtWeights, thn_infos, config["projections"]["proj_mc"], pt_label, write_opt_mc, outfile, process, pt_min, pt_max, save_centrality=proj_mc_cent_diff)
+                    logger("Projected mc reco!")
+                    proj_mc_gen(sparses_gen, sPtWeights, write_opt_mc, thn_infos, pt_min, pt_max, save_centrality=proj_mc_cent_diff)
+                    logger("Projected mc gen!\n\n")
 
-
+                # TODO: move to proj_mc_cent_diff process
                 if proj_mc_cent_diff:
                     centStep = config['projections']['CentDiffBinsMCYieldsStep']
                     centBins = list(np.arange(centLowLim, centMaxLim + centStep, centStep))
@@ -121,10 +124,10 @@ if __name__ == "__main__":
                         for key, i_sparse in sparses_gen.items():
                             i_sparse.GetAxis(thn_infos[key].axis_id['Cent']).SetRangeUser(cent_min, cent_max)
 
-                        hPtPrompt, hPtFD = proj_mc_reco(sparses_reco, sPtWeightsD, sPtWeightsB, Bspeciesweights, write_opt_mc, thn_infos, pt_min, pt_max, save_centrality=True)
+                        hPtPrompt, hPtFD = proj_mc_reco(sparses_reco, sPtWeights, thn_infos, config["projections"]["proj_mc"], pt_label, write_opt_mc, outfile, "proj_mc", pt_min, pt_max, save_centrality=True)
                         hCentDiffYieldsRecoPrompt.SetBinContent(i_cent_bin+1, hPtPrompt.Integral())
                         hCentDiffYieldsRecoFD.SetBinContent(i_cent_bin+1, hPtFD.Integral())
-                        hGenPtPrompt, hGenPtFD = proj_mc_gen(sparses_gen, sPtWeightsD, sPtWeightsB, Bspeciesweights, write_opt_mc, thn_infos, pt_min, pt_max, save_centrality=True)
+                        hGenPtPrompt, hGenPtFD = proj_mc_gen(sparses_gen, sPtWeights, write_opt_mc, thn_infos, pt_min, pt_max, save_centrality=True)
                         hCentDiffYieldsGenPrompt.SetBinContent(i_cent_bin+1, hGenPtPrompt.Integral())
                         hCentDiffYieldsGenFD.SetBinContent(i_cent_bin+1, hGenPtFD.Integral())
                         logger(f"Projected mc reco and gen for cent {cent_min}-{cent_max}!", "INFO")

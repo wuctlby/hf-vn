@@ -101,7 +101,7 @@ thns:
     <<: *D0GenBase
     name: GenPrompt
     aliname: ["GenPromptD0"]
-    pre_axisids: [0, 5]
+    pre_axisids: [0, 1, 5]
     pre_thname: hSparseGenPrompt
     pre_thpath: GenPrompt
   GenFDD0:
@@ -124,9 +124,9 @@ thns:
       - id: 0
         name: ScoreBkg
       - id: 1
-        name: ScoreFD
+        name: ScorePrompt # swap prompt and FD for D0
       - id: 2
-        name: ScorePrompt
+        name: ScoreFD
       - id: 3
         name: Mass
       - id: 4
@@ -150,21 +150,21 @@ thns:
     <<: *D0RecBase
     name: RecoPrompt
     aliname: ["RecoPromptD0"]
-    pre_axisids: [0, 1, 3, 4, 10]
+    pre_axisids: [0, 2, 3, 4, 5, 10]
     pre_thname: hSparseRecoPrompt
     pre_thpath: RecoPrompt
   RecoFDD0:
     <<: *D0RecBase
     name: RecoFD
     aliname: ["RecoFDD0"]
-    pre_axisids: [0, 1, 3, 4, 10]
+    pre_axisids: [0, 2, 3, 4, 5, 10]
     pre_thname: hSparseRecoFD
     pre_thpath: RecoFD
   RecoReflD0:
     <<: *D0RecBase
     name: RecoRefl
     aliname: ["RecoReflD0"]
-    pre_axisids: [0, 1, 3, 4, 10]
+    pre_axisids: [0, 2, 3, 4, 5, 10]
     pre_thname: hSparseRecoRefl
     pre_thpath: RecoRefl
 
