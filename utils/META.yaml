@@ -1,0 +1,207 @@
+# ═══════════════════════════════════════════════════════════════
+# META.yaml — Charm Bulk THnSparse metadata
+# ═══════════════════════════════════════════════════════════════
+# Each entry under `thns` defines a named THnSparse histogram
+# configuration.  The `default` key selects which method is
+# returned by CharmBulkInfo.default().
+#
+# Users / sub-workflows can add custom methods here, and they
+# will be automatically picked up by CharmBulkInfo.method().
+# ═══════════════════════════════════════════════════════════════
+
+default: charm_bulk
+
+thns:
+  # ─── task charm-bulk ─────────────────────────────────────────────────────────────────
+  charm_bulk: # keyname should be unique across all META.yaml files to avoid conflicts
+    name: CharmBulk
+    aliname: [charmbulk, CharmBulk]
+    cand: ["D0"]
+    description: "hCharmBulkCorrelations — 10 axes (inv mass, centrality, pT, sign, etc.)"
+    datatype: "DATA"
+    thname: hCharmBulkCorrelations
+    thpath: hf-task-pt-fluc-charm-hadrons
+    axes:
+      - id: 0
+        name: Mass
+      - id: 1
+        name: Cent
+      - id: 2
+        name: Pt
+      - id: 3
+        name: Sign
+      - id: 4
+        name: ScoreBkg
+      - id: 5
+        name: ScoreFD
+      - id: 6
+        name: Eta
+      - id: 7
+        name: MeanPtA
+      - id: 8
+        name: MeanPtB
+      - id: 9
+        name: PtProduct
+    pre_axisids: [0, 1, 2, 4, 5, 6, 7, 8, 9]
+    pre_thname: hSparseCharmBulk
+    pre_thpath: CharmBulk
+
+  bulk:
+    name: Bulk
+    aliname: [Bulk]
+    cand: ["D0"]
+    description: "hMeanPtTrkAllColls — 6 axes (centrality, mean pT, N tracks)"
+    datatype: "DATA"
+    thname: hMeanPtTrkAllColls
+    thpath: hf-task-pt-fluc-charm-hadrons
+    axes:
+      - id: 0
+        name: Cent
+      - id: 1
+        name: MeanPtA
+      - id: 2
+        name: MeanPtB
+      - id: 3
+        name: MeanPtProduct
+      - id: 4
+        name: NTracksA
+      - id: 5
+        name: NTracksB
+    pre_axisids: [0, 1, 2, 3, 4, 5]
+    pre_thname: hSparseBulk
+    pre_thpath: CharmBulk
+
+  # ─── task D0 ─────────────────────────────────────────────────────────────────
+  # ----- Gen -------------------------------------------------------------------
+  D0GenBase: &D0GenBase
+    name: Gen
+    aliname: ["D0Gen"]
+    cand: ["D0"]
+    description: "hSparseAcc — 6 axes"
+    datatype: "MC"
+    thname: hSparseAcc
+    thpath: hf-task-d0
+    axes:
+      - id: 0
+        name: Pt
+      - id: 1
+        name: PtBMoth
+      - id: 2
+        name: Y
+      - id: 3
+        name: Origin
+      - id: 4
+        name: NPVContr
+      - id: 5
+        name: Cent
+    pre_axisids:
+    pre_thname:
+    pre_thpath:
+  GenPromptD0:
+    <<: *D0GenBase
+    name: GenPrompt
+    aliname: ["GenPromptD0"]
+    pre_axisids: [0, 5]
+    pre_thname: hSparseGenPrompt
+    pre_thpath: GenPrompt
+  GenFDD0:
+    <<: *D0GenBase
+    name: GenFD
+    aliname: ["GenFDD0"]
+    pre_axisids: [0, 5]
+    pre_thname: hSparseGenFD
+    pre_thpath: GenFD
+  # ----- Reco -------------------------------------------------------------------
+  D0Rec: &D0RecBase
+    name: Rec
+    aliname: ["D0Rec"]
+    cand: ["D0"]
+    description: "hBdtScoreVsMassVsPtVsPtBVsYVsOriginVsD0Type — 11 axes"
+    datatype: "MC"
+    thname: hBdtScoreVsMassVsPtVsPtBVsYVsOriginVsD0Type
+    thpath: hf-task-d0
+    axes:
+      - id: 0
+        name: ScoreBkg
+      - id: 1
+        name: ScoreFD
+      - id: 2
+        name: ScorePrompt
+      - id: 3
+        name: Mass
+      - id: 4
+        name: Pt
+      - id: 5
+        name: Y
+      - id: 6
+        name: CandType
+      - id: 7
+        name: PtBMoth
+      - id: 8
+        name: Origin
+      - id: 9
+        name: NPVContr
+      - id: 10
+        name: Cent
+    pre_axisids:
+    pre_thname:
+    pre_thpath:
+  RecoPromptD0:
+    <<: *D0RecBase
+    name: RecoPrompt
+    aliname: ["RecoPromptD0"]
+    pre_axisids: [0, 1, 3, 4, 10]
+    pre_thname: hSparseRecoPrompt
+    pre_thpath: RecoPrompt
+  RecoFDD0:
+    <<: *D0RecBase
+    name: RecoFD
+    aliname: ["RecoFDD0"]
+    pre_axisids: [0, 1, 3, 4, 10]
+    pre_thname: hSparseRecoFD
+    pre_thpath: RecoFD
+  RecoReflD0:
+    <<: *D0RecBase
+    name: RecoRefl
+    aliname: ["RecoReflD0"]
+    pre_axisids: [0, 1, 3, 4, 10]
+    pre_thname: hSparseRecoRefl
+    pre_thpath: RecoRefl
+
+# ─── task flow ─────────────────────────────────────────────────────────────────
+flow:
+    name: FlowSP
+    aliname: [flow, FlowSP]
+    cand: ["D0", "Dplus", "Dstar"]
+    description: "hSparseFlowCharm — 12 axes (inv mass, pT, cent, SP, scores, event flags)"
+    datatype: "DATA"
+    thname: hSparseFlowCharm
+    thpath: hf-task-flow-charm-hadrons
+    axes:
+      - id: 0
+        name: Mass
+      - id: 1
+        name: Pt
+      - id: 2
+        name: Cent
+      - id: 3
+        name: Sp
+      - id: 4
+        name: ScoreBkg
+      - id: 5
+        name: ScoreFD
+      - id: 6
+        name: OccITS
+      - id: 7
+        name: NoSameBunchPileup
+      - id: 8
+        name: Occ
+      - id: 9
+        name: NoCollInTimeRangeNarrow
+      - id: 10
+        name: NoCollInTimeRangeStandard
+      - id: 11
+        name: NoCollInRofStandard
+    pre_axisids: [0, 1, 2, 3, 4, 5]
+    pre_thname: hSparseFlowSP
+    pre_thpath: FlowSP

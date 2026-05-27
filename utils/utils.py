@@ -6,43 +6,58 @@ import ctypes
 from ROOT import TH1, TH2, TH3, TFile
 import numpy as np
 
+_SCRIPTS = {
+	"Preprocess": 'pre_process.py',
+	"YamlCuts": 'pre_process.py',
+	"CutVariation": 'pre_process.py',
+	"DataDrivenFraction": 'data_driven_fraction.py',
+}
+
+def _get_script_name(script_path):
+    script_path = os.path.basename(script_path)  # Get the filename from the path
+    if script_path not in _SCRIPTS.values():
+        raise ValueError(f"Script path '{script_path}' not found. Available keys: {list(_SCRIPTS.values())}")
+    return f"[{next(key for key, value in _SCRIPTS.items() if value == script_path)}]"
+
 def check_dir(dir):
 
-	if not os.path.exists(dir):
-		print(f"\033[32m{dir} does not exist, it will be created\033[0m")
-		os.makedirs(dir)
-	else:
-		print(f"\033[33m{dir} already exists, it will be overwritten\033[0m")
-		shutil.rmtree(dir)
-		os.makedirs(dir)
+    if not os.path.exists(dir):
+        print(f"\033[32m{dir} does not exist, it will be created\033[0m")
+        os.makedirs(dir)
+    else:
+        print(f"\033[33m{dir} already exists, it will be overwritten\033[0m")
+        shutil.rmtree(dir)
+        os.makedirs(dir)
 
-	return
+    return
 
-def logger(message, level='INFO'):
-	"""
-	Function to log messages with different levels.
-	Args:
-		message (str): The message to log.
-		level (str): The level of the message ('INFO', 'WARNING', 'ERROR').
-	"""
-	message = f"[{level}] {message}"
-	if level == 'INFO':
-		print(f"\033[32m{message}\033[0m")
-	elif level == 'WARNING':
-		print(f"\033[33m{message}\033[0m")
-	elif level == 'ERROR':
-		print(f"\033[31m{message}\033[0m")
-	elif level == 'FATAL':
-		print(f"\033[31m{message}\033[0m")
-		sys.exit(1)
-	elif level == 'COMMAND':
-		print(f"\033[35m{message}\033[0m")
-	elif level == 'DEBUG':
-		print(f"\033[34m{message}\033[0m")
-	elif level == 'PAUSE':
-		input(f"\033[36m{message}\n{level}: Press Enter to continue.\033[0m")
-	else:
-		print(f"\033[37m{message}\033[0m")  # Default to white for unknown levels
+def logger(message, level='INFO', script=None):
+    """
+    Function to log messages with different levels.
+    Args:
+        message (str): The message to log.
+        level (str): The level of the message ('INFO', 'WARNING', 'ERROR').
+    """
+    message = f"[{level}] {message}"
+    if script:
+        message = f"{_get_script_name(script)} {message}"
+    if level == 'INFO':
+        print(f"\033[32m{message}\033[0m")
+    elif level == 'WARNING':
+        print(f"\033[33m{message}\033[0m")
+    elif level == 'ERROR':
+        print(f"\033[31m{message}\033[0m")
+    elif level == 'FATAL':
+        print(f"\033[31m{message}\033[0m")
+        sys.exit(1)
+    elif level == 'COMMAND':
+        print(f"\033[35m{message}\033[0m")
+    elif level == 'DEBUG':
+        print(f"\033[34m{message}\033[0m")
+    elif level == 'PAUSE':
+        input(f"\033[36m{message}\n{level}: Press Enter to continue.\033[0m")
+    else:
+        print(f"\033[37m{message}\033[0m")  # Default to white for unknown levels
 
 def make_dir_root_file(directory, file, verbose=True):
     if not file.GetDirectory(directory):
@@ -53,6 +68,7 @@ def make_dir_root_file(directory, file, verbose=True):
         if verbose:
             logger(f"Directory {directory} already exists in file {file.GetName()}", level='WARNING')
 
+# TODO: move this function to utils_sp.py
 def profile_mass_sp(hist_mass_sp, inv_mass_bins, resolution):
     '''
     Profile the mass sparse to get vn versus mass
@@ -78,6 +94,8 @@ def profile_mass_sp(hist_mass_sp, inv_mass_bins, resolution):
         hist_vn_vs_mass.SetBinContent(i+1, mean_sp / resolution)
         hist_vn_vs_mass.SetBinError(i+1, mean_sp_err / resolution)
     return hist_vn_vs_mass
+
+# TODO: move this function to utils_sp.py
 
 def get_vn_versus_mass(sparse, inv_mass_bins, mass_axis, vn_axis, debug=False):
     '''
@@ -124,6 +142,8 @@ def get_vn_versus_mass(sparse, inv_mass_bins, mass_axis, vn_axis, debug=False):
         outfile.Close()
 
     return hist_mass_proj
+
+# TODO: move this function to utils_sp.py
 
 def get_vnfitter_results(vnFitter, secPeak, useRefl, useTempl):
     '''

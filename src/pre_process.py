@@ -13,11 +13,12 @@ from ROOT import TFile, TObject
 import argparse
 import gc
 import concurrent.futures
-script_dir = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(f"{script_dir}/")
-sys.path.append(f"{script_dir}/../utils/")
-from utils import get_centrality_bins, make_dir_root_file, logger
-from data_model import get_sparse_dict, get_tree_dict
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+SCRIPT = os.path.basename(__file__)
+sys.path.append(os.path.abspath(os.path.join(SCRIPT_DIR, "../utils")))
+from utils import get_centrality_bins, logger
+from load_utils import list_files
+from utils_thn import GetTHnInfo
 import uproot
 import pandas as pd
 import awkward as ak
@@ -43,59 +44,68 @@ def check_existing_outputs(file_path):
 
     return out_file, write_opt
 
-def get_inputs_sparse(file, full_cfg, sparse_cfg, debug=False):
+def make_dir_root_file(directory, file, verbose=True):
+    if not file.GetDirectory(directory):
+        file.mkdir(directory)
+        if verbose:
+            logger(f"Created directory {directory} in file {file.GetName()}", level='WARNING', script=SCRIPT)
+    else:
+        if verbose:
+            logger(f"Directory {directory} already exists in file {file.GetName()}", level='WARNING', script=SCRIPT)
+
+def get_inputs_sparse(file, Dmeson, thn_info, sparse_name, debug=False):
     """Load a single sparse and axes info
     
     Args:
         file (TFile): input ROOT file
-        full_cfg (dict): full configuration dictionary
-        sparse_cfg (dict): sparse configuration dictionary
+        Dmeson (str): D meson type
+        thn_info (THnSparseInfo): THnSparseInfo object
+        sparse_name (str): name of the sparse to load
         debug (bool, optional): print debug info. Defaults to False.
     
     Returns:
         tuple: (sparse, axes) where sparse is the loaded sparse histogram and axes is the dictionary of axes information
     """
-
-    axes = get_sparse_dict(sparse_cfg['name'], full_cfg['Dmeson'])
-    sparse = file.Get(sparse_cfg['path'])
+    sparse = file.Get(thn_info.thurl)
     if sparse is None:
-        logger(f"Sparse {sparse_cfg['name']} not found in file {file.GetName()} at path {sparse_cfg['path']}", level='ERROR')
+        logger(f"Sparse {thn_info.thname} not found in file {file.GetName()} at path {thn_info.thpath}", level='ERROR', script=SCRIPT)
     else:
-        logger(f"Sparse {sparse} loaded from {sparse_cfg['path']}", level='INFO')
-    
-    if full_cfg['Dmeson'] == 'Dzero' and sparse_cfg['name'] != "FlowSP":
+        logger(f"Sparse {thn_info.thname} loaded from {thn_info.thpath}", level='INFO', script=SCRIPT)
+
+    if Dmeson == 'Dzero' and thn_info.datatype == 'MC':
         # TODO: safety checks for Dmeson reflecton and secondary peak
-        if sparse_cfg['name'] == "RecoPrompt":
-            sparse.GetAxis(axes['Origin']).SetRange(2, 2)       # select prompt
-            sparse.GetAxis(axes['CandType']).SetRange(1, 2)     # select signal
-        elif sparse_cfg['name'] == "RecoFD":
-            sparse.GetAxis(axes['Origin']).SetRange(3, 3)       # select non-prompt
-            sparse.GetAxis(axes['CandType']).SetRange(1, 2)     # select signal
-        elif sparse_cfg['name'] == "RecoRefl":
-            sparse.GetAxis(axes['CandType']).SetRange(3, 4)     # select reflection
-        elif sparse_cfg['name'] == "RecoReflPrompt":
-            sparse.GetAxis(axes['CandType']).SetRange(3, 4)     # select reflection
-            sparse.GetAxis(axes['Origin']).SetRange(2, 2)       # select prompt
-        elif sparse_cfg['name'] == "RecoReflFD":
-            sparse.GetAxis(axes['CandType']).SetRange(3, 4)     # select reflection
-            sparse.GetAxis(axes['Origin']).SetRange(3, 3)       # select FD
-        elif sparse_cfg['name'] == "GenPrompt":
-            sparse.GetAxis(axes['Origin']).SetRange(2, 2)       # select prompt
-        elif sparse_cfg['name'] == "GenFD":
-            sparse.GetAxis(axes['Origin']).SetRange(3, 3)       # select non-prompt
+        print(sparse_name)
+        if sparse_name == "RecoPrompt":
+            sparse.GetAxis(thn_info.axis_id('Origin')).SetRange(2, 2)       # select prompt
+            sparse.GetAxis(thn_info.axis_id('CandType')).SetRange(1, 2)     # select signal
+        elif sparse_name == "RecoFD":
+            sparse.GetAxis(thn_info.axis_id('Origin')).SetRange(3, 3)       # select non-prompt
+            sparse.GetAxis(thn_info.axis_id('CandType')).SetRange(1, 2)     # select signal
+        elif sparse_name == "RecoRefl":
+            sparse.GetAxis(thn_info.axis_id('CandType')).SetRange(3, 4)     # select reflection
+        elif sparse_name == "RecoReflPrompt":
+            sparse.GetAxis(thn_info.axis_id('CandType')).SetRange(3, 4)     # select reflection
+            sparse.GetAxis(thn_info.axis_id('Origin')).SetRange(2, 2)       # select prompt
+        elif sparse_name == "RecoReflFD":
+            sparse.GetAxis(thn_info.axis_id('CandType')).SetRange(3, 4)     # select reflection
+            sparse.GetAxis(thn_info.axis_id('Origin')).SetRange(3, 3)       # select FD
+        elif sparse_name == "GenPrompt":
+            sparse.GetAxis(thn_info.axis_id('Origin')).SetRange(2, 2)       # select prompt
+        elif sparse_name == "GenFD":
+            sparse.GetAxis(thn_info.axis_id('Origin')).SetRange(3, 3)       # select non-prompt
         else:
-            logger(f"Unknown sparse type for Dzero {sparse_cfg['name']}", level='ERROR')
+            logger(f"Unknown sparse type for Dzero {thn_info.thname}", level='ERROR')
 
     if debug:
         print('\n')
         logger('###############################################################', level='DEBUG')
-        for key, value in axes.items():
-            logger(f"    {key}: {value}", level='DEBUG')
+        for key, value in thn_info.axis_name_id_map.items():
+            logger(f"{key}: {value}", level='DEBUG')
         logger('###############################################################\n', level='DEBUG')
 
-    return sparse, axes
+    return sparse
 
-def process_sparse(i_file, infile_path, full_cfg, sparse_cfg, prep_out_dir, input_out_dir):
+def process_sparse(i_file, infile_path, full_cfg, sparse_name, prep_out_dir):
     """
     Process a single sparse from an input file for all pt bins according to the configuration.
     
@@ -103,53 +113,58 @@ def process_sparse(i_file, infile_path, full_cfg, sparse_cfg, prep_out_dir, inpu
         i_file (int): index of the input file
         infile (TFile): input ROOT file
         full_cfg (dict): full configuration dictionary
-        sparse_cfg (dict): sparse configuration dictionary
+        sparse_name (str): name of the sparse to process
         prep_out_dir (str): output directory for pre-processed files
-        input_out_dir (str): sub-directory for the specific input configuration
     """
     infile = TFile.Open(infile_path, 'read')
-    logger(f'Processing file {i_file}, {infile.GetName()}')
-    sparse, axes = get_inputs_sparse(infile, full_cfg, sparse_cfg, True)
+    thn_info = GetTHnInfo.thn(sparse_name, cand=full_cfg['Dmeson'])
+    logger(f'Processing sparse {sparse_name} for file {i_file}', level='INFO', script=SCRIPT)
+    sparse = get_inputs_sparse(infile, full_cfg['Dmeson'], thn_info, sparse_name, debug=False)
+    if sparse is None:
+        logger(f"Sparse {sparse_name} not found in file {infile_path} at path {thn_info.thurl}", level='ERROR', script=SCRIPT)
+        infile.Close()
+        return
+    else:
+        logger(f"Sparse {thn_info.thname} loaded from {thn_info.thurl}", level='INFO', script=SCRIPT)
 
-    # Only for flow with SP, not for correlations (applied in O2Physics)
-    if axes.get('Cent') is not None:
-        cent_min, cent_max = get_centrality_bins(full_cfg['centrality'])[1]
-        logger(f"Applying cent cut to sparse {sparse} with value {cent_min} -- {cent_max}", "INFO")
-        sparse.GetAxis(axes['Cent']).SetRangeUser(cent_min, cent_max)
+    # Apply centrality cut if centrality axis exists
+    if thn_info.axis_id('cent') is not None:
+        cent_min, cent_max = get_centrality_bins(full_cfg.get('centrality', 'k0100'))[1] # Default to 0-100% if not specified
+        logger(f"Applying cent cut to sparse {thn_info.thname} with value {cent_min} -- {cent_max}", "INFO", script=SCRIPT)
+        sparse.GetAxis(thn_info.axis_id('cent')).SetRangeUser(cent_min, cent_max)
 
     pt_mins, pt_maxs = full_cfg['ptbins'][:-1], full_cfg['ptbins'][1:]
     bkg_maxs = full_cfg['preprocess']['bkg_cuts']
-    axes_to_keep, rebin = sparse_cfg["axes"]['names'], sparse_cfg["axes"]['rebin']
-    sparse_type, sparse_path = sparse_cfg['name'], sparse_cfg['path']
-    sparse_dir, sparse_name = sparse_path.split('/')[0], sparse_path.split('/')[1]
+    axes_to_keep = [thn_info.axis_name(i) for i in thn_info.axisids_kept]
+    type_name = thn_info.datatype
 
-    logger(f"Projecting sparse {sparse_cfg['name']} for file {i_file} into pT bins ({pt_mins} - {pt_maxs}) with bkg cuts {bkg_maxs}", level='INFO')
+    logger(f"Projecting sparse {thn_info.thname} for file {i_file} with axes to keep {axes_to_keep}", level='INFO', script=SCRIPT)
     for pt_min, pt_max, bkg_max in zip(pt_mins, pt_maxs, bkg_maxs):
-        logger(f"Processing pT bin {pt_min} - {pt_max} with bkg max {bkg_max}", level='INFO')
+        logger(f"Processing pT bin {pt_min} - {pt_max} with bkg max {bkg_max}", level='INFO', script=SCRIPT)
         # Create output file
-        out_file_dir = f"{prep_out_dir}/preprocess/pt_{int(pt_min*10)}_{int(pt_max*10)}/{input_out_dir}"
+        out_file_dir = f"{prep_out_dir}/preprocess/pt_{int(pt_min*10)}_{int(pt_max*10)}/{type_name}/jobs"
         os.makedirs(out_file_dir, exist_ok=True)
         out_file_path = f'{out_file_dir}/AnalysisResults_{i_file}.root'
         out_file, write_opt = check_existing_outputs(out_file_path)
 
-        sparse.GetAxis(axes.get('PtTrig', axes.get('Pt'))).SetRangeUser(pt_min, pt_max) # PtTrig for correlations, Pt for SP flow
-        if axes.get('ScoreBkg') is not None: # Skip sparses for generated info
-            sparse.GetAxis(axes['ScoreBkg']).SetRangeUser(0, bkg_max)
-        proj_axes = [axes[ax_to_keep] for ax_to_keep in axes_to_keep]
+        sparse.GetAxis(thn_info.axis_id('pt')).SetRangeUser(pt_min, pt_max) # PtTrig for correlations, Pt for SP flow
+        if thn_info.axis_id('bkg score') is not None: # Skip sparses for generated info
+            sparse.GetAxis(thn_info.axis_id('bkg score')).SetRangeUser(0, bkg_max)
+        proj_axes = thn_info.axisids_kept
         proj_sparse = sparse.Projection(len(proj_axes), array.array('i', proj_axes), 'O')
-        proj_sparse.SetName(sparse.GetName())
-        proj_sparse = proj_sparse.Rebin(array.array('i', rebin))
-        make_dir_root_file(sparse_type, out_file)
-        out_file.cd(sparse_type)
-        proj_sparse.Write(f"hSparse{sparse_type}", write_opt)
-        out_file.Delete(f"hSparse{sparse_type}" + ";*")
+        proj_sparse.SetName(thn_info.pre_thname)
+        # proj_sparse = proj_sparse.Rebin(array.array('i', rebin))
+        make_dir_root_file(thn_info.pre_thpath, out_file)
+        out_file.cd(thn_info.pre_thpath)
+        proj_sparse.Write(thn_info.pre_thname, write_opt)
+        out_file.Delete(thn_info.pre_thname + ";*")
         proj_sparse.Delete()
         del proj_sparse
 
         gc.collect()
 
         out_file.Close()
-        logger(f'----> Finished processing pT bin {pt_min} - {pt_max} for {i_file}, sparse: {sparse_cfg["name"]}\n', "INFO")
+        logger(f"Saved projected sparse to {out_file_path}", level='INFO', script=SCRIPT)
 
     del sparse
     gc.collect()
@@ -237,22 +252,6 @@ def process_tree(i_file, infile_path, full_cfg, trees_cfg, prep_out_dir, input_o
         traceback.print_exc()
         logger(f"Caught Python exception while saving snapshot: {e}", "ERROR")
 
-def get_input_paths(input_cfg, input_type):
-    print(f"input_cfg: {input_cfg}")
-    if isinstance(input_cfg, str) and input_cfg.endswith(".txt"):
-        return input_cfg
-    if isinstance(input_cfg, str):
-        dir_path = input_cfg
-        file_paths = [f"{dir_path}/{file}" for file in os.listdir(dir_path) \
-                      if file.endswith(".root") and input_type in file]
-        return file_paths
-    elif isinstance(input_cfg, list):
-        file_paths = input_cfg
-        return file_paths
-    else:
-        logger("Invalid type for 'files' in configuration. Must be a string (directory) or list of file paths.", "ERROR")
-        sys.exit(1)
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Arguments")
     parser.add_argument('config', metavar='text', default='config.yml', help='configuration file')
@@ -262,31 +261,25 @@ if __name__ == "__main__":
     with open(args.config, 'r') as cfg_pre:
         full_cfg = yaml.safe_load(cfg_pre)
 
-    output_dir = full_cfg['outdirPrep'] if full_cfg.get("outdirPrep") else full_cfg['outdir']
+    output_dir = full_cfg['preprocess']['outdir'] if full_cfg.get('preprocess').get('outdir') else full_cfg['outdir']
     for input_cfg in full_cfg['preprocess']['inputs']:
-        if isinstance(input_cfg['files'], str) and not input_cfg['files'].endswith(".txt"):
-            dir_path = input_cfg['files']
-            file_paths = [f"{dir_path}/{file}" for file in os.listdir(dir_path) if file.endswith(".root")]
-        elif isinstance(input_cfg['files'], str) and input_cfg['files'].endswith(".txt"):
-            with open(input_cfg['files'], 'r') as f:
-                file_paths = [line.strip() for line in f if line.strip()]
-        elif isinstance(input_cfg['files'], list):
-            file_paths = input_cfg['files']
-        else:
-            logger("Invalid type for 'files' in configuration. Must be a string (directory) or list of file paths.", "ERROR")
-            continue
+        files = input_cfg['files']
+
+        thn_info = GetTHnInfo.thn(input_cfg['sparses'][0])
+        type_name = thn_info.datatype
 
         if input_cfg.get('sparses'):
-            if isinstance(input_cfg['files'], str) and not input_cfg['files'].endswith(".txt"):
-                file_paths = get_input_paths(input_cfg['files'], "AnalysisResults")
-            for sparse_cfg in input_cfg['sparses']:
-                logger(f"##### Skimming {sparse_cfg['name']} #####", "WARNING")
+            file_paths = list_files(files, prefix="AnalysisResults", suffix=".root", script=SCRIPT_DIR)
+            for sparse_name in input_cfg['sparses']:
+                logger(f"##### Skimming {sparse_name} #####", "INFO")
                 with concurrent.futures.ThreadPoolExecutor(args.workers) as executor:
-                    tasks_sparses = [executor.submit(process_sparse, i_file, file, full_cfg, sparse_cfg, output_dir, f"{input_cfg['outdir']}/jobs") for i_file, file in enumerate(file_paths)]
+                    tasks_sparses = [executor.submit(process_sparse, i_file, file, full_cfg, sparse_name, output_dir) for i_file, file in enumerate(file_paths)]
+                    for task in tasks_sparses:
+                        task.result()
 
         elif input_cfg.get('trees'):
             logger(f"##### Skimming {input_cfg} trees #####", "INFO")
-            file_paths = get_input_paths(input_cfg['files'], "AO2D")
+            file_paths = list_files(files, prefix="AO2D", suffix=".root", script=SCRIPT_DIR)
             with concurrent.futures.ThreadPoolExecutor(args.workers) as executor:
                 tasks_trees = [executor.submit(process_tree, i_file, file_path, full_cfg, input_cfg, output_dir, f"{input_cfg['outdir']}/jobs") for i_file, file_path in enumerate(file_paths)]
 
@@ -294,13 +287,13 @@ if __name__ == "__main__":
             logger("No sparses or trees found in the configuration for pre-processing", "ERROR")
 
         # Dump file_paths used
-        dump_file_paths = f"{output_dir}/preprocess/file_paths_{input_cfg['outdir']}.txt"
+        dump_file_paths = f"{output_dir}/preprocess/file_paths_{type_name}.txt"
         os.makedirs(os.path.dirname(dump_file_paths), exist_ok=True)
         with open(dump_file_paths, "w") as dump_file:
             for file_path in file_paths:
                 dump_file.write(f"{file_path}\n")
 
-        logger(f"Finished processing {input_cfg['outdir']}\n\n", "INFO")
+        logger(f"Finished processing {type_name}\n\n", "INFO")
 
     # use hadd to merge the results in the directories for the different pT bins
     for pt_dir in os.listdir(f"{output_dir}/preprocess/"):
@@ -308,6 +301,9 @@ if __name__ == "__main__":
             continue
         for input_type_dir in os.listdir(f"{output_dir}/preprocess/{pt_dir}"):
             prep_dir = f"{output_dir}/preprocess/{pt_dir}/{input_type_dir}"
+            if not os.path.isdir(f"{prep_dir}/jobs"):
+                logger(f"No jobs directory in {prep_dir}, skipping hadd", "WARNING")
+                continue
             files_to_merge = [f"./jobs/{file}" for file in os.listdir(f"{prep_dir}/jobs") if file.endswith(".root")]
             files_to_merge_str = ' '.join(files_to_merge)
             file_name = os.path.basename(files_to_merge[0]).split('_')[0]

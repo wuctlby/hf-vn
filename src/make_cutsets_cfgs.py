@@ -9,8 +9,8 @@ import argparse
 import os
 import numpy as np
 import sys
-script_dir = os.path.dirname(os.path.abspath(__file__))  # Get script's directory
-sys.path.append(os.path.abspath(os.path.join(script_dir, '..')))  # Append parent directory
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))  # Get script's directory
+sys.path.append(os.path.abspath(os.path.join(SCRIPT_DIR, '..')))  # Append parent directory
 
 def pad_to_length(list, target_len):
     '''

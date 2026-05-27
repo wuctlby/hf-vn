@@ -1,4 +1,5 @@
 import os
+import sys
 from utils import logger
 from ROOT import TFile, TH1, TDirectoryFile
 from itertools import combinations
@@ -50,26 +51,85 @@ def load_aod_file(aod_file, has_sp_cent, num_workers=16, chunk_size=1_000_000, d
     logger(f"TOTAL time: {time.time()-start_total:.2f}s", level="INFO")
     return df
 
-def load_root_files(inputPath, prefix: str, suffix='.root') -> list[str]:
-    """
-    Load root files from a specified directory that match the given prefix and suffix.
+def list_files(input_path, prefix="", suffix="", exfix="",
+               subdir="", exdir="", script=None):
+    """List files under *directory* with flexible filtering.
 
-    Args:
-        inputPath (str): Path to the directory containing the root files.
-        prefix (str): Prefix of the files to be loaded.
-        suffix (str): Suffix of the files to be loaded, default is '.root'.
+    Parameters
+    ----------
+    input_path : str
+        Base input_path, could be a directory, a text file containing paths, or a list of file paths.
+    prefix : str
+        If non empty, only files whose name **starts with** *prefix*.
+    suffix : str
+        If non empty, only files whose name **ends with** *suffix*.
+    exfix : str
+        If non-empty, **exclude** files whose name **contains** *exfix*.
+    subdir : str
+        If non-empty, only descend into sub-directories whose
+        **full path** contains *subdir*.
+    exdir : str
+        If non-empty, **skip** sub-directories whose **full path**
+        contains *exdir*.
+    script : str
+        Optional script path for logging context.
 
-    Returns:
-        list: List of file paths that match the criteria.
+    Returns
+    -------
+    list[str]
+        Sorted list of matching absolute file paths.
+
+    Examples
+    --------
+    >>> list_files("/data/projs", prefix="proj_")
+    >>> list_files("/data/effs",  suffix=".root")
+    >>> list_files("/data",       prefix="eff_", subdir="cutvar")
+    >>> list_files("/data",       prefix="raw_yields_", exdir="uncorr")
     """
-    if os.path.exists(inputPath):
-        return sorted(
-            [f'{os.path.join(inputPath, file)}'
-             for file in os.listdir(inputPath) if file.startswith(prefix) and file.endswith(suffix)]
-        )
+    from natsort import natsorted
+    from pathlib import Path
+    
+    def _walk_directory(directory, prefix, suffix, exfix, subdir, exdir):
+        if not os.path.isdir(directory):
+            raise NotADirectoryError(f"Not a directory: {directory}")
+
+        matches: list[str] = []
+        for root, dirs, filenames in os.walk(directory):
+            if subdir and subdir not in root:
+                continue
+            if exdir and exdir in root:
+                continue
+            for filename in filenames:
+                if prefix and not filename.startswith(prefix):
+                    continue
+                if suffix and not filename.endswith(suffix):
+                    continue
+                if exfix and exfix in filename:
+                    continue
+                matches.append(os.path.join(root, filename))
+        return natsorted(matches)
+
+    file_paths: list[str] = []
+    if (isinstance(input_path, str) or isinstance(input_path, Path)) and not str(input_path).endswith(".txt"):
+    # path
+        file_paths = _walk_directory(input_path, prefix, suffix, exfix, subdir, exdir)
+    elif (isinstance(input_path, str) or isinstance(input_path, Path)) and str(input_path).endswith(".txt"):
+    # txt file with paths
+        with open(input_path, 'r') as f:
+            for line in f:
+                path = line.strip()
+                if path and not path.startswith("#"):  # skip empty lines and comments
+                    if os.path.isfile(path):
+                        file_paths.append(path)
+                    else:
+                        file_paths.extend(_walk_directory(path, prefix, suffix, exfix, subdir, exdir))
+    elif isinstance(input_path, list):
+    # list of paths
+        file_paths = input_path
     else:
-        logger(f'No folder found in {inputPath}', level='ERROR')
-        raise ValueError(f'No folder found in {inputPath}')
+        logger(f"Invalid type for {input_path} in configuration. Must be a string (directory or text file) or list of file paths.", "ERROR", script=script)
+        sys.exit(1)
+    return natsorted(file_paths)
 
 def load_reso_histos(an_res_file, wagon_id):
     '''
