@@ -515,7 +515,7 @@ def main(): #pylint: disable=too-many-statements
         del PromptDfSelForEff, FDDfSelForEff
 
     if inputCfg.get('savecands'):
-        with open(f"{inputCfg["output"]["dir"]}/ncands.txt", 'w') as file:
+        with open(f'{inputCfg["output"]["dir"]}/ncands.txt', 'w') as file:
             for ibin, candPtSummary in enumerate(nCandSummary):
                 file.write(f"bin{ibin}:     BKG: {candPtSummary[0]},     PROMPT: {candPtSummary[1]},    FD: {candPtSummary[2]} \n")
 

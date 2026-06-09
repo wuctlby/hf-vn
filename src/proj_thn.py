@@ -104,6 +104,7 @@ if __name__ == "__main__":
                 for process in config["projections"]["proj_mc"].get("process", ["proj_mc"]):
                     proj_mc_reco(sparses_reco, sPtWeights, thn_infos, config["projections"]["proj_mc"], pt_label, write_opt_mc, outfile, process, pt_min, pt_max, save_centrality=proj_mc_cent_diff)
                     logger("Projected mc reco!")
+                    outfile.cd(pt_label)
                     proj_mc_gen(sparses_gen, sPtWeights, write_opt_mc, thn_infos, pt_min, pt_max, save_centrality=proj_mc_cent_diff)
                     logger("Projected mc gen!\n\n")
 

@@ -270,7 +270,7 @@ def get_pt_preprocessed_sparses(config, pt_label):
 
     return sparses_data, sparses_reco, sparses_gen, thn_infos
 
-# ── mc projections ─────────────────────────────────────────────────────────
+# ═══ MC Projections ══════════════════════════════════════════════════════════════════════
 def _proj_mc_reco(sparses_reco, sPtWeightsD, sPtWeightsB, Bspeciesweights, writeopt, thn_infos, pt_min, pt_max, proj_refl=False):
     '''Fundamental histo for projecting reco MC. '''
     for key, sparse in sparses_reco.items():
@@ -337,16 +337,16 @@ def proj_mc_reco(sparses_reco, sPtWeights, thn_infos, proj_cfg, pt_label, writeo
         hMassPromptB, hMassFDB, hPtPromptB, hPtFDB = _proj_mc_reco(sparsesB_reco, sPtWeightsD, sPtWeightsB, Bspeciesweights, writeopt, thn_infos, pt_min, pt_max, proj_refl=False)
         make_dir_root_file(f'{pt_label}/a_side', outfile)
         outfile.cd(f'{pt_label}/a_side')
-        hMassPromptA.Write('hPromptMassA', writeopt)
-        hMassFDA.Write('hFDMassA', writeopt)
-        hPtPromptA.Write('hPromptPtA', writeopt)
-        hPtFDA.Write('hFDPtA', writeopt)
+        hMassPromptA.Write('hPromptMass', writeopt)
+        hMassFDA.Write('hFDMass', writeopt)
+        hPtPromptA.Write('hPromptPt', writeopt)
+        hPtFDA.Write('hFDPt', writeopt)
         make_dir_root_file(f'{pt_label}/b_side', outfile)
         outfile.cd(f'{pt_label}/b_side')
-        hMassPromptB.Write('hPromptMassB', writeopt)
-        hMassFDB.Write('hFDMassB', writeopt)
-        hPtPromptB.Write('hPromptPtB', writeopt)
-        hPtFDB.Write('hFDPtB', writeopt)
+        hMassPromptB.Write('hPromptMass', writeopt)
+        hMassFDB.Write('hFDMass', writeopt)
+        hPtPromptB.Write('hPromptPt', writeopt)
+        hPtFDB.Write('hFDPt', writeopt)
 
     # Store also centrality of prompt, if available
     if save_centrality and 'Cent' in thn_infos['RecoPrompt'].axis_id:
@@ -399,7 +399,7 @@ def proj_mc_gen(sparses_gen, sPtWeights, writeopt, thn_infos, pt_min, pt_max, sa
 
     return hGenPtPrompt, hGenPtFD
 
-# ── data projections ─────────────────────────────────────────────────────────
+# ═══ DATA Projections ══════════════════════════════════════════════════════════════════════
 def _proj_data(i_bin, process, sparses, thn_infos, proj_cfg, writeopt):
     pass
 
@@ -431,28 +431,29 @@ def _proj_data_charmbulk(i_bin, sparses, thn_infos, proj_cfg, pt_label, writeopt
         if key != 'CharmBulk': #TODO: bulk sparse
             continue
         sparse_a = sparse.Clone('sparse_a')
-        print(thn_infos[key].axis_id['Eta'])
-        print(thn_infos[key])
         sparse_a.GetAxis(thn_infos[key].axis_id['Eta']).SetRangeUser(a_side[0], a_side[1])
+        make_dir_root_file(f'{pt_label}/a_side', outfile)
         sparse_b = sparse.Clone('sparse_b')
         sparse_b.GetAxis(thn_infos[key].axis_id['Eta']).SetRangeUser(c_side[0], c_side[1])
+        make_dir_root_file(f'{pt_label}/b_side', outfile)
         for mean_pt_min, mean_pt_max in zip(proj_cfg['MeanPtBins'][:-1], proj_cfg['MeanPtBins'][1:]):
-            outfile.cd(f'{pt_label}')
             mean_pt_label = f"pt_{int(mean_pt_min*100)}_{int(mean_pt_max*100)}"
-            make_dir_root_file(f'{pt_label}/{mean_pt_label}', outfile)
-            outfile.cd(f'{pt_label}/{mean_pt_label}')
             # A side
+            make_dir_root_file(f'{pt_label}/a_side/{mean_pt_label}', outfile)
+            outfile.cd(f'{pt_label}/a_side/{mean_pt_label}')
             sparse_a.GetAxis(thn_infos[key].axis_id['MeanPtA']).SetRangeUser(mean_pt_min, mean_pt_max)
             hMassASide = sparse_a.Projection(thn_infos[key].axis_id['Mass'])
-            hMassASide.SetName(f'hMassDataASide')
-            hMassASide.Write(f'hMassDataASide', writeopt)
+            hMassASide.SetName(f'hMassData')
+            hMassASide.Write(f'hMassData', writeopt)
             hMeanPtBSide = sparse_a.Projection(thn_infos[key].axis_id['MeanPtB'])
             #TODO: also project number of tracks
             # C side
+            make_dir_root_file(f'{pt_label}/b_side/{mean_pt_label}', outfile)
+            outfile.cd(f'{pt_label}/b_side/{mean_pt_label}')
             sparse_b.GetAxis(thn_infos[key].axis_id['MeanPtB']).SetRangeUser(mean_pt_min, mean_pt_max)
             hMassCSide = sparse_b.Projection(thn_infos[key].axis_id['Mass'])
-            hMassCSide.SetName(f'hMassDataBSide')
-            hMassCSide.Write(f'hMassDataBSide', writeopt)
+            hMassCSide.SetName(f'hMassData')
+            hMassCSide.Write(f'hMassData', writeopt)
             hMeanPtASide = sparse_b.Projection(thn_infos[key].axis_id['MeanPtA'])
     del sparse_a
     del sparse_b

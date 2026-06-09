@@ -8,6 +8,7 @@ from ROOT import TFile, TCanvas, TH1F, TLegend, gROOT  # pylint: disable=import-
 import sys
 sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/../utils")
 from StyleFormatter import SetGlobalStyle, SetObjectStyle
+from utils import logger
 
 SetGlobalStyle(titleoffsety=1.1, maxdigits=3, topmargin=0.1,
                bottommargin=0.4, leftmargin=0.3, rightmargin=0.15,
@@ -46,7 +47,7 @@ def eval_eff(recoCounts, genCounts, recoCountsError, genCountsError):
     return efficiency, error
 
 
-def compute_eff(config, inputFile, batch=False):
+def compute_eff(config, inputFile, batch=False, obj_path=None, output_dir=None):
     '''
     Method to compute efficiency from input file
 
@@ -55,6 +56,8 @@ def compute_eff(config, inputFile, batch=False):
     - config_file: configuration file
     - inputFile: input file with histograms
     - batch: run in batch mode
+    - obj_path: sub_directory under pt_label to retrieve the histograms
+    - output_dir: output directory
     '''
 
     #_____________________________________________________________________________________
@@ -92,8 +95,10 @@ def compute_eff(config, inputFile, batch=False):
     for iPt, (ptMin, ptMax) in enumerate(zip(ptBins[:-1], ptBins[1:])):
         ## get input histograms, adjustments needed for reflections?
         pt_label = f'pt_{int(ptMin*10)}_{int(ptMax*10)}'
-        hRecoPrompt = infile.Get(f'{pt_label}/hPromptPt')
-        hRecoFD = infile.Get(f'{pt_label}/hFDPt')
+        histo_path = pt_label if obj_path is None else f'{pt_label}/{obj_path}'
+        hRecoPrompt = infile.Get(f'{histo_path}/hPromptPt')
+        hRecoFD = infile.Get(f'{histo_path}/hFDPt')
+        # generation histograms are always under the pt_label directory
         hGenPrompt = infile.Get(f'{pt_label}/hPromptGenPt')
         hGenFD = infile.Get(f'{pt_label}/hFDGenPt')
 
@@ -139,10 +144,15 @@ def compute_eff(config, inputFile, batch=False):
 
     #_____________________________________________________________________________________
     # Save output
-    outFileName = os.path.join(os.path.dirname(os.path.dirname(inputFile)),
-                               'effs',
-                               os.path.basename(inputFile).replace('proj', 'eff'))
-    os.makedirs(os.path.dirname(outFileName), exist_ok=True)
+    if output_dir:
+        outFileName = os.path.join(output_dir, os.path.basename(inputFile).replace('proj', 'eff'))
+        os.makedirs(output_dir, exist_ok=True)
+    else:
+        outFileName = os.path.join(os.path.dirname(os.path.dirname(inputFile)),
+                        'effs',
+                        os.path.basename(inputFile).replace('proj', 'eff'))
+        os.makedirs(os.path.dirname(outFileName), exist_ok=True)
+
     outFile = TFile(outFileName, 'recreate')
     hEffPrompt.Write()
     hEffFD.Write()
@@ -210,6 +220,35 @@ def compute_cent_diff_eff(config, inputFile, batch=False):
     outFile.Close()
     infile.Close()
 
+
+def compute_eff_charm_bulk(config, inputFile, batch=False):
+    '''
+    Method to compute efficiency for charm bulk mode
+
+    Parameters
+    ----------
+    - config_file: configuration file
+    - inputFile: input file with histograms
+    - batch: run in batch mode
+    '''
+
+    meanPtBins = config['projections']['proj_data']['MeanPtBins']
+    for _, (meanPtMin, meanPtMax) in enumerate(zip(meanPtBins[:-1], meanPtBins[1:])):
+        logger(f"Processing mean pt bin {meanPtMin} - {meanPtMax} GeV/c", level="INFO", script="compute_efficiencies.py")
+        meanPt_label = f'pt_{int(meanPtMin*100)}_{int(meanPtMax*100)}'
+        for side in ['a_side', 'b_side']:
+            output_dir = os.path.join(os.path.dirname(inputFile).replace('projs', 'effs'), side, meanPt_label)
+            compute_eff(
+                config=config,
+                inputFile=inputFile,
+                batch=batch,
+                obj_path=f'{side}', # using the same object path for both side for different mean pt bins
+                output_dir=output_dir
+            )
+    # full eta-range efficiency
+    compute_eff(config=config, inputFile=inputFile, batch=batch)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Arguments")
     parser.add_argument("config", metavar="text",
@@ -217,6 +256,8 @@ if __name__ == "__main__":
     parser.add_argument('infileName', metavar='text', help='projection file')
     parser.add_argument("--batch", "-b", action="store_true",
                         help="batch mode")
+    parser.add_argument("--mode", default="standard",
+                        help="Mode: standard or charm_bulk (default: standard)")
     args = parser.parse_args()
 
     #_____________________________________________________________________________________
@@ -224,14 +265,23 @@ if __name__ == "__main__":
     with open(args.config, 'r', encoding='utf8') as ymlconfig:
         config = yaml.load(ymlconfig, yaml.FullLoader)
 
-    compute_eff(
+    if args.mode == "charm_bulk":
+        # Charm bulk mode: compute efficiency for 2 sides and different mean pt bins
+        compute_eff_charm_bulk(
             config=config,
             inputFile=args.infileName,
             batch=args.batch
         )
+    else:
+        # Standard mode
+        compute_eff(
+                config=config,
+                inputFile=args.infileName,
+                batch=args.batch
+            )
 
-    compute_cent_diff_eff(
-            config=config,
-            inputFile=args.infileName,
-            batch=args.batch
-        )
+        compute_cent_diff_eff(
+                config=config,
+                inputFile=args.infileName,
+                batch=args.batch
+            )

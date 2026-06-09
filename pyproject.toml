@@ -1,0 +1,26 @@
+[project]
+name = "dev-v0"
+version = "0.1.0"
+description = "hf-vn branch for the v0"
+requires-python = ">=3.11"
+dependencies = [
+    "awkward>=2.8",
+    "awkward-cpp>=50",
+    "flarefly",
+    "matplotlib>=3.10",
+    "natsort>=8.4",
+    "numpy>=1.26",
+    "pandas>=2.3",
+    "psutil>=7.1",
+    "pypdf>=6.4",
+    "pyyaml>=6.0",
+    "scipy>=1.15",
+    "tensorflow>=2.20",
+    "tensorflow-probability>=0.25",
+    "uproot>=5.6",
+    "zfit>=0.28",
+    "zfit-interface>=0.0.3",
+]
+
+[tool.uv.sources]
+flarefly = { git = "https://github.com/flarefly/flarefly.git", rev = "0ba430403b1be0385e56832520e0c435c9a47e17" }

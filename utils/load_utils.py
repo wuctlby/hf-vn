@@ -10,6 +10,29 @@ import numpy as np
 
 TH1.AddDirectory(False)
 
+def load_root_files(inputPath, prefix, suffix='.root') -> list[str]:
+    """
+    Load root files from a specified directory that match the given prefix and suffix.
+
+    Args:
+        inputPath (str): Path to the directory containing the root files.
+        prefix (str): Prefix of the files to be loaded.
+        suffix (str): Suffix of the files to be loaded, default is '.root'.
+
+    Returns:
+        list: List of file paths that match the criteria.
+    """
+    if os.path.exists(inputPath):
+        from natsort import natsorted
+        return natsorted(
+            [os.path.join(inputPath, file)
+             for file in os.listdir(inputPath) if file.startswith(prefix) and file.endswith(suffix)]
+        )
+    else:
+        logger(f'No folder found in {inputPath}', level='ERROR')
+        raise ValueError(f'No folder found in {inputPath}')
+
+
 def load_aod_file(aod_file, has_sp_cent, num_workers=16, chunk_size=1_000_000, downsample_frac=None):
     """
     Load AOD file using uproot with parallel decompression and chunking.

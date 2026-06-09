@@ -5,19 +5,31 @@ import ROOT
 import ctypes
 from ROOT import TH1, TH2, TH3, TFile
 import numpy as np
-
-_SCRIPTS = {
-	"Preprocess": 'pre_process.py',
-	"YamlCuts": 'pre_process.py',
-	"CutVariation": 'pre_process.py',
-	"DataDrivenFraction": 'data_driven_fraction.py',
-}
+from pathlib import Path
+REPO_ROOT = Path(__file__).parent.parent
+SRC_DIR = REPO_ROOT / "src"
+CHARM_BULK_DIR = REPO_ROOT / "src_charmbulk"
+def get_paths():
+    return {
+        "Utils":                  str(SRC_DIR / "utils"),
+        "Preprocess":             str(SRC_DIR / "pre_process.py"),
+        "YamlCuts":               str(SRC_DIR / "make_cutsets_cfgs.py"),
+        "Projections":            str(SRC_DIR / "proj_thn.py"),
+        "Efficiencies":           str(SRC_DIR / "compute_efficiencies.py"),
+        "GetVnVsMass":            str(SRC_DIR / "get_vn_vs_mass.py"),
+        "GetVnByYieldExtraction": str(SRC_DIR / "get_vn_by_yield_extraction.py"),
+        "CutVariation":           str(SRC_DIR / "cut_variation.py"),
+        "DataDrivenFraction":     str(SRC_DIR / "data_driven_fraction.py"),
+        "GetV2VsFrac":            str(SRC_DIR / "get_v2_vs_frac.py"),
+        "MassFit":               str(CHARM_BULK_DIR / "mass_fit.py"),
+    }
 
 def _get_script_name(script_path):
-    script_path = os.path.basename(script_path)  # Get the filename from the path
-    if script_path not in _SCRIPTS.values():
-        raise ValueError(f"Script path '{script_path}' not found. Available keys: {list(_SCRIPTS.values())}")
-    return f"[{next(key for key, value in _SCRIPTS.items() if value == script_path)}]"
+    script_name = next((key for key, value in get_paths().items() if value.endswith(script_path)), None)
+    if not script_name:
+        script_name = os.path.basename(script_path)
+        logger(f"Warning: script name for path {script_path} not found in get_paths(), using filename {script_name} as script name", level='WARNING')
+    return f"[{script_name}]"
 
 def check_dir(dir):
 
