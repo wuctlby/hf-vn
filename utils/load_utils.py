@@ -148,7 +148,11 @@ def list_files(input_path, prefix="", suffix="", exfix="",
                         file_paths.extend(_walk_directory(path, prefix, suffix, exfix, subdir, exdir))
     elif isinstance(input_path, list):
     # list of paths
-        file_paths = input_path
+        if all(os.path.isfile(p) for p in input_path):
+            file_paths = input_path
+        elif all(os.path.isdir(p) for p in input_path):
+            for p in input_path:
+                file_paths.extend(_walk_directory(p, prefix, suffix, exfix, subdir, exdir))
     else:
         logger(f"Invalid type for {input_path} in configuration. Must be a string (directory or text file) or list of file paths.", "ERROR", script=script)
         sys.exit(1)
