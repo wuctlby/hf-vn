@@ -543,7 +543,7 @@ def suggest_skip_cuts(hRawYields, hEffPrompt, hEffFD, nPtBins):
                 continue
 
             # first cut identical to second (within tolerance)
-            if iCut == 0 and nCuts > 1 and abs(rys[0] - rys[1]) < eps:
+            if iCut == 0 and nCuts > 1 and abs(rys[0] - rys[1]) < eps/100:
                 logger(f'Skipping cut {iCut} pt {iPt+1}: ry={ry:.3g} ≈ ry[1]={rys[1]:.3g}', 'WARNING')
                 suggested_skipped_cuts.append(iCut)
 
@@ -552,7 +552,7 @@ def suggest_skip_cuts(hRawYields, hEffPrompt, hEffFD, nPtBins):
 
             # last cut: negligible change from previous
             if iCut == nCuts - 1:
-                if abs(rys[iCut] - rys[iCut-1]) / max(abs(rys[iCut]), eps) < 1e-4:
+                if abs(rys[iCut] - rys[iCut-1]) / max(abs(rys[iCut]), eps/100) < 1e-4:
                     logger(f'Skipping cut {iCut} pt {iPt+1}: negligible change', 'WARNING')
                     suggested_skipped_cuts.append(iCut)
                 continue
@@ -563,7 +563,7 @@ def suggest_skip_cuts(hRawYields, hEffPrompt, hEffFD, nPtBins):
 
             # negligible change from BOTH neighbors
             if ry_next is not None:
-                denom = max(abs(ry), eps)
+                denom = max(abs(ry), eps/100)
                 if abs(ry - ry_prev) / denom < 1e-4 and abs(ry - ry_next) / denom < 1e-4:
                     logger(f'Skipping cut {iCut} pt {iPt+1}: negligible change both sides', 'WARNING')
                     suggested_skipped_cuts.append(iCut)
