@@ -180,7 +180,7 @@ def step_mass_fit(config_path, cutvar_dir, n_workers, m_cutsets):
             load_sigma=""
         else:
             load_sigma="--load-sigma"
-        cmd = f"{PYTHON} {SCRIPTS['MassFit']} {config_path} {proj_cutset} -b"
+        cmd = f"{PYTHON} {SCRIPTS['MassFit']} {config_path} {proj_cutset} -b {load_sigma}"
         return run_cmd(cmd)
 
     run_mass_fit(0)  # Run first cutset to get sigma values
