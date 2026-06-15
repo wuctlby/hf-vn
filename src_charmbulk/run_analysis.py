@@ -38,7 +38,8 @@ from utils import logger
 
 # Use current python3 if inside alice env, otherwise plain python3
 if os.environ.get("CONDA_DEFAULT_ENV") == "alice":
-    PYTHON = "conda run -n alice python3"
+    # PYTHON = "conda run -n alice python3"
+    PYTHON = "python3"
 else:
     PYTHON = "python3"
 

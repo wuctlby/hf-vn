@@ -548,6 +548,10 @@ def suggest_skip_cuts(hRawYields, hEffPrompt, hEffFD, nPtBins):
             elif iCut > 0 and iCut < nCuts - 1 and abs(rys[iCut] - rys[iCut-1]) / abs(rys[iCut]) < 0.0001 and abs(rys[iCut] - rys[iCut+1]) / abs(rys[iCut]) < 0.0001: 
                 logger(f'Suggested to skip cut {iCut} for pt bin {iPt+1} ({rys[iCut]}) due to negligible change in raw yield', level='WARNING')
                 suggested_skipped_cuts.append(iCut)
+            # expect the intemediate cuts to have raw yields between the previous and next cut with 20% allowance, if not, suggest to skip
+            elif iCut > 0 and nCuts > 2 and (rys[iCut] < 0.8 * min(rys[iCut-1], rys[iCut+1]) or rys[iCut] > 1.2 * max(rys[iCut-1], rys[iCut+1])):
+                logger(f'Suggested to skip cut {iCut} for pt bin {iPt+1} ({rys[iCut]}) due to unexpected raw yield compared to previous and next cut', level='WARNING')
+                suggested_skipped_cuts.append(iCut)
         suggested_skipped_cuts_pts.append(suggested_skipped_cuts)
     for iPt, cuts in enumerate(suggested_skipped_cuts_pts):
         print(f'\t\t{cuts}, # suggested cuts to skip for pt {iPt+1}')
