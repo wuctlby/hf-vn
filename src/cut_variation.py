@@ -390,10 +390,13 @@ def compute_frac_cut_var(config_flow, inputPathRy, inputPathEff, batch=False):
 
         inFileRawYield = TFile.Open(inFileNameRawYield)
         # if hRawYieldsSimFit not in file, skip it
-        if not inFileRawYield.GetListOfKeys().Contains('hRawYieldsSimFit'):
-            logger(f'File {inFileNameRawYield} does not contain hRawYieldsSimFit, skipping.', level='WARNING')
+        if inFileRawYield.GetListOfKeys().Contains('hRawYieldsSimFit'):
+            hRawYields.append(inFileRawYield.Get('hRawYieldsSimFit'))
+        elif inFileRawYield.GetListOfKeys().Contains('hRawYields'):
+            hRawYields.append(inFileRawYield.Get('hRawYields'))
+        else:
+            logger(f'File {inFileNameRawYield} does not contain hRawYieldsSimFit or hRawYields. Skipping.', level='WARNING')
             continue
-        hRawYields.append(inFileRawYield.Get('hRawYieldsSimFit'))
         
         inFileEff = TFile.Open(inFileNameEff)
         hEffPrompt.append(inFileEff.Get('hEffPrompt'))
