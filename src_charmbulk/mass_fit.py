@@ -24,6 +24,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 from pdf_merger import collage_pdf_pages_to_single, collage_pdfs_by_page
 import concurrent.futures
+import multiprocessing
 
 # ── Repo paths ──────────────────────────────────────────────────────────
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -358,6 +359,7 @@ def run_mass_fit(fit_config, proj_file, batch=True):
     pass
 
 if __name__ == "__main__":
+    multiprocessing.set_start_method('spawn', force=True) 
     parser = argparse.ArgumentParser(description="Mass fit from projection files")
     parser.add_argument("config", help="Charm-bulk configuration YAML")
     parser.add_argument("proj_file", help="Projection ROOT file")
