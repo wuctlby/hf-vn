@@ -580,6 +580,10 @@ def suggest_skip_cuts(hRawYields, hEffPrompt, hEffFD, nPtBins):
                 if abs(ry - ry_prev) / denom < 1e-4 and abs(ry - ry_next) / denom < 1e-4:
                     logger(f'Skipping cut {iCut} pt {bin_idx}: negligible change both sides', 'WARNING')
                     skip_this_cut = True
+                elif abs(ry - ry_prev) < ry_prev * 0.01 or abs(ry - ry_next) < ry_next * 0.01:
+                    # Extremely jumpy cut compared to at least one neighbor
+                    logger(f'Skipping cut {iCut} pt {bin_idx}: ry={ry:.3g} very different from neighbor(s) ry_prev={ry_prev:.3g}, ry_next={ry_next:.3g}', 'WARNING')
+                    skip_this_cut = True
                 else:
                     # Significantly outside the range defined by neighbors
                     lo, hi = min(ry_prev, ry_next), max(ry_prev, ry_next)
