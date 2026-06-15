@@ -1053,6 +1053,7 @@ class RawYieldFitter:
             self.data,
             RooFit.Extended(True),
             RooFit.Range("fit"),
+            RooFit.SumW2Error(True),
             RooFit.Save(True),
             RooFit.PrintLevel(1 if self.verbose else -1),
             RooFit.PrintEvalErrors(1 if self.verbose else 0)

@@ -186,12 +186,12 @@ def run_mass_fit(fit_config, proj_file, batch=True):
 
     # Create output histograms
     pt_arr = np.array(ptbins, dtype="d")
-    hRawYields = ROOT.TH1F("hRawYieldsSimFit", ";p_{T} (GeV/c);raw yield", nPtBins, pt_arr)
-    hMean = ROOT.TH1F("hMeanSimFit", ";p_{T} (GeV/c);mean", nPtBins, pt_arr)
-    hSigma = ROOT.TH1F("hSigmaSimFit", ";p_{T} (GeV/c);#sigma", nPtBins, pt_arr)
-    hChi2 = ROOT.TH1F("hRedChi2SimFit", ";p_{T} (GeV/c);#chi^{2}/ndf", nPtBins, pt_arr)
-    hSignif = ROOT.TH1F("hRawYieldsSignificanceSimFit", ";p_{T} (GeV/c);significance", nPtBins, pt_arr)
-    hSoverB = ROOT.TH1F("hRawYieldsSoverBSimFit", ";p_{T} (GeV/c);S/B", nPtBins, pt_arr)
+    hRawYields = ROOT.TH1F("hRawYields", ";p_{T} (GeV/c);raw yield", nPtBins, pt_arr)
+    hMean = ROOT.TH1F("hMean", ";p_{T} (GeV/c);mean", nPtBins, pt_arr)
+    hSigma = ROOT.TH1F("hSigma", ";p_{T} (GeV/c);#sigma", nPtBins, pt_arr)
+    hChi2 = ROOT.TH1F("hRedChi2", ";p_{T} (GeV/c);#chi^{2}/ndf", nPtBins, pt_arr)
+    hSignif = ROOT.TH1F("hSignificance", ";p_{T} (GeV/c);significance", nPtBins, pt_arr)
+    hSoverB = ROOT.TH1F("hSoverB", ";p_{T} (GeV/c);S/B", nPtBins, pt_arr)
 
     for iPt, (pt_min, pt_max) in enumerate(zip(ptmins, ptmaxs)):
         pt_label = f"pt_{int(pt_min*10)}_{int(pt_max*10)}"
@@ -205,8 +205,8 @@ def run_mass_fit(fit_config, proj_file, batch=True):
         mass_min, mass_max = fit_cfg["mass_fit_range"][min(iPt, len(fit_cfg["mass_fit_range"]) - 1)]
         rebin = fit_cfg["rebin"][min(iPt, len(fit_cfg["rebin"]) - 1)]
         sigma_init = fit_cfg["sigma_init"][min(iPt, len(fit_cfg["sigma_init"]) - 1)]
-        do_fix = fit_cfg.get("fix_sigma", False)
-        fix_val = sigma_init if do_fix else None
+        fix_sigma = fit_cfg["fix_sigma"][min(iPt, len(fit_cfg["fix_sigma"]) - 1)]
+        fix_val = sigma_init if fix_sigma else None
 
         # Get mass histogram
         h_mass = infile.Get(f"{pt_label}/{fit_cfg['mass_path']}")
@@ -218,7 +218,7 @@ def run_mass_fit(fit_config, proj_file, batch=True):
         # Fit
         try:
             fitter, ok = try_fit(h_mass, mass_min, mass_max, rebin,
-                                 sgn_name, bkg_name, bkg_pdf_arg, sigma_init,fix_sigma=fix_val,
+                                 sgn_name, bkg_name, bkg_pdf_arg, sigma_init, fix_sigma=fix_val,
                                  Dmeson=Dmeson)
             if not ok:
                 continue
@@ -361,8 +361,7 @@ if __name__ == "__main__":
     parser.add_argument("config", help="Charm-bulk configuration YAML")
     parser.add_argument("proj_file", help="Projection ROOT file")
     parser.add_argument("-b", "--batch", action="store_true", default=True, help="Batch mode")
-    parser.add_argument("--fix-sigma", type=str, default=None,
-                        help="Comma-separated sigma values to fix (overrides config Sigma)")
+    parser.add_argument("--load-sigma", action="store_true", help="Load sigma values from first fit instead of config")
     args = parser.parse_args()
     output_dir = os.path.join(os.path.dirname(args.proj_file), "raw_yields")
     
@@ -381,17 +380,21 @@ if __name__ == "__main__":
     mass_fit_ranges = get_pt_dependent_param(fit_config["MassFitRanges"], n_ptbins, isList=True)
     sigma_inits     = get_pt_dependent_param(fit_config["Sigma"], n_ptbins)
     rebins          = get_pt_dependent_param(fit_config["Rebin"], n_ptbins)
-
-    # Override sigma with --fix-sigma if provided
-    fix_sigmas = None
-    if args.fix_sigma:
-        fix_sigmas = [float(v.strip()) for v in args.fix_sigma.split(",")]
-        sigma_inits = fix_sigmas  # use fixed values as sigma_init with fix=True
+    fix_sigmas      = get_pt_dependent_param(False, n_ptbins)
 
     out_paths = {}
     for iMeanPt, (mean_pt_min, mean_pt_max) in enumerate(zip(mean_ptbins[:-1], mean_ptbins[1:])):
         mean_pt_label = f"pt_{int(mean_pt_min*100)}_{int(mean_pt_max*100)}"
         for side in ["a_side", "b_side"]:
+            if args.load_sigma:
+                first_cutset_path = os.path.join(os.path.dirname(os.path.dirname(args.proj_file)), "raw_yields", side, mean_pt_label, "raw_yields_00.root")
+                with ROOT.TFile.Open(first_cutset_path) as f:
+                    if f and f.IsOpen() and f.Get("hSigma"):
+                        sigma_inits = [f.Get("hSigma").GetBinContent(i+1) for i in range(n_ptbins)]
+                        logger(f"Loaded sigma values from {first_cutset_path}: {sigma_inits}")
+                        fix_sigmas = get_pt_dependent_param(True, n_ptbins)  # fix sigma for all pt bins
+                    else:
+                        logger(f"Cannot load sigma values from {first_cutset_path}, file or hSigma histogram not found. Falling back to config values.", "WARNING")
             task_cfg = {
                 "Dmeson":           Dmeson,
                 "output_subdir":    f"{side}/{mean_pt_label}",
@@ -402,11 +405,10 @@ if __name__ == "__main__":
                 "sigma_init":       sigma_inits,
                 "rebin":            rebins,
                 "ptbins":           ptbins,
-                "fix_sigma":        fix_sigmas is not None,
+                "fix_sigma":        fix_sigmas,
             }
             out_path = run_mass_fit(task_cfg, args.proj_file, batch=args.batch)
             out_paths[f"{side}/{mean_pt_label}"] = out_path
-            sys.exit(0)  # exit after first fit for testing
 
 
     # Run fits

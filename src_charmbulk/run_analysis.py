@@ -106,7 +106,7 @@ def get_mean_pt_labels_from_config(config, proj_dir):
     """
     Get MeanPtBin labels from config MeanPtBins, or discover from projection file.
     """
-    mean_pt_bins = config.get("projections", {}).get("MeanPtBins", [])
+    mean_pt_bins = config.get("projections", {}).get("proj_data", {}).get("MeanPtBins", [])
     if mean_pt_bins and len(mean_pt_bins) >= 2:
         labels = []
         for lo, hi in zip(mean_pt_bins[:-1], mean_pt_bins[1:]):
@@ -170,15 +170,23 @@ def step_mass_fit(config_path, cutvar_dir, n_workers, m_cutsets):
     os.makedirs(ry_out, exist_ok=True)
     cutset_dir = os.path.join(cutvar_dir, "cutsets")
 
+    # fix sigma to the sigma of the first cutset to stabilize fits across cutsets
+
     def run_mass_fit(i):
         iCutSet = f"{i:02d}"
         logger(f"Fitting mass distributions for cutset {iCutSet}...", level="INFO")
         proj_cutset = os.path.join(cutvar_dir, "projs", f"proj_{iCutSet}.root")
+        if i == 0:
+            load_sigma=""
+        else:
+            load_sigma="--load-sigma"
         cmd = f"{PYTHON} {SCRIPTS['MassFit']} {config_path} {proj_cutset} -b"
         return run_cmd(cmd)
-    
+
+    run_mass_fit(0)  # Run first cutset to get sigma values
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as executor:
-        list(executor.map(run_mass_fit, range(m_cutsets)))
+        list(executor.map(run_mass_fit, range(1, m_cutsets)))
 
 
 def step_cut_variation(config_path, cutvar_dir, n_workers):
