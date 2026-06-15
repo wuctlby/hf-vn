@@ -413,6 +413,7 @@ if __name__ == "__main__":
                 out_path = run_mass_fit(task_cfg, args.proj_file, batch=args.batch)
                 out_paths[f"{side}/{mean_pt_label}"] = out_path
     else:
+        task_cfgs = []
         for iMeanPt, (mean_pt_min, mean_pt_max) in enumerate(zip(mean_ptbins[:-1], mean_ptbins[1:])):
             mean_pt_label = f"pt_{int(mean_pt_min*100)}_{int(mean_pt_max*100)}"
             for side in ["a_side", "b_side"]:
@@ -428,10 +429,18 @@ if __name__ == "__main__":
                     "ptbins":           ptbins,
                     "fix_sigma":        fix_sigmas,
                 }
-                with concurrent.futures.ProcessPoolExecutor(max_workers=18) as executor:
-                    future = executor.submit(run_mass_fit, task_cfg, args.proj_file, batch=args.batch)
-                out_path = future.result()
-                out_paths[f"{side}/{mean_pt_label}"] = out_path
+                task_cfgs.append(task_cfg)
+
+        with concurrent.futures.ProcessPoolExecutor(max_workers=min(18, len(task_cfgs))) as executor:
+            futures = {executor.submit(run_mass_fit, cfg, args.proj_file, batch=args.batch): cfg for cfg in task_cfgs}
+            for future in concurrent.futures.as_completed(futures):
+                cfg = futures[future]
+                try:
+                    out_path = future.result()
+                    out_paths[cfg["output_subdir"]] = out_path
+                except Exception as e:
+                    logger(f"Mass fit failed for {cfg['output_subdir']}: {e}", "ERROR")
+            
 
 
     # Run fits
