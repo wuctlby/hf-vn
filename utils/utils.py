@@ -525,7 +525,7 @@ def suggest_skip_cuts(hRawYields, hEffPrompt, hEffFD, nPtBins):
     """Suggest cuts to skip based on zero or negative efficiencies or raw yields"""
     nCuts = len(hRawYields)
     suggested_skipped_cuts_pts = []
-    eps = 1e-12
+    eps = 10
     for iPt in range(nPtBins):
         rys = [hRawYields[iCut].GetBinContent(iPt+1) for iCut in range(nCuts)]
         effPs = [hEffPrompt[iCut].GetBinContent(iPt+1) for iCut in range(nCuts)]
