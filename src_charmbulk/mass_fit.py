@@ -428,7 +428,7 @@ if __name__ == "__main__":
                     "ptbins":           ptbins,
                     "fix_sigma":        fix_sigmas,
                 }
-                with concurrent.futures.ThreadPoolExecutor(max_workers=18) as executor:
+                with concurrent.futures.ProcessPoolExecutor(max_workers=18) as executor:
                     future = executor.submit(run_mass_fit, task_cfg, args.proj_file, batch=args.batch)
                 out_path = future.result()
                 out_paths[f"{side}/{mean_pt_label}"] = out_path
