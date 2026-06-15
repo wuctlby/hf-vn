@@ -250,7 +250,7 @@ def step_cut_variation(config_path, cutvar_dir, n_workers):
                 if not os.path.exists(dst):
                     os.symlink(src, dst)
 
-        cmd = f"{PYTHON} {paths['cut_variation']} {config_path} {ry_path} {wrapper_dir} -b"
+        cmd = f"{PYTHON} {paths['CutVariation']} {config_path} {ry_path} {wrapper_dir} -b"
         try:
             run_cmd(cmd)
             cv_result = os.path.join(cutvar_base, side, mpl, "cutVar", "cutVar.root")
