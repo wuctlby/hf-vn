@@ -23,6 +23,7 @@ matplotlib.use('Agg')
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 from pdf_merger import collage_pdf_pages_to_single, collage_pdfs_by_page
+import concurrent.futures
 
 # ── Repo paths ──────────────────────────────────────────────────────────
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -383,10 +384,10 @@ if __name__ == "__main__":
     fix_sigmas      = get_pt_dependent_param(False, n_ptbins)
 
     out_paths = {}
-    for iMeanPt, (mean_pt_min, mean_pt_max) in enumerate(zip(mean_ptbins[:-1], mean_ptbins[1:])):
-        mean_pt_label = f"pt_{int(mean_pt_min*100)}_{int(mean_pt_max*100)}"
-        for side in ["a_side", "b_side"]:
-            if args.load_sigma:
+    if args.load_sigma:
+        for iMeanPt, (mean_pt_min, mean_pt_max) in enumerate(zip(mean_ptbins[:-1], mean_ptbins[1:])):
+            mean_pt_label = f"pt_{int(mean_pt_min*100)}_{int(mean_pt_max*100)}"
+            for side in ["a_side", "b_side"]:
                 first_cutset_path = os.path.join(os.path.dirname(os.path.dirname(args.proj_file)), "raw_yields", side, mean_pt_label, "raw_yields_00.root")
                 with ROOT.TFile.Open(first_cutset_path) as f:
                     if f and f.IsOpen() and f.Get("hSigma"):
@@ -395,20 +396,40 @@ if __name__ == "__main__":
                         fix_sigmas = get_pt_dependent_param(True, n_ptbins)  # fix sigma for all pt bins
                     else:
                         logger(f"Cannot load sigma values from {first_cutset_path}, file or hSigma histogram not found. Falling back to config values.", "WARNING")
-            task_cfg = {
-                "Dmeson":           Dmeson,
-                "output_subdir":    f"{side}/{mean_pt_label}",
-                "mass_path":        f"{side}/{mean_pt_label}/hMassData",
-                "sgn_func":         sgn_funcs,
-                "bkg_func":         bkg_funcs,
-                "mass_fit_range":   mass_fit_ranges,
-                "sigma_init":       sigma_inits,
-                "rebin":            rebins,
-                "ptbins":           ptbins,
-                "fix_sigma":        fix_sigmas,
-            }
-            out_path = run_mass_fit(task_cfg, args.proj_file, batch=args.batch)
-            out_paths[f"{side}/{mean_pt_label}"] = out_path
+                task_cfg = {
+                    "Dmeson":           Dmeson,
+                    "output_subdir":    f"{side}/{mean_pt_label}",
+                    "mass_path":        f"{side}/{mean_pt_label}/hMassData",
+                    "sgn_func":         sgn_funcs,
+                    "bkg_func":         bkg_funcs,
+                    "mass_fit_range":   mass_fit_ranges,
+                    "sigma_init":       sigma_inits,
+                    "rebin":            rebins,
+                    "ptbins":           ptbins,
+                    "fix_sigma":        fix_sigmas,
+                }
+                out_path = run_mass_fit(task_cfg, args.proj_file, batch=args.batch)
+                out_paths[f"{side}/{mean_pt_label}"] = out_path
+    else:
+        for iMeanPt, (mean_pt_min, mean_pt_max) in enumerate(zip(mean_ptbins[:-1], mean_ptbins[1:])):
+            mean_pt_label = f"pt_{int(mean_pt_min*100)}_{int(mean_pt_max*100)}"
+            for side in ["a_side", "b_side"]:
+                task_cfg = {
+                    "Dmeson":           Dmeson,
+                    "output_subdir":    f"{side}/{mean_pt_label}",
+                    "mass_path":        f"{side}/{mean_pt_label}/hMassData",
+                    "sgn_func":         sgn_funcs,
+                    "bkg_func":         bkg_funcs,
+                    "mass_fit_range":   mass_fit_ranges,
+                    "sigma_init":       sigma_inits,
+                    "rebin":            rebins,
+                    "ptbins":           ptbins,
+                    "fix_sigma":        fix_sigmas,
+                }
+                with concurrent.futures.ThreadPoolExecutor(max_workers=18) as executor:
+                    future = executor.submit(run_mass_fit, task_cfg, args.proj_file, batch=args.batch)
+                out_path = future.result()
+                out_paths[f"{side}/{mean_pt_label}"] = out_path
 
 
     # Run fits
