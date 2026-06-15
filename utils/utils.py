@@ -537,45 +537,62 @@ def suggest_skip_cuts(hRawYields, hEffPrompt, hEffFD, nPtBins):
         effFs = [hEffFD[iCut].GetBinContent(bin_idx) for iCut in range(nCuts)]
         
         suggested_skipped_cuts = []
+        last_valid_ry = None
 
         for iCut in range(nCuts):
             ry, eP, eF = rys[iCut], effPs[iCut], effFs[iCut]
 
-            # Zero or negative efficiencies or raw yields
+            # 1. Negative or zero raw yield or efficiencies: immediate skip
             if ry <= EPS or eP <= EFF_THRESHOLD or eF <= EFF_THRESHOLD:
                 reason = "negative" if ry < 0 else "≈zero"
                 logger(f'Cut {iCut} pt {bin_idx}: {reason} effP={eP:.3g} effF={eF:.3g} ry={ry:.3g} → skip', 'WARNING')
                 suggested_skipped_cuts.append(iCut)
                 continue
 
-            # first cut (iCut == 0)
-            if iCut == 0:
-                if nCuts > 1 and abs(ry - rys[1]) < EPS / 10:
-                    logger(f'Skipping cut {iCut} pt {bin_idx}: ry={ry:.3g} ≈ ry[1]={rys[1]:.3g}', 'WARNING')
-                    suggested_skipped_cuts.append(iCut)
-                continue
-
-            # last Cut (iCut == nCuts - 1)
-            if iCut == nCuts - 1:
-                if abs(ry - rys[iCut-1]) / max(abs(ry), EPS / 10) < 1e-4:
-                    logger(f'Skipping cut {iCut} pt {bin_idx}: negligible change', 'WARNING')
-                    suggested_skipped_cuts.append(iCut)
-                continue
-
-            ry_prev, ry_next = rys[iCut-1], rys[iCut+1]
+            # 2.1 Find the previous valid cut (with positive ry and efficiencies)
+            ry_prev = last_valid_ry 
             
-            # negligible change compared to both neighbors
-            denom = max(abs(ry), EPS / 100)
-            if abs(ry - ry_prev) / denom < 1e-4 and abs(ry - ry_next) / denom < 1e-4:
-                logger(f'Skipping cut {iCut} pt {bin_idx}: negligible change both sides', 'WARNING')
-                suggested_skipped_cuts.append(iCut)
-                continue
+            ry_next = None
+            # 2.2 Find the next valid cut (with positive ry and efficiencies)
+            for j in range(iCut + 1, nCuts):
+                if rys[j] > EPS and effPs[j] > EFF_THRESHOLD and effFs[j] > EFF_THRESHOLD:
+                    ry_next = rys[j]
+                    break
 
-            # ry outside the range of neighbors
-            lo, hi = min(ry_prev, ry_next), max(ry_prev, ry_next)
-            if ry < 0.8 * lo or ry > 1.2 * hi:
-                logger(f'Skipping cut {iCut} pt {bin_idx}: ry={ry:.3g} outside [{0.8*lo:.3g}, {1.2*hi:.3g}]', 'WARNING')
+            skip_this_cut = False
+
+            # 3.1 check if this cut is a "beginning valid cut" (no prev)
+            if ry_prev is None:
+                if ry_next is not None and abs(ry - ry_next) < EPS / 10:
+                    logger(f'Skipping cut {iCut} pt {bin_idx}: ry={ry:.3g} ≈ next_valid={ry_next:.3g}', 'WARNING')
+                    skip_this_cut = True
+
+            # 3.2 When as a "last valid cut" (no next)
+            elif ry_next is None:
+                if ry_prev is not None and abs(ry - ry_prev) / max(abs(ry), EPS / 10) < 1e-4:
+                    logger(f'Skipping cut {iCut} pt {bin_idx}: negligible change from prev valid', 'WARNING')
+                    skip_this_cut = True
+
+            # 3.3 When this cut is "in the middle" of two valid cuts, check if it's a significant outlier compared to them
+            else:
+                denom = max(abs(ry), EPS / 100)
+                # Negligible change compared to both neighbors
+                if abs(ry - ry_prev) / denom < 1e-4 and abs(ry - ry_next) / denom < 1e-4:
+                    logger(f'Skipping cut {iCut} pt {bin_idx}: negligible change both sides', 'WARNING')
+                    skip_this_cut = True
+                else:
+                    # Significantly outside the range defined by neighbors
+                    lo, hi = min(ry_prev, ry_next), max(ry_prev, ry_next)
+                    if ry < 0.8 * lo or ry > 1.2 * hi:
+                        logger(f'Skipping cut {iCut} pt {bin_idx}: ry={ry:.3g} outside [{0.8*lo:.3g}, {1.2*hi:.3g}]', 'WARNING')
+                        skip_this_cut = True
+
+            # 4. If this cut is suggested to be skipped, add it to the list
+            if skip_this_cut:
                 suggested_skipped_cuts.append(iCut)
+            else:
+                # Otherwise, record it as the last valid cut for the next iterations
+                last_valid_ry = ry
 
         suggested_skipped_cuts_pts.append(suggested_skipped_cuts)
 
