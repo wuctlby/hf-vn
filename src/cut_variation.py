@@ -150,8 +150,14 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
         for i in range(len(listEffPrompt)):
             logger(f'({oCuts[i]}) Eff Prompt: {listEffPrompt[i]:.6f}    Eff FD: {listEffFD[i]:.6f}    Raw Yield: {listRawYield[i]:.2f}', level='DEBUG')
 
-        corrYields, covMatrixCorrYields, chiSquare, matrices = \
-            GetMinimisation(listEffPrompt, listEffFD, listRawYield, listEffPromptUnc, listEffFDUnc, listRawYieldUnc)
+        try:
+            corrYields, covMatrixCorrYields, chiSquare, matrices = \
+                GetMinimisation(listEffPrompt, listEffFD, listRawYield, listEffPromptUnc, listEffFDUnc, listRawYieldUnc)
+        except Exception as e:
+            logger(f'Minimisation failed for pt {ptMin:.1f}-{ptMax:.1f} with error: {e}', level='ERROR')
+            corrYields = np.array([1e-9, 1e-9]) 
+            covMatrixCorrYields = np.zeros((2, 2))
+            matrices = {'corrMatrix': np.zeros((nSets, nSets))}
 
         hCorrYieldPrompt.SetBinContent(iPt+1, corrYields.item(0))
         hCorrYieldPrompt.SetBinError(iPt+1, np.sqrt(covMatrixCorrYields.item(0, 0)))
@@ -326,7 +332,7 @@ def minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD, inputP
     hCorrYieldFD.Draw('same')
     legEff.Draw()
 
-    outDir = os.path.join(os.path.dirname(inputPath), 'cutVar') if not systematics else \
+    outDir = inputPath if not systematics else \
              os.path.join(os.path.dirname(inputPath), f'cutVar_{systematics}')
     os.makedirs(outDir, exist_ok=True)
     outFileName = os.path.join(outDir, 'cutVar.root')
@@ -429,21 +435,22 @@ def compute_frac_cut_var(config_flow, inputPathRy, inputPathEff, batch=False):
     # cutsetFiles = [f.replace('eff', 'cutset').replace('.root', '.yml') for f in effFiles]
     import re
     eff_pattern = re.compile(r'^(.*?/effs/)(.*?)eff_([^/]+)\.root$') # </path/to> / effs / <possible_subdir/> eff_<cutset_id>.root
+    matches = [eff_pattern.match(eff) for eff in effFiles]
     cutsetFiles = [
         os.path.join(
             m.group(1).replace('effs/', 'cutsets/'),  # base path with 'effs/' replaced by 'cutsets/'
             f"cutset_{m.group(3)}.yml"                # cutset
         )
-        for m in (eff_pattern.match(eff) for eff in effFiles) if m
+        for m in matches if m is not None
     ]
-    
-    inputPathEff = os.path.dirname(cutsetFiles[0]) # using the cutset path as input for efficiencies since they are expected to be in the same directory
-    minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD,  inputPathEff, cutsetFiles, None)
+    outputDir = os.path.join(matches[0].group(1).replace('effs/', 'cutVar/'), matches[0].group(2) if matches[0].group(2) is not None else '')
+    # inputPathEff = os.path.dirname(cutsetFiles[0]) # using the cutset path as input for efficiencies since they are expected to be in the same directory
+    minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD,  outputDir, cutsetFiles, None)
     if 'systematics' in config.get('minimisation', {}):
         logger('Starting systematics variations', level='WARNING')
         for syst in config['minimisation']['systematics']:
             logger(f'Running systematics: {syst}', level='WARNING')
-            minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD,  inputPathEff, cutsetFiles, syst)
+            minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD,  outputDir, cutsetFiles, syst)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Arguments')
