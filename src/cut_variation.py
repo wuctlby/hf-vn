@@ -426,7 +426,18 @@ def compute_frac_cut_var(config_flow, inputPathRy, inputPathEff, batch=False):
     latInfo.SetTextFont(42)
     latInfo.SetTextColor(1)
 
-    cutsetFiles = [f.replace('eff', 'cutset').replace('.root', '.yml') for f in effFiles]
+    # cutsetFiles = [f.replace('eff', 'cutset').replace('.root', '.yml') for f in effFiles]
+    import re
+    eff_pattern = re.compile(r'^(.*?/effs/)(.*?)eff_([^/]+)\.root$') # </path/to> / effs / <possible_subdir/> eff_<cutset_id>.root
+    cutsetFiles = [
+        os.path.join(
+            m.group(1).replace('effs/', 'cutsets/'),  # base path with 'effs/' replaced by 'cutsets/'
+            f"cutset_{m.group(3)}.yml"                # cutset
+        )
+        for m in (eff_pattern.match(eff) for eff in effFiles) if m
+    ]
+    
+    inputPathEff = os.path.dirname(cutsetFiles[0]) # using the cutset path as input for efficiencies since they are expected to be in the same directory
     minimise_chi2(config, ptmins, ptmaxs, hRawYields, hEffPrompt, hEffFD,  inputPathEff, cutsetFiles, None)
     if 'systematics' in config.get('minimisation', {}):
         logger('Starting systematics variations', level='WARNING')

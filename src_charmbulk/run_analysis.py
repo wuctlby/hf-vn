@@ -228,29 +228,29 @@ def step_cut_variation(config_path, cutvar_dir, n_workers):
             logger(f"  Eff dir not found: {eff_path_actual}, skipping", "WARNING")
             return
 
-        # Create isolated wrapper dir
-        wrapper_dir = os.path.join(cutvar_base, side, mpl, "_inputs")
-        os.makedirs(wrapper_dir, exist_ok=True)
+        # # Create isolated wrapper dir
+        # wrapper_dir = os.path.join(cutvar_base, side, mpl, "_inputs")
+        # os.makedirs(wrapper_dir, exist_ok=True)
 
-        # Symlink eff files
-        for fname in os.listdir(eff_path_actual):
-            if fname.endswith(".root"):
-                src = os.path.relpath(os.path.join(eff_path_actual, fname), wrapper_dir)
-                dst = os.path.join(wrapper_dir, fname)
-                if not os.path.exists(dst):
-                    os.symlink(src, dst)
+        # # Symlink eff files
+        # for fname in os.listdir(eff_path_actual):
+        #     if fname.endswith(".root"):
+        #         src = os.path.relpath(os.path.join(eff_path_actual, fname), wrapper_dir)
+        #         dst = os.path.join(wrapper_dir, fname)
+        #         if not os.path.exists(dst):
+        #             os.symlink(src, dst)
 
-        # Symlink cutset files (named to match str.replace('eff', 'cutset'))
-        for fname in os.listdir(cutset_base):
-            if fname.startswith("cutset_") and fname.endswith(".yml"):
-                src = os.path.relpath(os.path.join(cutset_base, fname), wrapper_dir)
-                # The str.replace('eff','cutset') maps eff_00.root → cutset_00.yml
-                # Our cutset files are already named cutset_00.yml
-                dst = os.path.join(wrapper_dir, fname)
-                if not os.path.exists(dst):
-                    os.symlink(src, dst)
+        # # Symlink cutset files (named to match str.replace('eff', 'cutset'))
+        # for fname in os.listdir(cutset_base):
+        #     if fname.startswith("cutset_") and fname.endswith(".yml"):
+        #         src = os.path.relpath(os.path.join(cutset_base, fname), wrapper_dir)
+        #         # The str.replace('eff','cutset') maps eff_00.root → cutset_00.yml
+        #         # Our cutset files are already named cutset_00.yml
+        #         dst = os.path.join(wrapper_dir, fname)
+        #         if not os.path.exists(dst):
+        #             os.symlink(src, dst)
 
-        cmd = f"{PYTHON} {paths['CutVariation']} {config_path} {ry_path} {wrapper_dir} -b"
+        cmd = f"{PYTHON} {paths['CutVariation']} {config_path} {ry_path} {eff_path_actual} -b"
         try:
             run_cmd(cmd)
             cv_result = os.path.join(cutvar_base, side, mpl, "cutVar", "cutVar.root")
@@ -261,8 +261,8 @@ def step_cut_variation(config_path, cutvar_dir, n_workers):
         except RuntimeError as e:
             logger(f"  Cut variation failed for {side}/{mpl}: {e}", "ERROR")
 
-        # Clean up
-        shutil.rmtree(wrapper_dir, ignore_errors=True)
+        # # Clean up
+        # shutil.rmtree(wrapper_dir, ignore_errors=True)
 
     combinations = [(s, mpl) for s in sides for mpl in mean_pt_labels]
 

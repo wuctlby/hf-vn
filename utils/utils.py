@@ -569,21 +569,27 @@ def suggest_skip_cuts(hRawYields, hEffPrompt, hEffFD, nPtBins):
                 elif ry_next is not None and (ry < 0.01 * ry_next or ry > 100 * ry_next):
                     logger(f'Skipping cut {iCut} pt {bin_idx}: ry={ry:.3g} extreme outlier compared to next valid={ry_next:.3g}', 'WARNING')
                     skip_this_cut = True
+                elif ry_next is not None and abs(ry - ry_next) / max(abs(ry), EPS / 10) < 1e-3:
+                    logger(f'Skipping cut {iCut} pt {bin_idx}: ry={ry:.3g} ≈ next_valid={ry_next:.3g}', 'WARNING')
+                    skip_this_cut = True
 
             # 3.2 When as a "last valid cut" (no next)
             elif ry_next is None:
-                if ry_prev is not None and abs(ry - ry_prev) / max(abs(ry), EPS / 10) < 1e-4:
+                if ry_prev is not None and abs(ry - ry_prev) / max(abs(ry), EPS / 10) < 1e-3:
                     logger(f'Skipping cut {iCut} pt {bin_idx}: negligible change from prev valid', 'WARNING')
                     skip_this_cut = True
                 elif ry < 0.01 * ry_prev or ry > 100 * ry_prev:
                     logger(f'Skipping cut {iCut} pt {bin_idx}: ry={ry:.3g} extreme outlier compared to prev valid={ry_prev:.3g}', 'WARNING')
+                    skip_this_cut = True
+                elif ry_prev is not None and abs(ry - ry_prev) / max(abs(ry), EPS / 10) < 1e-3:
+                    logger(f'Skipping cut {iCut} pt {bin_idx}: ry={ry:.3g} ≈ prev_valid={ry_prev:.3g}', 'WARNING')
                     skip_this_cut = True
 
             # 3.3 When this cut is "in the middle" of two valid cuts, check if it's a significant outlier compared to them
             else:
                 denom = max(abs(ry), EPS / 100)
                 # Negligible change compared to both neighbors
-                if abs(ry - ry_prev) / denom < 1e-4 and abs(ry - ry_next) / denom < 1e-4:
+                if abs(ry - ry_prev) / denom < 1e-3 and abs(ry - ry_next) / denom < 1e-3:
                     logger(f'Skipping cut {iCut} pt {bin_idx}: negligible change both sides', 'WARNING')
                     skip_this_cut = True
                 else:
