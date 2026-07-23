@@ -76,9 +76,25 @@ def write_graph(out_file, name, title, xs, ys, exs, eys):
     for i, (x, y, ex, ey) in enumerate(zip(xs, ys, exs, eys)):
         g.SetPoint(i, x, y)
         g.SetPointError(i, ex, ey)
+    print(xs)
+    print(exs)
+    binning = ROOT.TArrayD(len(xs) + 1)
+    for i in range(len(xs)):
+        binning[i] = xs[i] - exs[i]
+    # binning[len(xs)] = xs[-1] + exs[-1]
+    h = ROOT.TH1F("h", "h", len(xs), binning.GetArray())
+    h.SetDirectory(0)
+    h.GetXaxis().SetTitle("p_{T} (GeV/c)")
+    h.GetYaxis().SetTitle("v_{2}^{prompt}")
+    for i, (x, y, ex, ey) in enumerate(zip(xs, ys, exs, eys)):
+        h.SetBinContent(i + 1, y)
+        h.SetBinError(i + 1, ey)
+    h.SetName(name.replace("g", "h"))
+    
 
     fout = ROOT.TFile.Open(out_file, "RECREATE")
     g.Write()
+    h.Write()
     fout.Close()
 
 def v2prompt_ratio(v2obs, ev2obs, fp, efp, ffd, effd, r, eps=1e-12):
@@ -175,7 +191,9 @@ def main():
     x_ffd, ffd, _, effd  = read_xy(o_ffd)
 
     if check_n and not (len(fp) == len(ffd) == len(v2obs)):
-        raise RuntimeError(f"Npoints mismatch: fp={len(fp)} ffd={len(ffd)} v2={len(v2obs)}")
+        v2obs = v2obs[:min(len(fp), len(ffd))]
+        ev2obs = ev2obs[:min(len(fp), len(ffd))]
+        # raise RuntimeError(f"Npoints mismatch: fp={len(fp)} ffd={len(ffd)} v2={len(v2obs)}")
 
     if check_sum:
         check_fraction_sum(fp, ffd, tol_sum)

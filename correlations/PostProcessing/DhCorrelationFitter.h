@@ -21,6 +21,7 @@
 #include <TH1.h>
 #include <TGraphErrors.h>
 #include <TSpline.h>
+#include <TMatrixD.h>
 #include <RtypesCore.h>
 
 #include <cstdio>
@@ -73,6 +74,8 @@ class DhCorrelationFitter
     fv2Dmeson = v2Dmeson;
   }
   void SetLMTemplate(TH1D* tempHisto) { fTempHisto = tempHisto; }
+  void SetLMTemplateFunction(TF1* func);
+  void SetLMTemplateParams(Int_t npar, Double_t* params);
   void SetTempFunc(Int_t tempFunc) { fTempFunc = tempFunc; }
   void SetLMPairs(Double_t pairs) { fPairsPerMassBin = pairs; }
   void SetRyTrigger(Double_t val, Double_t err) { fRyTrigger = val; fRyTriggerErr = err; }
@@ -134,6 +137,14 @@ class DhCorrelationFitter
     return fFit;
   }
 
+  /// Covariance matrix accessors
+  Int_t GetNFitParams() const { return fFit ? fFit->GetNpar() : 0; }
+  Double_t GetCovMatrixElement(Int_t i, Int_t j) const;
+
+  /// LM template fit covariance matrix accessors
+  Int_t GetLMTemplateNFitParams() const { return fTemplateFunc ? fTemplateFunc->GetNpar() : 0; }
+  Double_t GetLMTemplateCovMatrixElement(Int_t i, Int_t j) const;
+
  private:
   TH1F* fHist; // 1D azimuthal correlation histogram
   TH1D* fTempHisto; // 1D histogram for the template fit function
@@ -143,6 +154,8 @@ class DhCorrelationFitter
   TSpline3* fSpline;
 
   TF1* fFit;           // Total fit function
+  TMatrixD fCovMatrix; // Covariance matrix from the total fit
+  TMatrixD fLMCovMatrix; // Covariance matrix from LM template fit
   TF1* fGausNS;        // Near-Side (NS) Gaussian
   TF1* fGausAS;        // Away-Side (AS) Gaussian
   TF1* fPed;           // Baseline function
@@ -167,6 +180,8 @@ class DhCorrelationFitter
   Bool_t fIsTotal;           // Total range of 2*pi in the azimuthal correlation distribution
   Bool_t fWithPedLM;         // If true, LM template function includes pedestal (TemplateFitFunctionWPed); if false, no pedestal (TemplateFitFunction)
   Bool_t fFixLMFactor;       // If true, fix the LM scale factor (parameter 0); if false, let it float
+  Bool_t fUseExternalLMTmpl; // If true, fTemplateFunc was set externally (skip BuildLMOutput)
+  Double_t fExternalLMPars[5]; // LM template parameters set from Python
 
   FunctionType fTypeOfFitFunc; // Type of fit function
 

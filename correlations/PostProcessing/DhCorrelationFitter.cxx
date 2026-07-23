@@ -15,6 +15,7 @@
 /// \author Swapnesh Santosh Khade <swapnesh.santosh.khade@cern.ch>
 
 #include "DhCorrelationFitter.h"
+#include "TROOT.h"
 
 #include <TError.h>
 #include <TF1.h>
@@ -57,6 +58,7 @@ DhCorrelationFitter::DhCorrelationFitter() : // default constructor
                                              fIsTotal(kTRUE),
                                              fWithPedLM(kFALSE),
                                              fFixLMFactor(kFALSE),
+                                             fUseExternalLMTmpl(kFALSE),
                                              fNbasleinePoints(0),
                                              fBinsBaseline(0x0),
                                              fHist(0x0),
@@ -120,6 +122,7 @@ DhCorrelationFitter::DhCorrelationFitter(TH1F* histoToFit, Double_t min, Double_
                                                                                          fIsTotal(kTRUE),
                                                                                          fWithPedLM(kFALSE),
                                                                                          fFixLMFactor(kFALSE),
+                                                                                         fUseExternalLMTmpl(kFALSE),
                                                                                          fNbasleinePoints(0),
                                                                                          fBinsBaseline(0x0),
                                                                                          fHist(0x0),
@@ -389,6 +392,9 @@ void DhCorrelationFitter::Fitting(Bool_t drawSplitTerm, Bool_t useExternalPars)
   }
   TMatrixD cor = fitptr->GetCorrelationMatrix();
   TMatrixD cov = fitptr->GetCovarianceMatrix();
+  // Store covariance matrix for later access from Python
+  fCovMatrix.ResizeTo(cov.GetNrows(), cov.GetNcols());
+  fCovMatrix = cov;
   printf("[INFO] Correlation Matrix - The final one! \n");
   cor.Print();
   gMinuit->mnmatu(1);
@@ -427,6 +433,23 @@ void DhCorrelationFitter::Fitting(Bool_t drawSplitTerm, Bool_t useExternalPars)
   printf("[RESULT MINE] Bin counting results: NS Yield = %.3f +- %.3f \n[RESULT MINE] Bin counting results: AS Yield: %.3f +- %.3f \n[RESULT MINE] baseline = %.3f \n", fNSyield, fNSyieldErr, fASyield, fASyieldErr, baselinBinCount);*/
 }
 
+//_____________________________________________________________________________
+Double_t DhCorrelationFitter::GetCovMatrixElement(Int_t i, Int_t j) const
+{
+  if (fCovMatrix.GetNrows() == 0) return 0.;
+  if (i < 0 || i >= fCovMatrix.GetNrows() || j < 0 || j >= fCovMatrix.GetNcols()) return 0.;
+  return fCovMatrix(i, j);
+}
+
+//_____________________________________________________________________________
+Double_t DhCorrelationFitter::GetLMTemplateCovMatrixElement(Int_t i, Int_t j) const
+{
+  if (fLMCovMatrix.GetNrows() == 0) return 0.;
+  if (i < 0 || i >= fLMCovMatrix.GetNrows() || j < 0 || j >= fLMCovMatrix.GetNcols()) return 0.;
+  return fLMCovMatrix(i, j);
+}
+
+//_____________________________________________________________________________
 void DhCorrelationFitter::SetFitFunction()
 {
   // -> fitFunc = 1: const + G NS + G AS (w/o periodicity)
@@ -981,22 +1004,59 @@ void DhCorrelationFitter::BuildLMOutput()
     fGausFit->SetParameter(4, TMath::Pi()/8);
     fGausFit->SetParLimits(4, TMath::Pi()/16, TMath::Pi());
     fTempHisto->Fit(fGausFit, "RIS", "", fMinCorr, fMaxCorr);
+    //  set parameters name
+    fGausFit->SetParName(0, "Baseline");
+    fGausFit->SetParName(1, "Amplitude1");
+    fGausFit->SetParName(2, "Sigma1");
+    fGausFit->SetParName(3, "Amplitude2");
+    fGausFit->SetParName(4, "Sigma2");
 
-    fTemplateFunc = static_cast<TF1*>(fTempHisto->GetFunction("fGausFit")->Clone("fLMTemplateFunc"));
+    fTempHisto->GetListOfFunctions()->Remove(fGausFit);  // detach from histogram, avoid Clone+Streamer
+    fGausFit->SetName("fLMTemplateFunc");
+    fTemplateFunc = fGausFit;  // transfer ownership
     fTemplateFunc->SetRange(fMinCorr, fMaxCorr);
     fBaseline = fTemplateFunc->GetMinimum(fMinCorr, fMaxCorr);
     fErrBaseline = 0.0;
     printf("[INFO] BuildLMOutput: Fitted Gaus LM template (tempFunc=3) baseline=%.6f\n", fBaseline);
-    delete fGausFit;
 
   } else if (fTempFunc == 4) {
     // --- Fit GausPeriodic to LM template ----------------------------------
     TVirtualFitter::SetMaxIterations(50000);
     Double_t minVal = fTempHisto->GetMinimum();
     Double_t maxVal = fTempHisto->GetMaximum();
+    // Remove stale TF1 with same name to avoid TFormula streamer mismatch
+    if (gROOT->GetListOfFunctions()->FindObject("fGausPerFit")) {
+      delete gROOT->GetListOfFunctions()->Remove(gROOT->GetListOfFunctions()->FindObject("fGausPerFit"));
+    }
+    if (gROOT->GetListOfFunctions()->FindObject("fLMTemplateFunc")) {
+      delete gROOT->GetListOfFunctions()->Remove(gROOT->GetListOfFunctions()->FindObject("fLMTemplateFunc"));
+    }
     TF1* fGausPerFit = new TF1("fGausPerFit",
       "[0]+[1]/(TMath::Sqrt(2*TMath::Pi())*[2])*TMath::Exp(-x*x/(2*[2]*[2]))+[1]/(TMath::Sqrt(2*TMath::Pi())*[2])*TMath::Exp(-(x-2*TMath::Pi())*(x-2*TMath::Pi())/(2*[2]*[2]))+[1]/(TMath::Sqrt(2*TMath::Pi())*[2])*TMath::Exp(-(x+2*TMath::Pi())*(x+2*TMath::Pi())/(2*[2]*[2]))+[3]/(TMath::Sqrt(2*TMath::Pi())*[4])*TMath::Exp(-(x-TMath::Pi())*(x-TMath::Pi())/(2*[4]*[4]))+[3]/(TMath::Sqrt(2*TMath::Pi())*[4])*TMath::Exp(-(x-3*TMath::Pi())*(x-3*TMath::Pi())/(2*[4]*[4]))+[3]/(TMath::Sqrt(2*TMath::Pi())*[4])*TMath::Exp(-(x+TMath::Pi())*(x+TMath::Pi())/(2*[4]*[4]))",
       fMinCorr, fMaxCorr);
+
+    if (fUseExternalLMTmpl) {
+      // if (fTemplateFunc) {
+      //   // fTemplateFunc set via SetLMTemplateFunction — reuse
+      //   fTemplateFunc->SetRange(fMinCorr, fMaxCorr);
+      //   fBaseline = fTemplateFunc->GetMinimum(fMinCorr, fMaxCorr);
+      //   fErrBaseline = 0.0;
+      //   printf("[INFO] BuildLMOutput: Using external TF1 baseline=%.6f\n", fBaseline);
+      //   delete fGausPerFit;
+      //   return;
+      // }
+      // fTemplateFunc not set — build from fExternalLMPars via fGausPerFit
+      for (int i = 0; i < 5; i++) {
+        fGausPerFit->SetParameter(i, fExternalLMPars[i]);
+      }
+      fGausPerFit->SetName("fLMTemplateFunc");      // rename to avoid Clone+Streamer mismatch
+      fTemplateFunc = fGausPerFit;                   // transfer ownership directly
+      fTemplateFunc->SetRange(fMinCorr, fMaxCorr);
+      fBaseline = fExternalLMPars[0];
+      fErrBaseline = 0.0;
+      printf("[INFO] BuildLMOutput: External params fixed baseline=%.6f\n", fBaseline);
+      return;
+    }
     fGausPerFit->SetParameter(0, minVal);
     fGausPerFit->SetParLimits(0, 0, maxVal*2);
     fGausPerFit->SetParameters(1, 0.5*(maxVal-minVal));
@@ -1007,15 +1067,30 @@ void DhCorrelationFitter::BuildLMOutput()
     fGausPerFit->SetParLimits(3, 0.01, maxVal-minVal);
     fGausPerFit->SetParameter(4, TMath::Pi()/8);
     fGausPerFit->SetParLimits(4, TMath::Pi()/16, TMath::Pi());
-    fTempHisto->Fit(fGausPerFit, "RIS", "", fMinCorr, fMaxCorr);
+        //  set parameters name
+    fGausPerFit->SetParName(0, "Baseline");
+    fGausPerFit->SetParName(1, "Amplitude NS");
+    fGausPerFit->SetParName(2, "Sigma NS");
+    fGausPerFit->SetParName(3, "Amplitude AS");
+    fGausPerFit->SetParName(4, "Sigma AS");
 
-    fTemplateFunc = static_cast<TF1*>(fTempHisto->GetFunction("fGausPerFit")->Clone("fLMTemplateFunc"));
+    // Store LM template fit covariance matrix
+    TFitResultPtr lmFitPtr = fTempHisto->Fit(fGausPerFit, "RIS", "", fMinCorr, fMaxCorr);
+    if (lmFitPtr.Get() != nullptr) {
+      fLMCovMatrix.ResizeTo(lmFitPtr->GetCovarianceMatrix().GetNrows(),
+                            lmFitPtr->GetCovarianceMatrix().GetNcols());
+      fLMCovMatrix = lmFitPtr->GetCovarianceMatrix();
+    }
+
+    fTempHisto->GetListOfFunctions()->Remove(fGausPerFit);  // detach from histogram, avoid Clone+Streamer
+    fGausPerFit->SetName("fLMTemplateFunc");
+    fTemplateFunc = fGausPerFit;  // transfer ownership
     fTemplateFunc->SetRange(fMinCorr, fMaxCorr);
     fBaseline = fTemplateFunc->GetMinimum(fMinCorr, fMaxCorr);
     fErrBaseline = 0.0;
     printf("[INFO] BuildLMOutput: Fitted GausPeriodic LM template (tempFunc=4) baseline=%.6f\n", fBaseline);
-    delete fGausPerFit;
-  }
+    }
+
 
   // ---- Build fLMOutput (clone of original template data for drawing) ----
   fLMOutput = (TH1D*)fTempHisto->Clone("fLMOutput");
@@ -1873,5 +1948,23 @@ void DhCorrelationFitter::SetSingleTermsForDrawing(Bool_t draw)
       fGausNS->Draw("same");
       pvStatTests1->Draw("same");
     }
+  }
+}
+
+//_____________________________________________________________________________
+void DhCorrelationFitter::SetLMTemplateFunction(TF1* func)
+{
+  // Clone the TF1 so C++ owns it; Python side can be garbage collected safely
+  if (fTemplateFunc) { delete fTemplateFunc; fTemplateFunc = 0; }
+  fTemplateFunc = (TF1*)func->Clone("fLMTemplate");
+  fUseExternalLMTmpl = kTRUE;
+}
+
+//_____________________________________________________________________________
+void DhCorrelationFitter::SetLMTemplateParams(Int_t npar, Double_t* params)
+{
+  fUseExternalLMTmpl = kTRUE;
+  for (int i = 0; i < npar && i < 5; i++) {
+    fExternalLMPars[i] = params[i];
   }
 }

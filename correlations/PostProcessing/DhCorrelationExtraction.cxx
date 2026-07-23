@@ -274,8 +274,8 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations()
     // Retrieve 2D plots for SE and ME, signal and bkg regions, for each pTbin and pool
     hSE_2D_Raw[iPool] = ProjCorrelHisto(kSE, iPool);
     hME_2D_Raw[iPool] = ProjCorrelHisto(kME, iPool);
-    // hSE_2D_Raw[iPool]->Sumw2();
-    // hME_2D_Raw[iPool]->Sumw2();
+    hSE_2D_Raw[iPool]->Sumw2();
+    hME_2D_Raw[iPool]->Sumw2();
 
 
     hME_2D_Normalized[iPool] = reinterpret_cast<TH2D*>(hME_2D_Raw[iPool]->Clone(Form("hNormalizedCorrel_ME_2D_Pool%d", iPool)));
@@ -284,7 +284,7 @@ Bool_t DhCorrelationExtraction::ExtractCorrelations()
 
     // Apply Event Mixing Correction
     hCorrectedCorrel_2D[iPool] = reinterpret_cast<TH2D*>(hSE_2D_Raw[iPool]->Clone(Form("hCorrectedCorrel_2D_Pool%d", iPool)));
-    // hCorrectedCorrel_2D[iPool]->Sumw2();
+    hCorrectedCorrel_2D[iPool]->Sumw2();
     hCorrectedCorrel_2D[iPool]->Divide(hME_2D_Normalized[iPool]);
 
     // Apply the ME correction on the Mass by the ratio of SE/ME integrated over deltaPhi bins for each deltaEta bin

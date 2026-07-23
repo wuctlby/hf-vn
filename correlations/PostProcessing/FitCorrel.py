@@ -157,6 +157,10 @@ def fit_correl(cfg_path):
     os.makedirs(out_png_dir, exist_ok=True)
     os.makedirs(out_root_dir, exist_ok=True)
 
+    # Directories for fit parameters and covariance matrices
+    out_par_dir = os.path.join(output_path, "FitParameters")
+    os.makedirs(out_par_dir, exist_ok=True)
+
     print(f"[INFO] Input file:  {input_file_path}")
     print(f"[INFO] Output PNG:  {out_png_dir}")
     print(f"[INFO] Output ROOT: {out_root_dir}")
@@ -321,7 +325,16 @@ def fit_correl(cfg_path):
         h_lm = ROOT.TH1D(f"hLMFactor_PtBinAssoc{i_pt_had + 1}", "", n_pt_cand, pt_cand_edges_arr)
         h_lm.SetDirectory(ROOT.nullptr)
         h_lm_factor[i_pt_had] = h_lm
-        
+
+    # Storage for covariance matrix 2D histograms
+    # cov_global_histos → appended to canvas ROOT file (CorrPhiD0_*.root)
+    # cov_lm_histos     → appended to hLMtemplate ROOT file
+    cov_global_histos = {}
+    cov_lm_histos = {}
+    # Storage for parameter TH1D histograms (same target as covariance)
+    par_global_histos = {}
+    par_lm_histos = {}
+
     # # merge LM for mass binning case (same LM for all mass bins of a given ptHad)
     # merged_lm = {}
     # if not use_pairs_file and in_file_lm:
@@ -587,6 +600,141 @@ def fit_correl(cfg_path):
                     h_lm_factor[i_pt_had].SetBinContent(bin_idx, lm_val)
                     h_lm_factor[i_pt_had].SetBinError(bin_idx, lm_err)
 
+                # ============================================================
+                # ---- Save global fit parameters and covariance ------------
+                # ============================================================
+                f_fit = corr_fitter.GetFitFunction()
+                if f_fit:
+                    npar = corr_fitter.GetNFitParams()
+
+                    # ---- TH1D for global fit parameter values ----
+                    h_par_g_name = (f"hParValues_PtCand{i_pt_cand + 1}_"
+                                    f"PtHad{i_pt_had + 1}_"
+                                    f"InvMassBin{mass_idx_label}")
+                    h_par_g = ROOT.TH1D(h_par_g_name,
+                                        f"Global Fit Parameters (type={fit_functions[i_pt_cand]}, "
+                                        f"#chi^{{2}}/NDF={f_fit.GetChisquare():.1f}/{f_fit.GetNDF()});"
+                                        f"Parameter;Value",
+                                        npar, -0.5, npar - 0.5)
+                    h_par_g.SetDirectory(ROOT.nullptr)
+                    h_par_g.SetStats(0)
+                    for ip in range(npar):
+                        h_par_g.GetXaxis().SetBinLabel(ip + 1, f_fit.GetParName(ip))
+                        h_par_g.SetBinContent(ip + 1, f_fit.GetParameter(ip))
+                        h_par_g.SetBinError(ip + 1, f_fit.GetParError(ip))
+                    par_global_histos[(i_pt_had, mass_idx_label, i_pt_cand)] = h_par_g
+
+                    # Draw global par PNG
+                    c_par_g = ROOT.TCanvas(f"cParValues_PtCand{i_pt_cand + 1}_PtHad{i_pt_had + 1}_InvMassBin{mass_idx_label}",
+                                           "", 1200, 800)
+                    c_par_g.SetLeftMargin(0.2); c_par_g.SetRightMargin(0.05); c_par_g.SetBottomMargin(0.25)
+                    c_par_g.cd(); ROOT.SetOwnership(c_par_g, False)
+                    h_par_g.GetXaxis().SetLabelSize(0.04)
+                    h_par_g.Draw("E TEXT")
+                    c_par_g.Update()
+                    c_par_g.SaveAs(os.path.join(out_png_dir, f"{h_par_g_name}.png"))
+                    c_par_g.Close(); del c_par_g
+
+                    # ---- Global fit covariance TH2D ----
+                    cov_g_name = (f"hCovMatrix_PtCand{i_pt_cand + 1}_"
+                                  f"PtHad{i_pt_had + 1}_"
+                                  f"InvMassBin{mass_idx_label}")
+                    h_cov_g = ROOT.TH2D(cov_g_name,
+                                        f"Global Fit Cov Matrix;Parameter;Parameter",
+                                        npar, -0.5, npar - 0.5,
+                                        npar, -0.5, npar - 0.5)
+                    h_cov_g.SetDirectory(ROOT.nullptr)
+
+                    for ip in range(npar):
+                        h_cov_g.GetXaxis().SetBinLabel(ip + 1, f_fit.GetParName(ip))
+                        h_cov_g.GetYaxis().SetBinLabel(ip + 1, f_fit.GetParName(ip))
+                        for jp in range(npar):
+                            cov_ij = corr_fitter.GetCovMatrixElement(ip, jp)
+                            h_cov_g.SetBinContent(ip + 1, jp + 1, cov_ij)
+
+                    cov_global_histos[(i_pt_had, mass_idx_label, i_pt_cand)] = h_cov_g
+
+                    # Draw global cov PNG
+                    c_cov_g = ROOT.TCanvas(f"cCovMatrix_PtCand{i_pt_cand + 1}_PtHad{i_pt_had + 1}_InvMassBin{mass_idx_label}",
+                                           "", 1200, 1000)
+                    c_cov_g.SetLeftMargin(0.2); c_cov_g.SetRightMargin(0.15); c_cov_g.SetBottomMargin(0.2)
+                    c_cov_g.cd(); ROOT.SetOwnership(c_cov_g, False)
+                    h_cov_g.SetStats(0)
+                    h_cov_g.GetXaxis().SetLabelSize(0.035); h_cov_g.GetYaxis().SetLabelSize(0.035)
+                    h_cov_g.Draw("COLZ TEXT"); h_cov_g.SetMarkerSize(0.8)
+                    c_cov_g.Update()
+                    c_cov_g.SaveAs(os.path.join(out_png_dir, f"{cov_g_name}.png"))
+                    c_cov_g.Close(); del c_cov_g
+
+                    print(f"      Saved global fit parameters TH1D: {h_par_g_name}")
+
+                # ============================================================
+                # ---- Save LM template fit parameters and covariance -------
+                # ============================================================
+                f_lm = corr_fitter.GetLMTemplateFunc()
+                if f_lm:
+                    npar_lm = corr_fitter.GetLMTemplateNFitParams()
+
+                    # ---- TH1D for LM template fit parameter values ----
+                    h_par_lm_name = (f"hLMParValues_PtCand{i_pt_cand + 1}_"
+                                     f"PtHad{i_pt_had + 1}_"
+                                     f"InvMassBin{mass_idx_label}")
+                    h_par_lm = ROOT.TH1D(h_par_lm_name,
+                                         f"LM Template Fit Parameters (tempFunc={corr_fitter.GetTempFunc()});"
+                                         f"Parameter;Value",
+                                         npar_lm, -0.5, npar_lm - 0.5)
+                    h_par_lm.SetDirectory(ROOT.nullptr)
+                    h_par_lm.SetStats(0)
+                    for ip in range(npar_lm):
+                        h_par_lm.GetXaxis().SetBinLabel(ip + 1, f_lm.GetParName(ip))
+                        h_par_lm.SetBinContent(ip + 1, f_lm.GetParameter(ip))
+                        h_par_lm.SetBinError(ip + 1, f_lm.GetParError(ip))
+                    par_lm_histos[(i_pt_had, mass_idx_label, i_pt_cand)] = h_par_lm
+
+                    # Draw LM par PNG
+                    c_par_lm = ROOT.TCanvas(f"cLMParValues_PtCand{i_pt_cand + 1}_PtHad{i_pt_had + 1}_InvMassBin{mass_idx_label}",
+                                            "", 1200, 800)
+                    c_par_lm.SetLeftMargin(0.2); c_par_lm.SetRightMargin(0.05); c_par_lm.SetBottomMargin(0.25)
+                    c_par_lm.cd(); ROOT.SetOwnership(c_par_lm, False)
+                    h_par_lm.GetXaxis().SetLabelSize(0.04)
+                    h_par_lm.Draw("E TEXT")
+                    c_par_lm.Update()
+                    c_par_lm.SaveAs(os.path.join(out_png_dir, f"{h_par_lm_name}.png"))
+                    c_par_lm.Close(); del c_par_lm
+
+                    # ---- LM template fit covariance TH2D ----
+                    cov_lm_name = (f"hLMCovMatrix_PtCand{i_pt_cand + 1}_"
+                                   f"PtHad{i_pt_had + 1}_"
+                                   f"InvMassBin{mass_idx_label}")
+                    h_cov_lm = ROOT.TH2D(cov_lm_name,
+                                         f"LM Template Cov Matrix;Parameter;Parameter",
+                                         npar_lm, -0.5, npar_lm - 0.5,
+                                         npar_lm, -0.5, npar_lm - 0.5)
+                    h_cov_lm.SetDirectory(ROOT.nullptr)
+
+                    for ip in range(npar_lm):
+                        h_cov_lm.GetXaxis().SetBinLabel(ip + 1, f_lm.GetParName(ip))
+                        h_cov_lm.GetYaxis().SetBinLabel(ip + 1, f_lm.GetParName(ip))
+                        for jp in range(npar_lm):
+                            cov_ij = corr_fitter.GetLMTemplateCovMatrixElement(ip, jp)
+                            h_cov_lm.SetBinContent(ip + 1, jp + 1, cov_ij)
+
+                    cov_lm_histos[(i_pt_had, mass_idx_label, i_pt_cand)] = h_cov_lm
+
+                    # Draw LM cov PNG
+                    c_cov_lm = ROOT.TCanvas(f"cLMCovMatrix_PtCand{i_pt_cand + 1}_PtHad{i_pt_had + 1}_InvMassBin{mass_idx_label}",
+                                            "", 1200, 1000)
+                    c_cov_lm.SetLeftMargin(0.2); c_cov_lm.SetRightMargin(0.15); c_cov_lm.SetBottomMargin(0.2)
+                    c_cov_lm.cd(); ROOT.SetOwnership(c_cov_lm, False)
+                    h_cov_lm.SetStats(0)
+                    h_cov_lm.GetXaxis().SetLabelSize(0.035); h_cov_lm.GetYaxis().SetLabelSize(0.035)
+                    h_cov_lm.Draw("COLZ TEXT"); h_cov_lm.SetMarkerSize(0.8)
+                    c_cov_lm.Update()
+                    c_cov_lm.SaveAs(os.path.join(out_png_dir, f"{cov_lm_name}.png"))
+                    c_cov_lm.Close(); del c_cov_lm
+
+                    print(f"      Saved LM fit parameters TH1D: {h_par_lm_name}")
+
                 # ---- Finish drawing the canvas ---------------------------
                 set_th1_style(h_corr, "",
                               "#Delta#phi [rad]",
@@ -618,6 +766,18 @@ def fit_correl(cfg_path):
                 canvas.SaveAs(png_path)
                 canvas.SaveAs(root_canvas_path)
                 canvas.Close()
+
+                # ---- Append global fit cov TH2D + par TH1D to canvas ROOT file ----
+                cov_g_key = (i_pt_had, mass_idx_label, i_pt_cand)
+                if cov_g_key in cov_global_histos or cov_g_key in par_global_histos:
+                    f_cov_update = ROOT.TFile(root_canvas_path, "UPDATE")
+                    f_cov_update.cd()
+                    if cov_g_key in par_global_histos:
+                        par_global_histos[cov_g_key].Write()
+                    if cov_g_key in cov_global_histos:
+                        cov_global_histos[cov_g_key].Write()
+                    f_cov_update.Close()
+                    del f_cov_update
 
                 # ---- Draw hLM_template (LM data + template function + baseline) ----
                 if use_template and mass_i_local == 0:
@@ -692,6 +852,19 @@ def fit_correl(cfg_path):
                             lm_root_path = os.path.join(
                                 out_root_dir, f"{lm_png_name}.root")
                             c_lm.SaveAs(lm_root_path)
+
+                            # ---- Append LM fit cov TH2D + par TH1D to hLMtemplate ROOT file ----
+                            cov_lm_key = (i_pt_had, mass_idx_label, i_pt_cand)
+                            if cov_lm_key in cov_lm_histos or cov_lm_key in par_lm_histos:
+                                f_lm_update = ROOT.TFile(lm_root_path, "UPDATE")
+                                f_lm_update.cd()
+                                if cov_lm_key in par_lm_histos:
+                                    par_lm_histos[cov_lm_key].Write()
+                                if cov_lm_key in cov_lm_histos:
+                                    cov_lm_histos[cov_lm_key].Write()
+                                f_lm_update.Close()
+                                del f_lm_update
+
                             c_lm.Close()
                             ROOT.SetOwnership(c_lm, False)
                     except Exception as e:
@@ -725,6 +898,11 @@ def fit_correl(cfg_path):
         h_lm.SetDirectory(out_file)
         out_file.cd()
         h_lm.Write()
+
+    # Note: LM covariance TH2D histograms are saved in canvas ROOT files
+    # (e.g., CorrPhiD0_PtBinCand1_PtBinAssoc1_InvMassBin1.root)
+    # — no longer stored in FinalPlots.root to avoid breaking downstream scripts.
+
     # todo: to be removed
     for i_mass_out in range(n_mass_out):
         for i_pt_had in range(n_pt_had):

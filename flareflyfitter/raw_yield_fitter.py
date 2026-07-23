@@ -635,8 +635,9 @@ class RawYieldFitter:
             bin_width = int(1000 / self.rebin)  # in MeV/c^2
 
             # --- RooPlot frame ---
+            n_bins_plot = int(1000 / self.rebin * (self.fit_range_max - self.fit_range_min))
             frame = self.roofit_fit_var.frame(
-                RooFit.Bins(int(bin_width * (self.fit_range_max - self.fit_range_min))),
+                RooFit.Bins(n_bins_plot),
                 RooFit.Title(
                     f";M(#pi K#pi) (GeV/#it{{c}}^{{2}});Counts per {self.rebin} MeV/#it{{c}}^{{2}}"
                 )
@@ -652,7 +653,6 @@ class RawYieldFitter:
             self.data.plotOn(
                 frame,
                 RooFit.Range("fit"),
-                RooFit.Binning(int(1000 * (self.fit_range_max - self.fit_range_min))),
                 RooFit.MarkerStyle(ROOT.kFullCircle),
                 RooFit.MarkerSize(0.8),
                 RooFit.LineColor(ROOT.kBlack),
@@ -1042,17 +1042,24 @@ class RawYieldFitter:
         #     # RooFit.Range(self.sp_range_min, self.sp_range_max)
         # )
         if self.rebin != 1 and isinstance(self.hist, ROOT.TH1):
-            self.roofit_fit_var.setBins(50)   # new number of bins
-            self.data = ROOT.RooDataHist(
-                "data_rebinned",
-                "data_rebinned",
+            h_reb = self.hist.Clone(f"{self.hist.GetName()}_reb{self.rebin}")
+            h_reb.SetDirectory(0)
+            n_orig = h_reb.GetNbinsX()
+            h_reb.Rebin(self.rebin)
+            n_lost = n_orig - h_reb.GetNbinsX() * self.rebin
+            if n_lost > 0:
+                logger(f"Rebin({self.rebin}): {n_lost} trailing bins dropped "
+                f"({100.*n_lost/n_orig:.2f}%)", "WARNING")
+                self.data = ROOT.RooDataHist(
+                "data_rebinned", "data_rebinned",
                 ROOT.RooArgSet(self.roofit_fit_var),
-                self.hist
-            )
+                h_reb
+                )
         self.fit_result = self.model.fitTo(
             self.data,
             RooFit.Extended(True),
             RooFit.Range("fit"),
+            RooFit.SumW2Error(True),
             RooFit.Save(True),
             RooFit.PrintLevel(1 if self.verbose else -1),
             RooFit.PrintEvalErrors(1 if self.verbose else 0)
@@ -1102,7 +1109,7 @@ class RawYieldFitter:
             if self.verbose:
                 logger(f"Adding Gaussian signal function", "INFO")
             if self.minimize_roofit:
-                mu = ROOT.RooRealVar(f"mu_{label}", f"mean_{label}", init_mass, init_mass - 0.02, init_mass + 0.02)
+                mu = ROOT.RooRealVar(f"mu_{label}", f"mean_{label}", init_mass, init_mass - 0.015, init_mass + 0.01)
                 sigma = ROOT.RooRealVar(f"sigma_{label}", f"sigma_{label}", 0.015, 0.005, 0.05)
                 self.fit_model[label]['par_mu'] = mu
                 self.fit_model[label]['par_sigma'] = sigma
