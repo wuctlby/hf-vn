@@ -4,16 +4,16 @@ outdir: "/home/wuct/MetaData/DATA/OO/apass2/corr/results/fifth/k020_gausPer/etaV
 pathFileSE: "/home/wuct/MetaData/DATA/OO/apass2/corr/results/fifth/large/SE/k020/AnalysisResults.root"
 pathFileME: "/home/wuct/MetaData/DATA/OO/apass2/corr/results/fifth/large/ME/k020/AnalysisResults.root"
 pathFileMass: "/home/wuct/MetaData/DATA/OO/apass2/corr/results/fifth/large/SE/k020/AnalysisResults.root"
-method: "MassBinning" # "MassBinning" or "DeltaPhiBinning"
+method: "DeltaPhiBinning" # "MassBinning" or "DeltaPhiBinning"
 nWorkers: 18
 
 task_LM:
   do: true
   suffix: "0d8_1d5"
-  outdir: "/home/wuct/MetaData/DATA/OO/apass2/corr/results/fifth/k60100_gausPer/etaVariation"
-  pathFileSE: "/home/wuct/MetaData/DATA/OO/apass2/corr/results/fifth/large/SE/k60100/AnalysisResults.root"
-  pathFileME: "/home/wuct/MetaData/DATA/OO/apass2/corr/results/fifth/large/ME/k60100/AnalysisResults.root"
-  pathFileMass: "/home/wuct/MetaData/DATA/OO/apass2/corr/results/fifth/large/SE/k60100/AnalysisResults.root"
+  outdir: "/home/wuct/MetaData/DATA/OO/apass2/corr/results/fifth/k60100_k2050_loosebkg"
+  pathFileSE: "/home/wuct/MetaData/DATA/OO/apass2/corr/results/fifth/large/SE/k60100_loose2/AnalysisResults.root"
+  pathFileME: "/home/wuct/MetaData/DATA/OO/apass2/corr/results/fifth/large/ME/k60100_loose2/AnalysisResults.root"
+  pathFileMass: "/home/wuct/MetaData/DATA/OO/apass2/corr/results/fifth/large/SE/k60100_loose2/AnalysisResults.root"
   nDeltaPhiBins: 16
 
 nDeltaPhiBins: 16
