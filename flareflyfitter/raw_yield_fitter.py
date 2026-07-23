@@ -1038,17 +1038,25 @@ class RawYieldFitter:
         #     # RooFit.Range(self.sp_range_min, self.sp_range_max)
         # )
         if self.rebin != 1 and isinstance(self.hist, ROOT.TH1):
-            self.roofit_fit_var.setBins(50)   # new number of bins
+            h_reb = self.hist.Clone(f"{self.hist.GetName()}_reb{self.rebin}")
+            h_reb.SetDirectory(0)
+            n_orig = h_reb.GetNbinsX()
+            h_reb.Rebin(self.rebin)
+            n_lost = n_orig - h_reb.GetNbinsX() * self.rebin
+            if n_lost > 0:
+                logger(f"Rebin({self.rebin}): {n_lost} trailing bin(s) dropped "
+                       f"({100.*n_lost/n_orig:.2f}% integral loss)", "WARNING")
             self.data = ROOT.RooDataHist(
                 "data_rebinned",
                 "data_rebinned",
                 ROOT.RooArgSet(self.roofit_fit_var),
-                self.hist
+                h_reb
             )
         self.fit_result = self.model.fitTo(
             self.data,
             RooFit.Extended(True),
             RooFit.Range("fit"),
+            RooFit.SumW2Error(True),
             RooFit.Save(True),
             RooFit.PrintLevel(1 if self.verbose else -1),
             RooFit.PrintEvalErrors(1 if self.verbose else 0)
