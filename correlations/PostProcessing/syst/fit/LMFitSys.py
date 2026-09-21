@@ -465,6 +465,10 @@ def run_systematics(n_samples=100, load_from_exist=False, pt_only=0):
                 if par[1] <= 0 or par[3] <= 0: continue
                 if TEMP_FUNC == 5:
                     if par[2] <= 0 or par[4] <= 0: continue
+                    # kappa is a concentration, not a width: below ~0.5 the component becomes an
+                    # almost flat pedestal that is degenerate with the baseline (the fit is bounded
+                    # at kappa >= 1, but the sampled errors can still push it down there)
+                    if par[2] < 0.5 or par[4] < 0.5: continue
                 elif par[2] <= 0.05 or par[4] <= 0.05: continue
                 v2, _, c_var, fitter_var = fit_with_lm_template(
                     h_data, par, ry_val=ry_val, ry_err=ry_err, lm_ry_val=lm_ry_val, lm_ry_err=lm_ry_err, tag=f"s{isamp}"
