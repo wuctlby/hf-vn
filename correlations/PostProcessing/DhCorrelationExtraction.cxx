@@ -563,7 +563,11 @@ if (fDebug > 0) {
     }
   }
 
-  if (fMethod == kDeltaPhiBinning) {
+  // fPoolVec_RawMassVsDeltaEta_2D is consumed per pool as the SE raw mass vs deltaEta
+  // (see AnalyzeCorrelations: fPoolVec_RawMassVsDeltaEta_2D[iPool]->ProjectionY(...)),
+  // so only the SE projection may be pushed: pushing the ME one as well would interleave
+  // [SE0, ME0, SE1, ME1, ...] and break the pool indexing for iPool >= 1.
+  if (fMethod == kDeltaPhiBinning && SEorME == kSE) {
     TString titleMass = Form("Raw Mass vs DeltaEta with |#Delta#eta| > %.1f for Pool %s", fDeltaEtaRightMin, poolStr.Data());
     fPoolVec_RawMassVsDeltaEta_2D.push_back(SetTH2HistoStyle(reinterpret_cast<TH2D*>(hFinalMass->Clone(titleMass)),
       Form("hRaw_MassVsDeltaEta_SE_2D_Pool%s", poolStr.Data()), "#Delta#eta", "Mass (GeV/#it{c}^{2})", "Counts"));
