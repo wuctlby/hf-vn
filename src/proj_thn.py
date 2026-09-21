@@ -258,6 +258,8 @@ def get_pt_weights(cfgProj):
 
     if cfgProj.get('ApplyPtWeightsCharm'):
         hPtWeightsD = ptWeightsFile.Get('FONLLtimesTAMU/charm/hPtWeightsCharmFONLLtimesTAMUcent')
+    elif cfgProj.get('ApplyPtWeightsD'):
+        hPtWeightsD = ptWeightsFile.Get('hPtWeightsFONLLtimesLangevinDcent')
         ptBinCentersD = [ (hPtWeightsD.GetBinLowEdge(i)+hPtWeightsD.GetBinLowEdge(i+1))/2 for i in range(1, hPtWeightsD.GetNbinsX()+1)]
         ptBinContentsD = [hPtWeightsD.GetBinContent(i) for i in range(1, hPtWeightsD.GetNbinsX()+1)]
         sPtWeights = make_interp_spline(ptBinCentersD, ptBinContentsD)
@@ -267,6 +269,8 @@ def get_pt_weights(cfgProj):
 
     if cfgProj.get('ApplyPtWeightsBeauty'):
         hPtWeightsB = ptWeightsFile.Get('FONLLtimesTAMU/beauty/hPtWeightsBeautyFONLLtimesTAMUBcent')
+    elif cfgProj.get('ApplyPtWeightsB'):
+        hPtWeightsB = ptWeightsFile.Get('hPtWeightsFONLLtimesLangevinBcent')
         ptBinCentersB = [ (hPtWeightsB.GetBinLowEdge(i)+hPtWeightsB.GetBinLowEdge(i+1))/2 for i in range(1, hPtWeightsB.GetNbinsX()+1)]
         ptBinContentsB = [hPtWeightsB.GetBinContent(i) for i in range(1, hPtWeightsB.GetNbinsX()+1)]
         sPtWeightsB = make_interp_spline(ptBinCentersB, ptBinContentsB)

@@ -182,7 +182,9 @@ def load_eff_histos(effFiles) -> tuple:
     def _load_single_eff_histos(effFile: str):
         f = TFile.Open(effFile)
         hEffPrompt      = f.Get('hEffPrompt')
+        hEffPrompt.SetDirectory(0)
         hEffFD          = f.Get('hEffFD')
+        hEffFD.SetDirectory(0)
         hPromptFrac     = hEffPrompt.Clone('hPromptFrac')
         hFDFrac         = hEffFD.Clone('hFDFrac')
         hPromptFracCorr = hEffPrompt.Clone('hPromptFracCorr')
@@ -263,7 +265,7 @@ def load_object_from_file(inFile, pathToObj):
         elif isinstance(outObj, TList):
             outObj = outObj.FindObject(containerName)
         else:
-            print(f'\033[31mError\033[0m: instance of {type(outObj)} not implemented. Exit!')
+            logger(f'\033[31mError\033[0m: instance of {type(outObj)} not implemented. Exit!', level='ERROR')
             sys.exit()
 
     return outObj
