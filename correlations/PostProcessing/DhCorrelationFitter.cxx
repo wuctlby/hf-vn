@@ -1164,11 +1164,16 @@ void DhCorrelationFitter::BuildLMOutput()
     fVonMisesFit->SetParameter(1, yieldStart);
     fVonMisesFit->SetParLimits(1, 0.01, 1000.*peakHeight);
     fVonMisesFit->SetParameter(2, kappaStart);
-    fVonMisesFit->SetParLimits(2, 0.1, 30.);
+    fVonMisesFit->SetParLimits(2, 1.0, 30.);
     fVonMisesFit->SetParameter(3, yieldStart);
     fVonMisesFit->SetParLimits(3, 0.01, 1000.*peakHeight);
     fVonMisesFit->SetParameter(4, kappaStart);
-    fVonMisesFit->SetParLimits(4, 0.1, 30.);
+    fVonMisesFit->SetParLimits(4, 1.0, 30.);
+    // kappa >= 1 keeps both components actual peaks (rms = sqrt(1 - I1/I0) < 1 rad). With a lower
+    // bound of 0.1 the fit may turn one component into an almost flat pedestal, which is fully
+    // degenerate with the baseline (only ped + Y/(2pi) is then constrained): PtBin 7 of the d20
+    // sample came out as ped = 10300 with Y_AS = 93000 (kappa_AS = 0.18) - a diverging away side.
+    // Over the affected bins (1, 2, 5, 7) this bound changes chi2/ndf by <= 0.06.
     //  set parameters name
     fVonMisesFit->SetParName(0, "Baseline");
     fVonMisesFit->SetParName(1, "Amplitude NS");
