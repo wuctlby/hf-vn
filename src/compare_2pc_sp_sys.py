@@ -134,6 +134,9 @@ def compare_2pc_sp(
         raise RuntimeError(f"Cannot open {sys_file}")
 
     h_central = f2pc.Get(sys_hname)
+    h_central.Scale(0.07/0.0625) 
+    print("Using the 0.07/0.0625")
+    input("Enter to continue")
     g_sys_asym = f2pc.Get(sys_gname_sys)
     g_tot = f2pc.Get(sys_gname_tot)  # optional — computed from scratch below
 
@@ -197,7 +200,7 @@ def compare_2pc_sp(
     c.SetRightMargin(0.04)
     c.SetTopMargin(0.04)
 
-    frame = c.DrawFrame(0, ymin, 12, ymax)
+    frame = c.DrawFrame(0, ymin, 12, ymax*1.1)
     frame.GetYaxis().SetTitle("D^{0} v_{2}")
     frame.GetXaxis().SetTitle("#it{p}_{T} (GeV/#it{c})")
     frame.GetYaxis().SetTitleSize(0.045)
@@ -251,7 +254,7 @@ def compare_2pc_sp(
     x_min = min(min(xs), min(sp_xs)) - 0.5
     x_max = max(max(xs), max(sp_xs)) + 0.5
 
-    frame_ratio = c_ratio.DrawFrame(x_min, 0, x_max, 2.2)
+    frame_ratio = c_ratio.DrawFrame(x_min, 0, 8, 2)
     frame_ratio.GetYaxis().SetTitle("Ratio to SP")
     frame_ratio.GetXaxis().SetTitle("#it{p}_{T} (GeV/#it{c})")
     frame_ratio.GetYaxis().SetTitleSize(0.045)
@@ -289,28 +292,28 @@ def compare_2pc_sp(
                 (stat_eys[i] / num) ** 2 + (sp_eys[i] / den) ** 2
             ) if num != 0 else 0
             g_ratio.SetPointError(i, exs[i], ratio_stat)
-            # sys error propagation (asymmetric)
-            ratio_sys_low = ratio_val * (sys_lows[i] / num) if num != 0 else 0
-            ratio_sys_high = ratio_val * (sys_highs[i] / num) if num != 0 else 0
-            g_ratio_sys.SetPoint(i, xs[i], ratio_val)
-            g_ratio_sys.SetPointError(i, exs[i], exs[i], ratio_sys_low, ratio_sys_high)
-            # total error propagation (asymmetric)
-            ratio_tot_low = ratio_val * (tot_lows[i] / num) if num != 0 else 0
-            ratio_tot_high = ratio_val * (tot_highs[i] / num) if num != 0 else 0
-            g_ratio_tot.SetPoint(i, xs[i], ratio_val)
-            g_ratio_tot.SetPointError(i, exs[i], exs[i], ratio_tot_low, ratio_tot_high)
+            # # sys error propagation (asymmetric)
+            # ratio_sys_low = ratio_val * (sys_lows[i] / num) if num != 0 else 0
+            # ratio_sys_high = ratio_val * (sys_highs[i] / num) if num != 0 else 0
+            # g_ratio_sys.SetPoint(i, xs[i], ratio_val)
+            # g_ratio_sys.SetPointError(i, exs[i], exs[i], ratio_sys_low, ratio_sys_high)
+            # # total error propagation (asymmetric)
+            # ratio_tot_low = ratio_val * (tot_lows[i] / num) if num != 0 else 0
+            # ratio_tot_high = ratio_val * (tot_highs[i] / num) if num != 0 else 0
+            # g_ratio_tot.SetPoint(i, xs[i], ratio_val)
+            # g_ratio_tot.SetPointError(i, exs[i], exs[i], ratio_tot_low, ratio_tot_high)
         else:
             g_ratio.SetPoint(i, xs[i], 0)
             g_ratio.SetPointError(i, exs[i], 0)
             g_ratio_sys.SetPoint(i, xs[i], 0)
             g_ratio_sys.SetPointError(i, exs[i], exs[i], 0, 0)
 
-    g_ratio_sys.Draw("E2 SAME")
+    # g_ratio_sys.Draw("E2 SAME")
     g_ratio.Draw("P E1 SAME")
-    g_ratio_tot.Draw("E2 SAME")
+    # g_ratio_tot.Draw("E2 SAME")
 
     # Unity line
-    line = ROOT.TLine(x_min, 1, x_max, 1)
+    line = ROOT.TLine(x_min, 1, 8, 1)
     line.SetLineStyle(7)
     line.SetLineWidth(2)
     line.SetLineColor(ROOT.kBlack)
@@ -323,8 +326,8 @@ def compare_2pc_sp(
     leg_ratio.SetTextFont(42)
     leg_ratio.SetTextSize(0.035)
     leg_ratio.AddEntry(g_ratio, "2pc / SP (stat only)", "lp")
-    leg_ratio.AddEntry(g_ratio_sys, "sys. unc. (ratio scan)", "f")
-    leg_ratio.AddEntry(g_ratio_tot, "total unc.", "f")
+    # leg_ratio.AddEntry(g_ratio_sys, "sys. unc. (ratio scan)", "f")
+    # leg_ratio.AddEntry(g_ratio_tot, "total unc.", "f")
     leg_ratio.Draw()
 
     c_ratio.Update()
@@ -364,7 +367,7 @@ if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser(description="Compare 2pc vs SP with sys uncertainties")
     ap.add_argument("--sys-file", type=str,
-                    default="/home/wuct/ALICE/reps/hf-vn-dev/dev/src/v2_prompt_sys.root",
+                    default="/home/wuct/ALICE/reps/hf-vn-dev/dev/src/v2_prompt_ratio_0d2_1d3.root",
                     help="ROOT file from compute_prompt_v2_unfold_sys.py")
     ap.add_argument("--sys-hname", type=str, default="hV2Prompt",
                     help="Name of central TH1 in sys file")
@@ -378,7 +381,7 @@ if __name__ == "__main__":
     ap.add_argument("--sp-hname", type=str, default="hV2VsPtPrompt",
                     help="Name of sp TH1")
     ap.add_argument("--output-dir", type=str,
-                    default="/home/wuct/MetaData/DATA/OO/apass2/corr/results/fifth/k020_gausPer/etaVariation/comparison/prompt_sys",
+                    default="/home/wuct/MetaData/DATA/OO/apass2/corr/results/fifth/k020_gausPer/etaVariation/comparison/prompt_sys_new_v2hh",
                     help="Output directory for plots")
     ap.add_argument("--suffix", type=str, default="0d2_prompt_sys",
                     help="Suffix for output filenames")
@@ -386,8 +389,8 @@ if __name__ == "__main__":
                     default="2pc prompt 0.2<|#Delta#eta|<1.3 0-20% (r=0.5)")
     ap.add_argument("--legend-sp", type=str,
                     default="Biao sp prompt 0-20%")
-    ap.add_argument("--ymin", type=float, default=-0.01)
-    ap.add_argument("--ymax", type=float, default=0.20)
+    ap.add_argument("--ymin", type=float, default=-0.1)
+    ap.add_argument("--ymax", type=float, default=0.25)
 
     args = ap.parse_args()
 

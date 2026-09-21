@@ -236,7 +236,7 @@ def main():
     # ── Ratio scan ────────────────────────────────────────────────────
     r_vals = []
     import numpy as np
-    r_vals = np.arange(args.r_start, args.r_end, args.r_step)
+    r_vals = np.arange(args.r_start+args.r_step, args.r_end, args.r_step)
     print(r_vals)
 
     print(f"Scanning r = {r_vals[0]:.3f} → {r_vals[-1]:.3f} (step={args.r_step}, N={len(r_vals)})")
@@ -302,8 +302,8 @@ def main():
             sys_lows.append(gm)
             sys_highs.append(gm)
         else:  # asymmetric
-            max_dev = max(max(vals) - central_v2p[ib], 0.0)
-            min_dev = max(central_v2p[ib] - min(vals), 0.0)
+            max_dev = 0.68*max(max(vals) - central_v2p[ib], 0.0)
+            min_dev = 0.68*max(central_v2p[ib] - min(vals), 0.0)
             sys_lows.append(min_dev)
             sys_highs.append(max_dev)
 
@@ -348,6 +348,18 @@ def main():
         x_v2, [0.0] * n_pts, ex_v2, sys_lows, sys_highs
     )
 
+    # Systematic uncertainty — graph form "gSys" (0 +/- syst band)
+    g_sys = g_sys_asym.Clone("gSys")
+    g_sys.Write()
+
+    # Systematic uncertainty — histogram form "hSys" (conservative symmetric, error=0)
+    h_sys = write_th1(
+        fout, "hSys",
+        f"Sys. unc. from ratio scan ({args.sys_method})",
+        x_v2, ex_v2, sys_v2p, [0.0] * n_pts,
+        xtitle="p_{T} (GeV/c)", ytitle="syst. unc."
+    )
+
     # Total uncertainty as TGraphAsymmErrors
     g_tot_asym = write_graph_asymm(
         fout, "gTotUnc",
@@ -367,118 +379,73 @@ def main():
             g.SetPointError(ib, ex_v2[ib], all_ev2p[ib][ir])
         g.Write()
 
-    # ── Draw summary canvas ───────────────────────────────────────────
-    c = ROOT.TCanvas("c_sys", "Systematic uncertainty summary", 1200, 800)
-    c.Divide(2, 2)
+    # ── Draw summary canvases ──────────────────────────────────────────────────
+    fout.cd()  # back to root file (ratio_scan loop left gDirectory inside the subdir)
 
-    # (1) Central v2_prompt with stat errors
-    c.cd(1)
-    h_central.SetMarkerStyle(20)
-    h_central.SetMarkerSize(1.2)
-    h_central.SetLineWidth(2)
-    h_central.GetYaxis().SetRangeUser(
-        max(0.0, min(central_v2p) - 0.02),
-        max(central_v2p) * 1.2
-    )
-    h_central.Draw("E1")
+    # (1) systematic uncertainty vs pT (hSys filled bars)
+    c_sys = ROOT.TCanvas("c_sys", "Systematic uncertainty", 1200, 800)
+    c_sys.SetTopMargin(0.06)
+    c_sys.SetRightMargin(0.06)
+    c_sys.SetBottomMargin(0.14)
+    c_sys.SetLeftMargin(0.14)
+    g_sys.SetFillColorAlpha(ROOT.kOrange + 2, 0.6)
+    g_sys.SetFillStyle(1001)
+    g_sys.SetLineColor(ROOT.kOrange + 2)
+    g_sys.SetMarkerStyle(20)
+    g_sys.SetMarkerColor(ROOT.kOrange + 2)
+    max_sys = max(sys_v2p) if sys_v2p else 0.01
+    g_sys.Draw("A2")
+    g_sys.GetXaxis().SetTitle("p_{T} (GeV/c)")
+    g_sys.GetYaxis().SetTitle("Systematic uncertainty")
     ROOT.gPad.SetGrid()
+    c_sys.Write("c_syst_vs_pT")
+    c_sys.SaveAs(out_file.replace(".root", "_syst_vs_pT.png"))
 
-    # (2) Systematic uncertainty (asymmetric errors)
-    c.cd(2)
-    g_sys_asym_plot = g_sys_asym.Clone()
-    g_sys_asym_plot.SetMarkerStyle(21)
-    g_sys_asym_plot.SetMarkerColor(ROOT.kRed + 1)
-    g_sys_asym_plot.SetLineColor(ROOT.kRed + 1)
-    g_sys_asym_plot.SetLineWidth(2)
-    g_sys_asym_plot.GetYaxis().SetTitle("sys. unc.")
-    g_sys_asym_plot.Draw("AP")
-    ROOT.gPad.SetGrid()
+    # (2) v2 with statistical + systematic uncertainties
+    c_v2 = ROOT.TCanvas("c_v2", "v2 with stat + syst", 1200, 800)
+    c_v2.SetTopMargin(0.06)
+    c_v2.SetRightMargin(0.06)
+    c_v2.SetBottomMargin(0.14)
+    c_v2.SetLeftMargin(0.14)
 
-    # (3) Total & stat & sys comparison
-    c.cd(3)
-    frame = ROOT.gPad.DrawFrame(
-        min(x_v2) - 1, 0,
-        max(x_v2) + 1, max(tot_unc_conservative) * 1.3
-    )
-    frame.GetXaxis().SetTitle("p_{T} (GeV/c)")
-    frame.GetYaxis().SetTitle("uncertainty")
-
-    g_stat = ROOT.TGraphErrors(n_pts)
-    g_stat.SetName("gStat")
-    g_stat.SetLineColor(ROOT.kBlue + 1)
-    g_stat.SetLineWidth(2)
-    g_stat.SetMarkerColor(ROOT.kBlue + 1)
-    g_stat.SetMarkerStyle(20)
+    band = ROOT.TGraphAsymmErrors(n_pts)
+    band.SetName("band_syst")
     for ib in range(n_pts):
-        g_stat.SetPoint(ib, x_v2[ib], central_ev2p[ib])
-        g_stat.SetPointError(ib, 0, 0)
-    g_stat.Draw("LP SAME")
+        band.SetPoint(ib, x_v2[ib], central_v2p[ib])
+        band.SetPointError(ib, ex_v2[ib], ex_v2[ib], sys_lows[ib]/0.68, sys_highs[ib]/0.68)
+    band.SetFillColorAlpha(ROOT.kOrange + 2, 0.35)
+    band.SetFillStyle(1001)
+    band.SetLineWidth(0)
+    band.SetTitle(";#it{p}_{T} (GeV/#it{c});#it{v}_{2}^{prompt}")
+    band.SetMinimum(-0.02)
+    band.SetMaximum(0.18)
+    band.Draw("A2")
 
-    g_sys_line = ROOT.TGraphErrors(n_pts)
-    g_sys_line.SetName("gSysLine")
-    g_sys_line.SetLineColor(ROOT.kRed + 1)
-    g_sys_line.SetLineWidth(2)
-    g_sys_line.SetMarkerColor(ROOT.kRed + 1)
-    g_sys_line.SetMarkerStyle(21)
+    g_cent = ROOT.TGraphErrors(n_pts)
+    g_cent.SetName("gV2Prompt_plot")
     for ib in range(n_pts):
-        g_sys_line.SetPoint(ib, x_v2[ib], sys_v2p[ib])
-        g_sys_line.SetPointError(ib, 0, 0)
-    g_sys_line.Draw("LP SAME")
+        g_cent.SetPoint(ib, x_v2[ib], central_v2p[ib])
+        g_cent.SetPointError(ib, ex_v2[ib], central_ev2p[ib])
+    g_cent.SetMarkerStyle(20)
+    g_cent.SetMarkerSize(1.2)
+    g_cent.SetMarkerColor(ROOT.kBlack)
+    g_cent.SetLineColor(ROOT.kBlack)
+    g_cent.SetLineWidth(2)
+    g_cent.Draw("P E1 same")
 
-    g_tot_line = ROOT.TGraphErrors(n_pts)
-    g_tot_line.SetName("gTotLine")
-    g_tot_line.SetLineColor(ROOT.kBlack)
-    g_tot_line.SetLineWidth(3)
-    g_tot_line.SetMarkerColor(ROOT.kBlack)
-    g_tot_line.SetMarkerStyle(22)
-    for ib in range(n_pts):
-        g_tot_line.SetPoint(ib, x_v2[ib], tot_unc_conservative[ib])
-        g_tot_line.SetPointError(ib, 0, 0)
-    g_tot_line.Draw("LP SAME")
-
-    leg = ROOT.TLegend(0.65, 0.7, 0.88, 0.88)
+    leg = ROOT.TLegend(0.2, 0.72, 0.5, 0.9)
     leg.SetBorderSize(0)
     leg.SetFillStyle(0)
-    leg.AddEntry(g_stat, "stat (r=0.5)", "lp")
-    leg.AddEntry(g_sys_line, f"sys ({args.sys_method})", "lp")
-    leg.AddEntry(g_tot_line, "total", "lp")
+    leg.AddEntry(g_cent, "central (stat. unc.)", "lep")
+    leg.AddEntry(band, f"Possible value range", "f")
     leg.Draw()
-
     ROOT.gPad.SetGrid()
+    c_v2.Write("c_v2_stat_syst")
+    c_v2.SaveAs(out_file.replace(".root", "_v2_stat_syst.png"))
 
-    # (4) Central v2 with ratio scan envelope band (always full range)
-    c.cd(4)
-    frame2 = ROOT.gPad.DrawFrame(
-        min(x_v2) - 1, max(0.0, min(central_v2p) - max(scan_lows) - 0.03),
-        max(x_v2) + 1, max(central_v2p) + max(scan_highs) + 0.03
-    )
-    frame2.GetXaxis().SetTitle("p_{T} (GeV/c)")
-    frame2.GetYaxis().SetTitle("v_{2}^{prompt}")
-
-    # Continuous band: upper edge L→R, lower edge R→L, fill polygon
-    band_tot = ROOT.TGraph(2 * n_pts)
-    band_tot.SetName("band_ratio_scan")
-    for ib in range(n_pts):
-        band_tot.SetPoint(ib, x_v2[ib], central_v2p[ib] + scan_highs[ib])
-    for ib in range(n_pts):
-        band_tot.SetPoint(2 * n_pts - 1 - ib, x_v2[ib], central_v2p[ib] - scan_lows[ib])
-    band_tot.SetFillColorAlpha(ROOT.kCyan - 7, 0.35)
-    band_tot.SetLineWidth(0)
-    band_tot.Draw("F SAME")
-
-    # central points with stat errors
-    h_central_2 = h_central.Clone()
-    h_central_2.SetMarkerStyle(20)
-    h_central_2.SetMarkerSize(1.2)
-    h_central_2.SetLineWidth(2)
-    h_central_2.Draw("E1 SAME")
-
-    ROOT.gPad.SetGrid()
-
-    c.Write("c_sys_summary")
-    c.SaveAs(out_file.replace(".root", "_summary.png"))
     print(f"\n[OK] Output written to {out_file}")
-    print(f"[OK] Summary PNG: {out_file.replace('.root', '_summary.png')}")
+    print(f"[OK] Summary PNG: {out_file.replace('.root', '_syst_vs_pT.png')}")
+    print(f"[OK] Summary PNG: {out_file.replace('.root', '_v2_stat_syst.png')}")
 
     fv2.Close()
     ffrac.Close()

@@ -81,7 +81,7 @@ def write_graph(out_file, name, title, xs, ys, exs, eys):
     binning = ROOT.TArrayD(len(xs) + 1)
     for i in range(len(xs)):
         binning[i] = xs[i] - exs[i]
-    # binning[len(xs)] = xs[-1] + exs[-1]
+    binning[len(xs)] = xs[-1] + exs[-1]
     h = ROOT.TH1F("h", "h", len(xs), binning.GetArray())
     h.SetDirectory(0)
     h.GetXaxis().SetTitle("p_{T} (GeV/c)")
@@ -134,6 +134,8 @@ def v2prompt_fixedFD(v2obs, ev2obs, fp, efp, ffd, effd, v2fd, sv2fd=0.0, min_fp=
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("config", help="YAML config file")
+    ap.add_argument("final_results_file", help="Optional final results file from DeltaPhiBinning method", nargs="?")
+    ap.add_argument("--outpath", help="Optional output path for the results", default=None)
     args = ap.parse_args()
 
     with open(args.config, "r") as f:
@@ -143,9 +145,14 @@ def main():
 
     frac_file = yget(cfg, "input.fractions.file", required=True)
     v2_file   = yget(cfg, "input.v2obs.file", required=True)
+    final_results_file = args.final_results_file
+    v2_file  = final_results_file if final_results_file else v2_file
     v2_name   = yget(cfg, "input.v2obs.object", required=True)
 
     out_file  = yget(cfg, "output.file", "v2_prompt.root")
+    if args.outpath:
+        import os
+        out_file = os.path.join(args.outpath, os.path.basename(out_file))
     out_name  = yget(cfg, "output.object", "gV2Prompt")
     out_title = yget(cfg, "output.title", "v2^{prompt}")
 

@@ -452,7 +452,7 @@ def fit_correl(cfg_path):
                     #             print(f"    LM template from: {alt_path}")
                     #         else:
                     #             print(f"    [WARNING] LM template not found: {alt_path}")
-                    use_template = h_corr_lm is not None
+                use_template = h_corr_lm is not None
 
                 # ---- Read ry_trigger --------------------------------------
                 ry_val = 1.0
@@ -634,6 +634,19 @@ def fit_correl(cfg_path):
                     c_par_g.Update()
                     c_par_g.SaveAs(os.path.join(out_png_dir, f"{h_par_g_name}.png"))
                     c_par_g.Close(); del c_par_g
+                    
+                    # ---- save chi2/NDF value to a histogram ----
+                    h_chi2_name = (f"hChi2NDF_PtCand{i_pt_cand + 1}_"
+                                   f"PtHad{i_pt_had + 1}_"
+                                   f"InvMassBin{mass_idx_label}")
+                    h_chi2 = ROOT.TH1D(h_chi2_name,
+                                       f"Chi2/NDF (type={fit_functions[i_pt_cand]});"
+                                       f"Chi2/NDF;Value",
+                                       1, 0.5, 1.5)
+                    h_chi2.SetDirectory(ROOT.nullptr)
+                    h_chi2.SetBinContent(1, f_fit.GetChisquare() / f_fit.GetNDF())
+                    h_chi2.SetBinError(1, 0.0)
+                    par_global_histos[(i_pt_had, mass_idx_label, i_pt_cand, "chi2")] = h_chi2
 
                     # ---- Global fit covariance TH2D ----
                     cov_g_name = (f"hCovMatrix_PtCand{i_pt_cand + 1}_"
@@ -672,8 +685,21 @@ def fit_correl(cfg_path):
                 # ---- Save LM template fit parameters and covariance -------
                 # ============================================================
                 f_lm = corr_fitter.GetLMTemplateFunc()
+                lm_func_clean = None
                 if f_lm:
                     npar_lm = corr_fitter.GetLMTemplateNFitParams()
+
+                    # ---- Clean copy of the LM fit function (for the output ROOT file) ----
+                    # The TF1 that gets drawn on the cLMTemplate canvas is corrupted on
+                    # read-back (TFormula substitutes parameter names into its expression
+                    # when the function is painted -> parameter names/index mapping break).
+                    # Keep a copy of the *undrawn* function here and write it as a top-level
+                    # key into the hLMtemplate ROOT file, so downstream code can safely
+                    # reload it.  Do NOT rebuild it from GetExpFormula(): that string is
+                    # already name-substituted and loses the parameter mapping.
+                    lm_func_clean = ROOT.TF1(f_lm)   # copy: formula + values + errors
+                    lm_func_clean.SetName("fLMTemplateFunc")
+                    lm_func_clean.SetRange(f_lm.GetXmin(), f_lm.GetXmax())
 
                     # ---- TH1D for LM template fit parameter values ----
                     h_par_lm_name = (f"hLMParValues_PtCand{i_pt_cand + 1}_"
@@ -767,13 +793,17 @@ def fit_correl(cfg_path):
                 canvas.SaveAs(root_canvas_path)
                 canvas.Close()
 
-                # ---- Append global fit cov TH2D + par TH1D to canvas ROOT file ----
+                # ---- Append global fit cov TH2D + par TH1D + chi2/NDF TH1D to canvas ROOT file ----
                 cov_g_key = (i_pt_had, mass_idx_label, i_pt_cand)
-                if cov_g_key in cov_global_histos or cov_g_key in par_global_histos:
+                chi2_g_key = (i_pt_had, mass_idx_label, i_pt_cand, "chi2")
+                if (cov_g_key in cov_global_histos or cov_g_key in par_global_histos
+                        or chi2_g_key in par_global_histos):
                     f_cov_update = ROOT.TFile(root_canvas_path, "UPDATE")
                     f_cov_update.cd()
                     if cov_g_key in par_global_histos:
                         par_global_histos[cov_g_key].Write()
+                    if chi2_g_key in par_global_histos:
+                        par_global_histos[chi2_g_key].Write()
                     if cov_g_key in cov_global_histos:
                         cov_global_histos[cov_g_key].Write()
                     f_cov_update.Close()
@@ -864,6 +894,18 @@ def fit_correl(cfg_path):
                                     cov_lm_histos[cov_lm_key].Write()
                                 f_lm_update.Close()
                                 del f_lm_update
+
+                            # ---- Append the clean LM fit function (top-level TF1 key) ----
+                            # Reloadable via TFile::Get("fLMTemplateFunc"): parameters keep
+                            # their names/values/errors (unlike the one stored in the canvas).
+                            if lm_func_clean is not None:
+                                f_lm_func_update = ROOT.TFile(lm_root_path, "UPDATE")
+                                f_lm_func_update.cd()
+                                lm_func_clean.Write()
+                                f_lm_func_update.Close()
+                                del f_lm_func_update
+                                print(f"      Saved clean LM fit function TF1: "
+                                      f"{lm_func_clean.GetName()} (npar={lm_func_clean.GetNpar()})")
 
                             c_lm.Close()
                             ROOT.SetOwnership(c_lm, False)

@@ -24,6 +24,10 @@
 #include <TMatrixD.h>
 #include <RtypesCore.h>
 
+#include "Fit/Fitter.h"
+#include "Fit/Chi2FCN.h"
+#include "Math/WrappedMultiTF1.h"
+
 #include <cstdio>
 
 class DhCorrelationFitter
@@ -39,7 +43,8 @@ class DhCorrelationFitter
                       kTwoGausPeriodicityPlusV2modulation = 7,
                       kV2DeltaModulationLowMult = 8,
                       kV2DeltaModulationHighMult = 9,
-                      kTemplateFit = 10};
+                      kTemplateFit = 10,
+                      kSimultaneousFit = 11};
 
   /// Constructors
   DhCorrelationFitter();
@@ -97,6 +102,9 @@ class DhCorrelationFitter
   Double_t FindBaseline();
   void intepolateTemp();
   void BuildLMOutput();
+  void SimultaneousFit();
+  Double_t LMFitFunction(Double_t* x, Double_t* par);
+  Double_t HMFitFunction(Double_t* x, Double_t* par);
 
   /// Getters
   Double_t GetNSSigma() { return fFit->GetParameter("NS #sigma"); } // TODO: case kConstThreeGausPeriodicity
@@ -144,6 +152,14 @@ class DhCorrelationFitter
   /// LM template fit covariance matrix accessors
   Int_t GetLMTemplateNFitParams() const { return fTemplateFunc ? fTemplateFunc->GetNpar() : 0; }
   Double_t GetLMTemplateCovMatrixElement(Int_t i, Int_t j) const;
+
+  /// struct for global chi2 (simultaneous LM + HM fit)
+  struct GlobalChi2 {
+    GlobalChi2(ROOT::Math::IMultiGenFunction& f1, ROOT::Math::IMultiGenFunction& f2) : fChi2_1(&f1), fChi2_2(&f2) {}
+    double operator()(const double* par) const { return (*fChi2_1)(par) + (*fChi2_2)(par); }
+    const ROOT::Math::IMultiGenFunction* fChi2_1;
+    const ROOT::Math::IMultiGenFunction* fChi2_2;
+  };
 
  private:
   TH1F* fHist; // 1D azimuthal correlation histogram
