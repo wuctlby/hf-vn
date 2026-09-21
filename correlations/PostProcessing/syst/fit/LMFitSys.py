@@ -94,13 +94,14 @@ _GAUS_PER_FORMULA = (
 )
 
 # von Mises template, both peak positions fixed at 0 and pi (tempFunc = 5).
-# par: 0 = baseline, 1 = NS yield, 2 = NS kappa, 3 = AS yield, 4 = AS kappa
+# par: 0 = baseline, 1 = NS peak height, 2 = NS kappa, 3 = AS peak height, 4 = AS kappa
+# Heights, not areas: h is the peak value above the baseline. The area form would be
+# amplitude/(2*pi*I0(kappa))*exp(kappa*cos x) with amplitude = h*2*pi*I0(kappa)/e^kappa,
+# which lets a broad component grow to an enormous unphysical yield.
 _VONMISES_FORMULA = (
     "[0]"
-    "+[1]/(2*TMath::Pi()*TMath::BesselI0([2]))"
-    "*TMath::Exp([2]*TMath::Cos(x))"
-    "+[3]/(2*TMath::Pi()*TMath::BesselI0([4]))"
-    "*TMath::Exp([4]*TMath::Cos(x-TMath::Pi()))"
+    "+[1]*TMath::Exp([2]*(TMath::Cos(x)-1))"
+    "+[3]*TMath::Exp([4]*(TMath::Cos(x-TMath::Pi())-1))"
 )
 
 def _hsv_to_rgb(h, s, v):
@@ -139,7 +140,7 @@ def get_custom_palette(name="rainbow", n_colors=100):
 def build_lm_tf1(par, name="fLMTemplate"):
     # TEMP_FUNC = 4 : GausPeriodic  (par: ped, A_NS, sigma_NS, A_AS, sigma_AS)
     # TEMP_FUNC = 5 : von Mises, peaks fixed at 0 and pi
-    #                 (par: ped, Y_NS, kappa_NS, Y_AS, kappa_AS)
+    #                 (par: ped, h_NS, kappa_NS, h_AS, kappa_AS)
     formula = _VONMISES_FORMULA if TEMP_FUNC == 5 else _GAUS_PER_FORMULA
     func = ROOT.TF1(name, formula, F_MIN, F_MAX)
     for i in range(5):
@@ -461,10 +462,10 @@ def run_systematics(n_samples=100, load_from_exist=False, pt_only=0):
             for isamp in range(n_samples):
                 par = samples[isamp]
                 # check the sampled template parameters:
-                # tempFunc=4 -> par[2], par[4] are Gaussian widths; tempFunc=5 -> von Mises kappas
+                # tempFunc=4 -> par[1]/par[3] amplitudes, par[2]/par[4] Gaussian widths
+                # tempFunc=5 -> par[1]/par[3] peak heights, par[2]/par[4] von Mises kappas
                 if par[1] <= 0 or par[3] <= 0: continue
                 if TEMP_FUNC == 5:
-                    if par[2] <= 0 or par[4] <= 0: continue
                     # kappa is a concentration, not a width: below ~0.5 the component becomes an
                     # almost flat pedestal that is degenerate with the baseline (the fit is bounded
                     # at kappa >= 1, but the sampled errors can still push it down there)
