@@ -81,6 +81,9 @@ class DhCorrelationFitter
   void SetLMTemplate(TH1D* tempHisto) { fTempHisto = tempHisto; }
   void SetLMTemplateFunction(TF1* func);
   void SetLMTemplateParams(Int_t npar, Double_t* params);
+  /// LM template function type (see BuildLMOutput):
+  ///   0 = raw histogram, 1 = raw + spline, 2 = smooth + spline,
+  ///   3 = Gaus, 4 = GausPeriodic (default), 5 = von Mises (peaks fixed at 0 and pi)
   void SetTempFunc(Int_t tempFunc) { fTempFunc = tempFunc; }
   void SetLMPairs(Double_t pairs) { fPairsPerMassBin = pairs; }
   void SetRyTrigger(Double_t val, Double_t err) { fRyTrigger = val; fRyTriggerErr = err; }

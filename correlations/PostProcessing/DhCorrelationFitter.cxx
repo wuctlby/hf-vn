@@ -1123,7 +1123,76 @@ void DhCorrelationFitter::BuildLMOutput()
     fBaseline = fTemplateFunc->GetParameter(0);
     fErrBaseline = 0.0;
     printf("[INFO] BuildLMOutput: Fitted GausPeriodic LM template (tempFunc=4) baseline=%.6f\n", fBaseline);
+  } else if (fTempFunc == 5) {
+    // --- Fit VonMises (both peak positions fixed at 0 and pi) to LM template ----
+    // par: 0 = baseline, 1 = NS yield, 2 = NS kappa, 3 = AS yield, 4 = AS kappa
+    TVirtualFitter::SetMaxIterations(50000);
+    Double_t minVal = fTempHisto->GetMinimum();
+    Double_t maxVal = fTempHisto->GetMaximum();
+    // Remove stale TF1 with same name to avoid TFormula streamer mismatch
+    if (gROOT->GetListOfFunctions()->FindObject("fVonMisesFit")) {
+      delete gROOT->GetListOfFunctions()->Remove(gROOT->GetListOfFunctions()->FindObject("fVonMisesFit"));
     }
+    if (gROOT->GetListOfFunctions()->FindObject("fLMTemplateFunc")) {
+      delete gROOT->GetListOfFunctions()->Remove(gROOT->GetListOfFunctions()->FindObject("fLMTemplateFunc"));
+    }
+    TF1* fVonMisesFit = new TF1("fVonMisesFit",
+      "[0]+[1]/(2*TMath::Pi()*TMath::BesselI0([2]))*TMath::Exp([2]*TMath::Cos(x))+[3]/(2*TMath::Pi()*TMath::BesselI0([4]))*TMath::Exp([4]*TMath::Cos(x-TMath::Pi()))",
+      fMinCorr, fMaxCorr);
+
+    if (fUseExternalLMTmpl) {
+      // fTemplateFunc not set — build from fExternalLMPars
+      for (int i = 0; i < 5; i++) {
+        fVonMisesFit->SetParameter(i, fExternalLMPars[i]);
+      }
+      fVonMisesFit->SetName("fLMTemplateFunc");    // rename to avoid Clone+Streamer mismatch
+      fTemplateFunc = fVonMisesFit;                 // transfer ownership directly
+      fTemplateFunc->SetRange(fMinCorr, fMaxCorr);
+      fBaseline = fExternalLMPars[0];
+      fErrBaseline = 0.0;
+      printf("[INFO] BuildLMOutput: External von Mises params fixed baseline=%.6f\n", fBaseline);
+      return;
+    }
+    // starting values: the yields are NOT the peak heights for a von Mises
+    // (peak height = Y*kappa/(2*pi*I0(kappa))), so start from the observed peak height
+    // assuming kappa = 2 and let the fit move from there
+    Double_t peakHeight = maxVal - minVal;
+    Double_t kappaStart = 2.;
+    Double_t yieldStart = peakHeight * 2. * TMath::Pi() * TMath::BesselI0(kappaStart) / kappaStart;
+    fVonMisesFit->SetParameter(0, minVal);
+    fVonMisesFit->SetParLimits(0, 0, maxVal*2);
+    fVonMisesFit->SetParameter(1, yieldStart);
+    fVonMisesFit->SetParLimits(1, 0.01, 1000.*peakHeight);
+    fVonMisesFit->SetParameter(2, kappaStart);
+    fVonMisesFit->SetParLimits(2, 0.1, 30.);
+    fVonMisesFit->SetParameter(3, yieldStart);
+    fVonMisesFit->SetParLimits(3, 0.01, 1000.*peakHeight);
+    fVonMisesFit->SetParameter(4, kappaStart);
+    fVonMisesFit->SetParLimits(4, 0.1, 30.);
+    //  set parameters name
+    fVonMisesFit->SetParName(0, "Baseline");
+    fVonMisesFit->SetParName(1, "Amplitude NS");
+    fVonMisesFit->SetParName(2, "Kappa NS");
+    fVonMisesFit->SetParName(3, "Amplitude AS");
+    fVonMisesFit->SetParName(4, "Kappa AS");
+
+    // Store LM template fit covariance matrix
+    TFitResultPtr lmFitPtr = fTempHisto->Fit(fVonMisesFit, "RIS", "", fMinCorr, fMaxCorr);
+    if (lmFitPtr.Get() != nullptr) {
+      fLMCovMatrix.ResizeTo(lmFitPtr->GetCovarianceMatrix().GetNrows(),
+                            lmFitPtr->GetCovarianceMatrix().GetNcols());
+      fLMCovMatrix = lmFitPtr->GetCovarianceMatrix();
+    }
+
+    fTempHisto->GetListOfFunctions()->Remove(fVonMisesFit);  // detach from histogram, avoid Clone+Streamer
+    fVonMisesFit->SetName("fLMTemplateFunc");
+    fTemplateFunc = fVonMisesFit;  // transfer ownership
+    fTemplateFunc->SetRange(fMinCorr, fMaxCorr);
+    // using the fit parameter 0 as the baseline value (the constant term of the function)
+    fBaseline = fTemplateFunc->GetParameter(0);
+    fErrBaseline = 0.0;
+    printf("[INFO] BuildLMOutput: Fitted von Mises LM template (tempFunc=5) baseline=%.6f\n", fBaseline);
+  }
 
 
   // ---- Build fLMOutput (clone of original template data for drawing) ----
@@ -1214,6 +1283,29 @@ void DhCorrelationFitter::BuildLMOutput()
     fAway->SetLineWidth(2);
     fAway->SetLineStyle(9);
     fLMOutput->GetListOfFunctions()->Add(fAway);
+  } else if (fTempFunc == 5 && fTemplateFunc) {
+    // VonMises (peaks fixed at 0 and pi): near = BL + Y_N/(2pi*I0(k_N))*exp(k_N*cos(x))
+    TF1* fNear = new TF1("fNearVonMises",
+      "[0]+[1]/(2*TMath::Pi()*TMath::BesselI0([2]))*TMath::Exp([2]*TMath::Cos(x))",
+      fMinCorr, fMaxCorr);
+    fNear->SetParameters(fTemplateFunc->GetParameter(0),
+                         fTemplateFunc->GetParameter(1),
+                         fTemplateFunc->GetParameter(2));
+    fNear->SetLineColor(kAzure+2);
+    fNear->SetLineWidth(2);
+    fNear->SetLineStyle(9);
+    fLMOutput->GetListOfFunctions()->Add(fNear);
+
+    TF1* fAway = new TF1("fAwayVonMises",
+      "[0]+[1]/(2*TMath::Pi()*TMath::BesselI0([2]))*TMath::Exp([2]*TMath::Cos(x-TMath::Pi()))",
+      fMinCorr, fMaxCorr);
+    fAway->SetParameters(fTemplateFunc->GetParameter(0),
+                         fTemplateFunc->GetParameter(3),
+                         fTemplateFunc->GetParameter(4));
+    fAway->SetLineColor(kGreen+2);
+    fAway->SetLineWidth(2);
+    fAway->SetLineStyle(9);
+    fLMOutput->GetListOfFunctions()->Add(fAway);
   }
   printf("[INFO] DhCorrelationFitter: BuildLMOutput completed for tempFunc=%d\n", fTempFunc);
 }
@@ -1229,8 +1321,8 @@ Double_t DhCorrelationFitter::TemplateFitFunction(Double_t* x, Double_t* par)
     // Spline interpolation
     if (!fSpline) return 0.0;
     templateVal = fSpline->Eval(x[0]);
-  } else if (fTempFunc == 3 || fTempFunc == 4) {
-    // Gaus/GausPeriodic function evaluation
+  } else if (fTempFunc == 3 || fTempFunc == 4 || fTempFunc == 5) {
+    // Gaus/GausPeriodic/VonMises function evaluation
     if (!fTemplateFunc) return 0.0;
     templateVal = fTemplateFunc->Eval(x[0]);
   }
@@ -1252,7 +1344,7 @@ Double_t DhCorrelationFitter::TemplateFitFunctionWPed(Double_t* x, Double_t* par
   } else if (fTempFunc == 1 || fTempFunc == 2) {
     if (!fSpline) return 0.0;
     templateVal = fSpline->Eval(x[0]);
-  } else if (fTempFunc == 3 || fTempFunc == 4) {
+  } else if (fTempFunc == 3 || fTempFunc == 4 || fTempFunc == 5) {
     if (!fTemplateFunc) return 0.0;
     templateVal = fTemplateFunc->Eval(x[0]);
   }

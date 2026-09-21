@@ -106,7 +106,7 @@ fitConfig:
     FitFunction: '10'
     WithPedLM: false # if true, include pedestal in the LM template fit
     FixLMFactor: true # if true, fix the LM factor
-    tempFunc: 4 # LM template type: 0=raw histogram, 1=raw+spline, 2=smooth+spline, 3=Gaus, 4=GausPeriodic
+    tempFunc: 4 # LM template type: 0=raw histogram, 1=raw+spline, 2=smooth+spline, 3=Gaus, 4=GausPeriodic, 5=vonMises (peaks fixed at 0 / pi)
     FixBaseline: -4
     # "0 : baseline free, = 1 : fix the baseline to the minimum of the histogram, < 0 : fix the baseline to the weighted average of the abs(fFixBaseline) lower points, = 3 : fix the baseline to the weighted average of the points passed through the function SetPointsForBaseline(), 4 : fix the baseline to the weighted average of default transverse region points
     FixMean: 0

@@ -64,7 +64,7 @@ MASS_RANGE = [[1.72, 2.02], [1.72, 2.02], # pt 2
             [1.72, 2.04], # pt 10
             [1.72, 2.04] # pt 10
 ]
-TEMP_FUNC = 4  # GausPeriodic
+TEMP_FUNC = 4  # 4: GausPeriodic (default), 5: von Mises with peaks fixed at 0 / pi
 FIX_LM_FACTOR = True
 WITH_PED_LM = False
 FIX_BASELINE = -4
@@ -91,6 +91,16 @@ _GAUS_PER_FORMULA = (
     "*TMath::Exp(-(x-3*TMath::Pi())*(x-3*TMath::Pi())/(2*[4]*[4]))"
     "+[3]/(TMath::Sqrt(2*TMath::Pi())*[4])"
     "*TMath::Exp(-(x+TMath::Pi())*(x+TMath::Pi())/(2*[4]*[4]))"
+)
+
+# von Mises template, both peak positions fixed at 0 and pi (tempFunc = 5).
+# par: 0 = baseline, 1 = NS yield, 2 = NS kappa, 3 = AS yield, 4 = AS kappa
+_VONMISES_FORMULA = (
+    "[0]"
+    "+[1]/(2*TMath::Pi()*TMath::BesselI0([2]))"
+    "*TMath::Exp([2]*TMath::Cos(x))"
+    "+[3]/(2*TMath::Pi()*TMath::BesselI0([4]))"
+    "*TMath::Exp([4]*TMath::Cos(x-TMath::Pi()))"
 )
 
 def _hsv_to_rgb(h, s, v):
@@ -127,7 +137,11 @@ def get_custom_palette(name="rainbow", n_colors=100):
     return colors
 
 def build_lm_tf1(par, name="fLMTemplate"):
-    func = ROOT.TF1(name, _GAUS_PER_FORMULA, F_MIN, F_MAX)
+    # TEMP_FUNC = 4 : GausPeriodic  (par: ped, A_NS, sigma_NS, A_AS, sigma_AS)
+    # TEMP_FUNC = 5 : von Mises, peaks fixed at 0 and pi
+    #                 (par: ped, Y_NS, kappa_NS, Y_AS, kappa_AS)
+    formula = _VONMISES_FORMULA if TEMP_FUNC == 5 else _GAUS_PER_FORMULA
+    func = ROOT.TF1(name, formula, F_MIN, F_MAX)
     for i in range(5):
         func.SetParameter(i, par[i])
     func.SetNpx(3 * 100)
@@ -446,7 +460,12 @@ def run_systematics(n_samples=100, load_from_exist=False, pt_only=0):
         with alive_bar(n_samples, title=f"Fitting PtCand {pt_cand_idx} trials") as bar:
             for isamp in range(n_samples):
                 par = samples[isamp]
-                if par[2] <= 0.05 or par[4] <= 0.05 or par[1] <= 0 or par[3] <= 0: continue
+                # check the sampled template parameters:
+                # tempFunc=4 -> par[2], par[4] are Gaussian widths; tempFunc=5 -> von Mises kappas
+                if par[1] <= 0 or par[3] <= 0: continue
+                if TEMP_FUNC == 5:
+                    if par[2] <= 0 or par[4] <= 0: continue
+                elif par[2] <= 0.05 or par[4] <= 0.05: continue
                 v2, _, c_var, fitter_var = fit_with_lm_template(
                     h_data, par, ry_val=ry_val, ry_err=ry_err, lm_ry_val=lm_ry_val, lm_ry_err=lm_ry_err, tag=f"s{isamp}"
                 )
