@@ -37,7 +37,7 @@ _lm_color_cache = {}
 
 # ── Compile DhCorrelationFitter ────────────────────────────────────────
 ROOT.gSystem.AddIncludePath("-I/home/wuct/Software/miniforge3/envs/alice/include")
-_fitter_cxx = os.path.join(os.path.dirname(__file__), "DhCorrelationFitter.cxx")
+_fitter_cxx = os.path.join(os.path.dirname(__file__), "..", "..", "DhCorrelationFitter.cxx")
 ROOT.gSystem.CompileMacro(_fitter_cxx, "kO+")  # force recompile with ACLiC
 from ROOT import DhCorrelationFitter
 
