@@ -18,9 +18,26 @@ from alive_progress import alive_bar
 from scipy.interpolate import make_interp_spline
 sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/../utils")
 from data_model import get_pt_preprocessed_sparses
-from utils import reweight_histo_1D, reweight_histo_2D, reweight_histo_3D, get_vn_versus_mass, profile_mass_sp, make_dir_root_file, logger, get_centrality_bins
+from utils import reweight_histo_1D, reweight_histo_2D, reweight_histo_3D, get_vn_versus_mass, profile_mass_sp, make_dir_root_file, logger, get_centrality_bins, get_ese_band_label
 
 ROOT.TH1.AddDirectory(False)
+
+TITLE_TO_NAME = {
+    'Inv. mass (GeV/#it{c}^{2})': 'Mass',
+    '#it{p}_{T} (GeV/#it{c})':    'Pt',
+    'Centrality':                 'Cent',
+    'SP':                         'Sp',
+    'Bkg score':                  'ScoreBkg',
+    'FD score':                   'ScoreFD',
+    'Reduced Q-vector':           'Qvec',
+}
+
+def build_axis_idx(sparse):
+    idx = {}
+    for i in range(sparse.GetNdimensions()):
+        title = sparse.GetAxis(i).GetTitle()
+        idx[TITLE_TO_NAME.get(title, title)] = i
+    return idx
 
 def proj_multitrial(config, multitrial_folder, workers, resolution):
 
@@ -28,7 +45,7 @@ def proj_multitrial(config, multitrial_folder, workers, resolution):
     logger(f"Processing multitrial projections for pt bin {pt_bin_label} ...", level='INFO')
 
     # Load default cutsets
-    cutset_dir = f"{config['outdir']}/cutvar_{config['suffix']}_combined/cutsets"
+    cutset_dir = f"{config['outdir']}/vn_extr_{config['suffix']}_combined/cutsets"
     default_cutsets = [f"{cutset_dir}/{f}" for f in os.listdir(cutset_dir) if f.endswith('.yml')]
     # Load Mass and MassSp histos from the default cases
     default_histos = {}
@@ -40,45 +57,74 @@ def proj_multitrial(config, multitrial_folder, workers, resolution):
         default_histos[suffix]['MassSp'] = default_proj.Get(f"{pt_bin_label}/hMassSpData")
         default_proj.Close()
 
-    def process_cutset(multitrial_dir, default_histos):
+    def process_cutset(multitrial_dir, default_cutsets, pt_bin_label, resolution):
         trial_number = Path(multitrial_dir).name.replace("trial_", "")
-        try:
-            with open(f"{multitrial_dir}/config_trial_{trial_number}.yml", 'r') as ymlCutSetFile:
-                config_trial = yaml.safe_load(ymlCutSetFile)
-        except Exception as e:
-            logger(f"Error opening or reading config file for trial {trial_number}: {e}", level='ERROR')
-            return
 
-        for suffix, histo in default_histos.items():
+        with open(f"{multitrial_dir}/config_trial_{trial_number}.yml") as f:
+            config_trial = yaml.safe_load(f)
+        for i_cutset, default_cutset in enumerate(default_cutsets):
+            suffix = Path(default_cutset).stem.replace("cutset_", "")
+            default_proj = TFile.Open(default_cutset.replace(".yml",".root").replace("cutset","proj"))
+
+            hMass = default_proj.Get(f"{pt_bin_label}/hMassData")
+            hMass.SetDirectory(0)
+            hMassSp = default_proj.Get(f"{pt_bin_label}/hMassSpData")
+            hMassSp.SetDirectory(0)
+
             output_dir = f"{multitrial_dir}/projs"
             os.makedirs(output_dir, exist_ok=True)
-            output_path = f"{output_dir}/proj_{suffix}.root"
-            output_file = TFile.Open(output_path, "RECREATE")
+
+            output_file = TFile.Open(f"{output_dir}/proj_{suffix}.root","RECREATE")
             output_file.mkdir(pt_bin_label)
             output_file.cd(pt_bin_label)
-            default_histos[suffix]['Mass'].Write("hMassData")
-            hist_vn_vs_mass = profile_mass_sp(default_histos[suffix]['MassSp'], config_trial['projections']['inv_mass_bins'][0], resolution)
+
+            hMass.Write("hMassData")
+            hist_vn_vs_mass = profile_mass_sp(
+                hMassSp,
+                config_trial['projections']['VnVsMassBins'][0],
+                resolution
+            )
             hist_vn_vs_mass.Write("hVnVsMassData")
+
             output_file.Close()
+            default_proj.Close()
+
+            del hMass, hMassSp, hist_vn_vs_mass
 
         logger(f"[{trial_number}] Completed projections!", level='INFO')
 
     # Parallel execution
-    multitrial_dirs = [f for f in glob.glob(f"{multitrial_folder}/trials/*") if os.path.isdir(f)]
+    multitrial_dirs = [
+        d for d in glob.glob(f"{multitrial_folder}/trials/*")
+        if os.path.isdir(d) and glob.glob(f"{d}/config_trial_*.yml")
+    ]
+    # Sort by trial number
+    multitrial_dirs.sort(key=lambda x: int(Path(x).name.replace("trial_", "")))
+    print(f"Found {len(multitrial_dirs)} multitrial directories in {multitrial_folder}/trials/")
     with ThreadPoolExecutor(max_workers=workers) as executor:
-        executor.map(partial(process_cutset, default_histos=default_histos), multitrial_dirs)
+        executor.map(
+            partial(
+                process_cutset,
+                default_cutsets=default_cutsets,
+                pt_bin_label=pt_bin_label,
+                resolution=resolution
+            ),
+            multitrial_dirs
+        )
 
 def proj_data(i_bin, sparse, axes, resolution, proj_cfg, writeopt):
 
-    proj_vars = proj_cfg.get('ProjVars', [])
-    proj_vars += ['Mass', 'Sp']
+    proj_vars = list(proj_cfg.get('ProjVars', []))
+    for var in ('Mass', 'Sp'):
+        if var not in proj_vars:
+            proj_vars.append(var)
     proj_axes = [axes['FlowSP'][var] for var in proj_vars]
 
     for var, ax in zip(proj_vars, proj_axes):
         hist_var = sparse.Projection(ax)
         hist_var.Write(f'h{var.capitalize()}Data', writeopt)
 
-    hist_vn_sp = get_vn_versus_mass(sparse, proj_cfg['inv_mass_bins'][i_bin], axes['FlowSP']['Mass'], axes['FlowSP']['Sp'])
+    hist_vn_sp = get_vn_versus_mass(sparse, proj_cfg['VnVsMassBins'][i_bin], axes['FlowSP']['Mass'], axes['FlowSP']['Sp'])
     hist_vn_sp.Scale(1/resolution) # Correct for resolution
     hist_vn_sp.Write('hVnVsMassData', writeopt)
 
@@ -210,7 +256,9 @@ def get_pt_weights(cfgProj):
         
     ptWeightsFile = TFile.Open(cfgProj["PtWeightsFile"], 'r')
 
-    if cfgProj.get('ApplyPtWeightsD'):
+    if cfgProj.get('ApplyPtWeightsCharm'):
+        hPtWeightsD = ptWeightsFile.Get('FONLLtimesTAMU/charm/hPtWeightsCharmFONLLtimesTAMUcent')
+    elif cfgProj.get('ApplyPtWeightsD'):
         hPtWeightsD = ptWeightsFile.Get('hPtWeightsFONLLtimesLangevinDcent')
         ptBinCentersD = [ (hPtWeightsD.GetBinLowEdge(i)+hPtWeightsD.GetBinLowEdge(i+1))/2 for i in range(1, hPtWeightsD.GetNbinsX()+1)]
         ptBinContentsD = [hPtWeightsD.GetBinContent(i) for i in range(1, hPtWeightsD.GetNbinsX()+1)]
@@ -219,7 +267,9 @@ def get_pt_weights(cfgProj):
         logger('pt weights for D mesons will not be provided!', level='WARNING')
         sPtWeights = None
 
-    if cfgProj.get('ApplyPtWeightsB'):
+    if cfgProj.get('ApplyPtWeightsBeauty'):
+        hPtWeightsB = ptWeightsFile.Get('FONLLtimesTAMU/beauty/hPtWeightsBeautyFONLLtimesTAMUBcent')
+    elif cfgProj.get('ApplyPtWeightsB'):
         hPtWeightsB = ptWeightsFile.Get('hPtWeightsFONLLtimesLangevinBcent')
         ptBinCentersB = [ (hPtWeightsB.GetBinLowEdge(i)+hPtWeightsB.GetBinLowEdge(i+1))/2 for i in range(1, hPtWeightsB.GetNbinsX()+1)]
         ptBinContentsB = [hPtWeightsB.GetBinContent(i) for i in range(1, hPtWeightsB.GetNbinsX()+1)]
@@ -228,8 +278,8 @@ def get_pt_weights(cfgProj):
         logger('pt weights for B mesons will not be provided!', level='WARNING')
         sPtWeightsB = None
 
-    if cfgProj.get('ApplyBSpeciesWeights'):
-        Bspeciesweights = config['Bspeciesweights']
+    if cfgProj.get('ApplyBeautySpeciesWeights'):
+        Bspeciesweights = config['BeautySpeciesWeights']
     else:
         logger('B species weights will not be provided!', level='WARNING')
         Bspeciesweights = None
@@ -265,7 +315,22 @@ if __name__ == "__main__":
         det_B = config["projections"].get('detB', 'FV0a')
         det_C = config["projections"].get('detC', 'TPCtot')
         logger(f"Getting resolution histogram from file {config['projections']['Resolution']} for triplet {det_A}_{det_B}_{det_C}",  "WARNING")
-        reso_hist = reso_file.Get(f'{det_A}_{det_B}_{det_C}/histo_reso_delta_cent')
+        ese_band = (config.get('ese') or {}).get('band')
+        ese_sel = (get_ese_band_label(ese_band[0], ese_band[1])
+                   if ese_band and ese_band != 'Inclusive' else 'Inclusive')
+        reso_paths = [f'{ese_sel}/{det_A}_{det_B}_{det_C}/histo_reso_delta_cent']
+        if ese_sel == 'Inclusive':  # legacy reso files without ESE directories
+            reso_paths.append(f'{det_A}_{det_B}_{det_C}/histo_reso_delta_cent')
+        reso_hist = None
+        for reso_path in reso_paths:
+            reso_hist = reso_file.Get(reso_path)
+            if reso_hist:
+                logger(f"Found resolution histogram at {reso_path}", "INFO")
+                break
+        if not reso_hist:
+            logger(f"Resolution histogram not found in {config['projections']['Resolution']}. "
+                   f"Tried: {', '.join(reso_paths)}", "ERROR")
+            sys.exit(1)
         resolution = reso_hist.GetBinContent(1)
         reso_hist.SetDirectory(0)
         reso_file.Close()
@@ -301,6 +366,7 @@ if __name__ == "__main__":
         sPtWeightsD, sPtWeightsB, Bspeciesweights = get_pt_weights(config["projections"]) if config['projections'].get('PtWeightsFile') else (None, None, None)
 
     if operations.get("proj_data"):
+        outfile.cd()
         reso_hist.Write("hResolution", write_opt_data)
         resolution = reso_hist.GetBinContent(1)
 
@@ -314,6 +380,11 @@ if __name__ == "__main__":
             pt_label = f"pt_{int(pt_min*10)}_{int(pt_max*10)}"
             make_dir_root_file(pt_label, outfile)
             sparse_flow, sparses_reco, sparses_gen, axes = get_pt_preprocessed_sparses(config, pt_label)
+            axes['FlowSP'] = build_axis_idx(sparse_flow['FlowSP'])
+            for key, i_sparse in sparses_reco.items():
+                axes[key] = build_axis_idx(i_sparse)
+            for key, i_sparse in sparses_gen.items():
+                axes[key] = build_axis_idx(i_sparse)
             outfile.cd(pt_label)
             if operations.get("proj_data"):
                 sparse_flow["FlowSP"].GetAxis(axes['FlowSP']['ScoreFD']).SetRangeUser(fd_min, fd_max)

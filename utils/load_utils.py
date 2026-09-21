@@ -1,11 +1,12 @@
 import os
 from utils import logger
-from ROOT import TFile, TH1, TDirectoryFile
+from ROOT import TFile, TH1, TDirectoryFile, TList
 from itertools import combinations
 import time
 import uproot
 import pandas as pd
 import numpy as np
+import sys
 
 TH1.AddDirectory(False)
 
@@ -119,6 +120,54 @@ def load_reso_histos(an_res_file, wagon_id):
 
     return correct_histo_triplets, correct_histo_labels
 
+
+def load_ese_quantiles_thresholds(ese_file, ese_detector, cent_min, cent_max):
+    """
+    Load ESE quantile thresholds from a CSV file.
+
+    Args:
+        ese_file (str): Path to the .root file containing ESE quantiles.
+        ese_detector (str): Detector name to use.
+        cent_min (float): Minimum centrality value.
+        cent_max (float): Maximum centrality value.
+    """
+
+    quantiles_dict = {}
+    in_file = TFile(ese_file, 'READ')
+    detector_dir = in_file.Get(ese_detector)
+    for key in detector_dir.GetListOfKeys():
+        hist = key.ReadObj()
+        if isinstance(hist, TH1) and 'quantile' in hist.GetName():
+            dict_str = hist.GetName().replace(f'_{ese_detector}', '')
+            quantiles_dict[dict_str] = {}
+            for i_bin in range(1, hist.GetNbinsX() + 1):
+                cent_bin_center = hist.GetBinCenter(i_bin)
+                # if cent_min <= cent_bin_center <= cent_max:
+                quantiles_dict[dict_str][cent_bin_center] = hist.GetBinContent(i_bin)
+
+    return quantiles_dict
+
+
+def load_ese_histos(an_res_file) -> list:
+    """
+    Load ESE histograms from an AnalysisResults.root file.
+
+    Args:
+        an_res_file (str): Path to the resolution file.
+
+    Returns:
+        dict: Dictionary containing ESE histogram for each detector.
+    """
+    
+    in_file = TFile(an_res_file, 'READ')
+    histos_red_q = {}
+    for det in ['FT0C', 'FT0A', 'FT0M', 'FV0A', 'TpcPos', 'TpcNeg', 'TpcAll']:
+        histos_red_q[det] = in_file.Get(f'hf-task-flow-charm-hadrons/redQVecs/hRedQVec{det}')
+        histos_red_q[det].SetDirectory(0)
+    in_file.Close()
+    return histos_red_q
+
+
 def load_eff_histos(effFiles) -> tuple:
     """
     Load efficiency histograms from a file or a list of files.
@@ -193,7 +242,7 @@ def load_object_from_file(inFile, pathToObj):
     Function to extract an object inside a root file.
     Supports nested containers with the following Data Types:
      - TFile
-     - TDirecotryFile
+     - TDirectoryFile
      - TList
 
     Parameters
