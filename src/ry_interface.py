@@ -78,9 +78,12 @@ def fit_task(task, fitConfig, inFilePath, doMassFit=False):
         inFile.Close()
 
         if doMassFit:
+            # FindBin() puts a value that sits exactly on a bin's upper edge into the bin ABOVE it,
+            # so the pT edges must be pulled 1e-6 inside the bin (ptMin too, for symmetry/robustness);
+            # otherwise ProjectionX silently adds the next pT bin to the mass template.
             mass_histo = raw_histo.ProjectionX(f"{raw_histo.GetName()}_MassProj", 
-                                               raw_histo.GetYaxis().FindBin(task['ptMin']), 
-                                               raw_histo.GetYaxis().FindBin(task['ptMax']))
+                                               raw_histo.GetYaxis().FindBin(task['ptMin'] + 1e-6), 
+                                               raw_histo.GetYaxis().FindBin(task['ptMax'] - 1e-6))
             histo = mass_histo
         else:
             histo = raw_histo

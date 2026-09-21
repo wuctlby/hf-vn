@@ -633,8 +633,11 @@ TH1D* DhCorrelationExtraction::CorrectedPairsMassDistr(TH2D* hRawSE, TH2D* hCorr
   Int_t binDeltaEtaRightMax = hRawSE->GetXaxis()->FindBin(fDeltaEtaRightMax - 0.01);
   Int_t nBinDeltaEta = hCorrectedCorrel->GetXaxis()->GetNbins();
 
-  Int_t binDeltaPhiMin = hRawSE->GetYaxis()->FindBin(fDeltaPhiBins.front());
-  Int_t binDeltaPhiMax = hRawSE->GetYaxis()->FindBin(fDeltaPhiBins.back());
+  // NB: FindBin() puts a value that sits exactly on a bin's upper edge into the bin ABOVE it,
+  // so the window edges must be pulled 1e-6 inside the bin (same idea as the +-0.01 nudge used
+  // for deltaEta just above); otherwise the SE/ME ratio is integrated over one extra deltaPhi bin.
+  Int_t binDeltaPhiMin = hRawSE->GetYaxis()->FindBin(fDeltaPhiBins.front() + 1e-6);
+  Int_t binDeltaPhiMax = hRawSE->GetYaxis()->FindBin(fDeltaPhiBins.back() - 1e-6);
 
   if (fDeltaEtaIntegrated) {
     // --- Integrated ---
