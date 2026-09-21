@@ -1167,25 +1167,18 @@ void DhCorrelationFitter::BuildLMOutput()
       printf("[INFO] BuildLMOutput: External von Mises params fixed baseline=%.6f\n", fBaseline);
       return;
     }
-    // Yield ceiling taken from the template itself: the amplitude is an AREA (pairs), so it cannot
-    // exceed the pairs observed in its own half-window of the template. Measured from ZERO, not from
-    // the minimum: the baseline is bounded to [0, 2*maxVal] (zero is the lowest admissible level),
-    // the fitted pedestal actually sits a few sigma BELOW the minimum bin, and the von Mises tails
-    // carry part of each peak into the opposite window. Subtracting the minimum is therefore far too
-    // tight - it truncates 8 of the 11 d20 bins, one of them by a factor 4.
     //   ceil_NS = sum over [-pi/2, pi/2) of content*binWidth     (near-side window)
     //   ceil_AS = sum over [ pi/2, 3pi/2] of content*binWidth    (away-side window)
-    // Measured on the d20 sample: Y/ceil <= 0.20 in all 11 bins (never binds), while the pathological
-    // PtBin 7 solution (area 93000 with kappa_AS = 0.18) is still excluded (its ceiling is 85042).
     Double_t ceilNS = 0., ceilAS = 0., ceilAll = 0.;
     for (int ib = 1; ib <= fTempHisto->GetNbinsX(); ib++) {
       Double_t xc = fTempHisto->GetBinCenter(ib);
-      Double_t binArea = fTempHisto->GetBinContent(ib) * fTempHisto->GetBinWidth(ib);
+      Double_t binArea = fTempHisto->GetBinContent(ib); // * fTempHisto->GetBinWidth(ib);
       if (xc >= -TMath::PiOver2() && xc < TMath::PiOver2())     ceilNS += binArea;
       else if (xc >= TMath::PiOver2() && xc <= 1.5*TMath::Pi()) ceilAS += binArea;
       ceilAll += binArea;
     }
-    Double_t kappaStart = 2.;
+    Double_t kappaStart =  64./(TMath::Pi()*TMath::Pi());
+    Double_t kappaMax   = 256./(TMath::Pi()*TMath::Pi());
     // start from "peak height = half the template range", converted to the equivalent area
     Double_t yieldStart = 0.5*(maxVal-minVal) * 2.*TMath::Pi()*TMath::BesselI0(kappaStart) / TMath::Exp(kappaStart);
     fVonMisesFit->SetParameter(0, minVal);
@@ -1193,11 +1186,11 @@ void DhCorrelationFitter::BuildLMOutput()
     fVonMisesFit->SetParameter(1, yieldStart);
     fVonMisesFit->SetParLimits(1, 0.01, ceilNS);
     fVonMisesFit->SetParameter(2, kappaStart);
-    fVonMisesFit->SetParLimits(2, 1.0, 30.);
+    fVonMisesFit->SetParLimits(2, 1.0, kappaMax);
     fVonMisesFit->SetParameter(3, yieldStart);
     fVonMisesFit->SetParLimits(3, 0.01, ceilAS);
     fVonMisesFit->SetParameter(4, kappaStart);
-    fVonMisesFit->SetParLimits(4, 1.0, 30.);
+    fVonMisesFit->SetParLimits(4, 1.0, kappaMax);
     // Global variant (one ceiling for both sides, not distinguishing near/away) - swap in if needed:
     // fVonMisesFit->SetParLimits(1, 0.01, ceilAll);
     // fVonMisesFit->SetParLimits(3, 0.01, ceilAll);

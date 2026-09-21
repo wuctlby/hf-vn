@@ -99,6 +99,10 @@ _GAUS_PER_FORMULA = (
 # observed in its own half-window of the template (ceil_NS over [-pi/2, pi/2), ceil_AS over
 # [pi/2, 3pi/2], both summed from zero), so a broad component can no longer grow to an enormous
 # unphysical yield (d20 PtBin 7 used to reach an area of 93000 with kappa_AS = 0.18).
+# The kappa limits follow the GausPeriodic (tempFunc=4) ones through sigma_local = 1/sqrt(kappa):
+# kappa in [1, 256/pi^2 = 25.94], kappa start 64/pi^2 = 6.485. The lower end stays at 1
+# (= sigma <= 1 rad), NOT the 1/pi^2 that a sigma <= pi would give - kappa < 1 is a flat component
+# degenerate with the baseline (that branch re-appears in the fit if the bound is loosened).
 # Height form (kept for reference): par[1]/par[3] = peak heights, Y = h*2*pi*I0(kappa)/e^kappa.
 _VONMISES_FORMULA = (
     "[0]"
