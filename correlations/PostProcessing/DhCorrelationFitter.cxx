@@ -1100,11 +1100,6 @@ void DhCorrelationFitter::BuildLMOutput()
     // N.B. SetParameter (not SetParameters): SetParameters(p0, p1, ...) assigns from par0 on and
     // would silently overwrite the baseline starting value set above with 1.0
     fGausPerFit->SetParameter(1, 0.5*(maxVal-minVal));
-    // NOTE: for weakly modulated templates the amplitude (the peak integral, ~1.2-1.5x the peak
-    // height) sits exactly at this bound; MINUIT then reports a zero error and the stored
-    // covariance entry is 0, so that variation is not sampled by the LM systematic. Widening the
-    // bound instead gives physically meaningless amplitudes/errors for those templates, so the
-    // original bound is kept deliberately.
     fGausPerFit->SetParLimits(1, 0.01, maxVal-minVal);
     fGausPerFit->SetParameter(2, TMath::Pi()/8);
     fGausPerFit->SetParLimits(2, TMath::Pi()/16, TMath::Pi());
@@ -1150,8 +1145,13 @@ void DhCorrelationFitter::BuildLMOutput()
     if (gROOT->GetListOfFunctions()->FindObject("fLMTemplateFunc")) {
       delete gROOT->GetListOfFunctions()->Remove(gROOT->GetListOfFunctions()->FindObject("fLMTemplateFunc"));
     }
+    // Amplitude (AREA) parametrisation, the user's original formula:
+    //   par = ped, Y_NS, kappa_NS, Y_AS, kappa_AS   (Y = pairs under the peak)
+    // Alternative PEAK-HEIGHT form, kept for reference (par[1]/par[3] = heights above the baseline,
+    // bounded by maxVal; related by Y = h*2*pi*I0(kappa)/e^kappa):
+    //   "[0]+[1]*TMath::Exp([2]*(TMath::Cos(x)-1))+[3]*TMath::Exp([4]*(TMath::Cos(x-TMath::Pi())-1))"
     TF1* fVonMisesFit = new TF1("fVonMisesFit",
-      "[0]+[1]*TMath::Exp([2]*(TMath::Cos(x)-1))+[3]*TMath::Exp([4]*(TMath::Cos(x-TMath::Pi())-1))",
+      "[0]+[1]/(2*TMath::Pi()*TMath::BesselI0([2]))*TMath::Exp([2]*TMath::Cos(x))+[3]/(2*TMath::Pi()*TMath::BesselI0([4]))*TMath::Exp([4]*TMath::Cos(x-TMath::Pi()))",
       fMinCorr, fMaxCorr);
 
     if (fUseExternalLMTmpl) {
@@ -1167,33 +1167,45 @@ void DhCorrelationFitter::BuildLMOutput()
       printf("[INFO] BuildLMOutput: External von Mises params fixed baseline=%.6f\n", fBaseline);
       return;
     }
-    // The parameters are the peak HEIGHTS above the baseline, i.e. the template is written as
-    //   ped + h_NS*exp(kappa_NS*(cos x - 1)) + h_AS*exp(kappa_AS*(cos(x-pi) - 1))
-    // (equivalent to amplitude/(2*pi*I0(kappa))*exp(kappa*cos x) with amplitude = h*2*pi*I0(k)/e^k).
-    // An amplitude/area parametrisation is what lets a broad component grow to an enormous yield:
-    // PtBin 7 of the d20 sample came out with area = 93000 and kappa_AS = 0.18, a diverging away
-    // side. A height cannot exceed the data maximum (the baseline is bounded to [0, 2*maxVal]), so
-    // h <= maxVal is the physical ceiling; the tighter (maxVal-minVal) would be wrong here because
-    // the von Mises tails lift the template minimum above the pedestal (measured heights reach
-    // ~2x the template range in the broad bins, but stay far below maxVal).
-    // kappa >= 1 keeps both components actual peaks (rms = sqrt(1 - I1/I0) < 1 rad).
-    Double_t heightStart = 0.5*(maxVal-minVal);
+    // Yield ceiling taken from the template itself: the amplitude is an AREA (pairs), so it cannot
+    // exceed the pairs observed in its own half-window of the template. Measured from ZERO, not from
+    // the minimum: the baseline is bounded to [0, 2*maxVal] (zero is the lowest admissible level),
+    // the fitted pedestal actually sits a few sigma BELOW the minimum bin, and the von Mises tails
+    // carry part of each peak into the opposite window. Subtracting the minimum is therefore far too
+    // tight - it truncates 8 of the 11 d20 bins, one of them by a factor 4.
+    //   ceil_NS = sum over [-pi/2, pi/2) of content*binWidth     (near-side window)
+    //   ceil_AS = sum over [ pi/2, 3pi/2] of content*binWidth    (away-side window)
+    // Measured on the d20 sample: Y/ceil <= 0.20 in all 11 bins (never binds), while the pathological
+    // PtBin 7 solution (area 93000 with kappa_AS = 0.18) is still excluded (its ceiling is 85042).
+    Double_t ceilNS = 0., ceilAS = 0., ceilAll = 0.;
+    for (int ib = 1; ib <= fTempHisto->GetNbinsX(); ib++) {
+      Double_t xc = fTempHisto->GetBinCenter(ib);
+      Double_t binArea = fTempHisto->GetBinContent(ib) * fTempHisto->GetBinWidth(ib);
+      if (xc >= -TMath::PiOver2() && xc < TMath::PiOver2())     ceilNS += binArea;
+      else if (xc >= TMath::PiOver2() && xc <= 1.5*TMath::Pi()) ceilAS += binArea;
+      ceilAll += binArea;
+    }
     Double_t kappaStart = 2.;
+    // start from "peak height = half the template range", converted to the equivalent area
+    Double_t yieldStart = 0.5*(maxVal-minVal) * 2.*TMath::Pi()*TMath::BesselI0(kappaStart) / TMath::Exp(kappaStart);
     fVonMisesFit->SetParameter(0, minVal);
     fVonMisesFit->SetParLimits(0, 0, maxVal*2);
-    fVonMisesFit->SetParameter(1, heightStart);
-    fVonMisesFit->SetParLimits(1, 0.01, maxVal);
+    fVonMisesFit->SetParameter(1, yieldStart);
+    fVonMisesFit->SetParLimits(1, 0.01, ceilNS);
     fVonMisesFit->SetParameter(2, kappaStart);
     fVonMisesFit->SetParLimits(2, 1.0, 30.);
-    fVonMisesFit->SetParameter(3, heightStart);
-    fVonMisesFit->SetParLimits(3, 0.01, maxVal);
+    fVonMisesFit->SetParameter(3, yieldStart);
+    fVonMisesFit->SetParLimits(3, 0.01, ceilAS);
     fVonMisesFit->SetParameter(4, kappaStart);
     fVonMisesFit->SetParLimits(4, 1.0, 30.);
+    // Global variant (one ceiling for both sides, not distinguishing near/away) - swap in if needed:
+    // fVonMisesFit->SetParLimits(1, 0.01, ceilAll);
+    // fVonMisesFit->SetParLimits(3, 0.01, ceilAll);
     //  set parameters name
     fVonMisesFit->SetParName(0, "Baseline");
-    fVonMisesFit->SetParName(1, "Height NS");
+    fVonMisesFit->SetParName(1, "Amplitude NS");
     fVonMisesFit->SetParName(2, "Kappa NS");
-    fVonMisesFit->SetParName(3, "Height AS");
+    fVonMisesFit->SetParName(3, "Amplitude AS");
     fVonMisesFit->SetParName(4, "Kappa AS");
 
     // Store LM template fit covariance matrix
@@ -1304,9 +1316,9 @@ void DhCorrelationFitter::BuildLMOutput()
     fAway->SetLineStyle(9);
     fLMOutput->GetListOfFunctions()->Add(fAway);
   } else if (fTempFunc == 5 && fTemplateFunc) {
-    // VonMises (peaks fixed at 0 and pi): near = BL + h_N*exp(kappa_N*(cos(x)-1))
+    // VonMises (peaks fixed at 0 and pi): near = BL + Y_N/(2pi*I0(kappa_N))*exp(kappa_N*cos(x))
     TF1* fNear = new TF1("fNearVonMises",
-      "[0]+[1]*TMath::Exp([2]*(TMath::Cos(x)-1))",
+      "[0]+[1]/(2*TMath::Pi()*TMath::BesselI0([2]))*TMath::Exp([2]*TMath::Cos(x))",
       fMinCorr, fMaxCorr);
     fNear->SetParameters(fTemplateFunc->GetParameter(0),
                          fTemplateFunc->GetParameter(1),
@@ -1317,7 +1329,7 @@ void DhCorrelationFitter::BuildLMOutput()
     fLMOutput->GetListOfFunctions()->Add(fNear);
 
     TF1* fAway = new TF1("fAwayVonMises",
-      "[0]+[1]*TMath::Exp([2]*(TMath::Cos(x-TMath::Pi())-1))",
+      "[0]+[1]/(2*TMath::Pi()*TMath::BesselI0([2]))*TMath::Exp([2]*TMath::Cos(x-TMath::Pi()))",
       fMinCorr, fMaxCorr);
     fAway->SetParameters(fTemplateFunc->GetParameter(0),
                          fTemplateFunc->GetParameter(3),
