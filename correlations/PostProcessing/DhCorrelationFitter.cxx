@@ -1098,14 +1098,16 @@ void DhCorrelationFitter::BuildLMOutput()
     // N.B. SetParameter (not SetParameters): SetParameters(p0, p1, ...) assigns from par0 on and
     // would silently overwrite the baseline starting value set above with 1.0
     fGausPerFit->SetParameter(1, 0.5*(maxVal-minVal));
-    // the amplitude is the peak integral (~1.2-1.5x the peak height), so bounding it by
-    // (maxVal-minVal) pins it at the limit and MINUIT then reports a zero error -> the stored
-    // covariance would lose that variation entirely
-    fGausPerFit->SetParLimits(1, 0.01, 10.*(maxVal-minVal));
+    // NOTE: for weakly modulated templates the amplitude (the peak integral, ~1.2-1.5x the peak
+    // height) sits exactly at this bound; MINUIT then reports a zero error and the stored
+    // covariance entry is 0, so that variation is not sampled by the LM systematic. Widening the
+    // bound instead gives physically meaningless amplitudes/errors for those templates, so the
+    // original bound is kept deliberately.
+    fGausPerFit->SetParLimits(1, 0.01, maxVal-minVal);
     fGausPerFit->SetParameter(2, TMath::Pi()/8);
     fGausPerFit->SetParLimits(2, TMath::Pi()/16, TMath::Pi());
     fGausPerFit->SetParameter(3, 0.5*(maxVal-minVal));
-    fGausPerFit->SetParLimits(3, 0.01, 10.*(maxVal-minVal));
+    fGausPerFit->SetParLimits(3, 0.01, maxVal-minVal);
     fGausPerFit->SetParameter(4, TMath::Pi()/8);
     fGausPerFit->SetParLimits(4, TMath::Pi()/16, TMath::Pi());
         //  set parameters name
