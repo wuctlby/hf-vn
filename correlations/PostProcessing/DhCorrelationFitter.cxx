@@ -1214,7 +1214,8 @@ void DhCorrelationFitter::BuildLMOutput()
     fTemplateFunc = fVonMisesFit;  // transfer ownership
     fTemplateFunc->SetRange(fMinCorr, fMaxCorr);
     // using the fit parameter 0 as the baseline value (the constant term of the function)
-    fBaseline = fTemplateFunc->GetParameter(0);
+    // fBaseline = fTemplateFunc->GetParameter(0);
+    fBaseline = fTemplateFunc->GetMinimum(fMinCorr, fMaxCorr);
     fErrBaseline = 0.0;
     printf("[INFO] BuildLMOutput: Fitted von Mises LM template (tempFunc=5) baseline=%.6f\n", fBaseline);
   }
