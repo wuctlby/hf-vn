@@ -334,6 +334,8 @@ def fit_correl(cfg_path):
     # Storage for parameter TH1D histograms (same target as covariance)
     par_global_histos = {}
     par_lm_histos = {}
+    # Storage for the LM template fit chi2/ndf (1-bin TH1D, hLMtemplate ROOT file)
+    chi2lm_histos = {}
 
     # # merge LM for mass binning case (same LM for all mass bins of a given ptHad)
     # merged_lm = {}
@@ -747,6 +749,25 @@ def fit_correl(cfg_path):
 
                     cov_lm_histos[(i_pt_had, mass_idx_label, i_pt_cand)] = h_cov_lm
 
+                    # ---- LM template fit chi2/ndf (1-bin TH1D) ----
+                    # -1 when the template was never fitted (external-params path, or the
+                    # raw/spline shapes tempFunc 0/1/2) -> GetNDF() == 0
+                    ndf_lm = f_lm.GetNDF()
+                    chi2ndf_lm = f_lm.GetChisquare() / ndf_lm if ndf_lm > 0 else -1.0
+                    h_chi2_lm_name = (f"hLMChi2NDF_PtCand{i_pt_cand + 1}_"
+                                      f"PtHad{i_pt_had + 1}_"
+                                      f"InvMassBin{mass_idx_label}")
+                    h_chi2_lm = ROOT.TH1D(h_chi2_lm_name,
+                                          f"LM Template Fit chi2/ndf (tempFunc={corr_fitter.GetTempFunc()}, "
+                                          f"ndf={ndf_lm});chi2/ndf;",
+                                          1, 0, 1)
+                    h_chi2_lm.SetDirectory(ROOT.nullptr)
+                    h_chi2_lm.SetStats(0)
+                    h_chi2_lm.SetBinContent(1, chi2ndf_lm)
+                    chi2lm_histos[(i_pt_had, mass_idx_label, i_pt_cand)] = h_chi2_lm
+                    print(f"      Saved LM template fit chi2/ndf TH1D: {h_chi2_lm_name} "
+                          f"= {chi2ndf_lm:.4f} (chi2={f_lm.GetChisquare():.4f}, ndf={ndf_lm})")
+
                     # Draw LM cov PNG
                     c_cov_lm = ROOT.TCanvas(f"cLMCovMatrix_PtCand{i_pt_cand + 1}_PtHad{i_pt_had + 1}_InvMassBin{mass_idx_label}",
                                             "", 1200, 1000)
@@ -883,15 +904,18 @@ def fit_correl(cfg_path):
                                 out_root_dir, f"{lm_png_name}.root")
                             c_lm.SaveAs(lm_root_path)
 
-                            # ---- Append LM fit cov TH2D + par TH1D to hLMtemplate ROOT file ----
+                            # ---- Append LM fit cov TH2D + par TH1D + chi2/ndf to hLMtemplate ROOT file ----
                             cov_lm_key = (i_pt_had, mass_idx_label, i_pt_cand)
-                            if cov_lm_key in cov_lm_histos or cov_lm_key in par_lm_histos:
+                            if (cov_lm_key in cov_lm_histos or cov_lm_key in par_lm_histos
+                                    or cov_lm_key in chi2lm_histos):
                                 f_lm_update = ROOT.TFile(lm_root_path, "UPDATE")
                                 f_lm_update.cd()
                                 if cov_lm_key in par_lm_histos:
                                     par_lm_histos[cov_lm_key].Write()
                                 if cov_lm_key in cov_lm_histos:
                                     cov_lm_histos[cov_lm_key].Write()
+                                if cov_lm_key in chi2lm_histos:
+                                    chi2lm_histos[cov_lm_key].Write()
                                 f_lm_update.Close()
                                 del f_lm_update
 
