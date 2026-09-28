@@ -72,6 +72,8 @@ class RawYieldFitter:
         self.fit_counter = 0
         self.fix_sgn_to_first_fit = False
         self.first_fit_pars = None
+        self.fixed_sigma = None
+        self.sigma_init = None
 
     def remove_sec_peak(self):
         self.sgn_pdfs = [self.sgn_pdfs[0]]
@@ -154,6 +156,25 @@ class RawYieldFitter:
         if self.verbose:
             logger(f"Setting fix signal to MC prefit: {fix}\n", "INFO")
         self.fix_sgn_to_mc_prefit = fix
+
+    def set_fixed_sigma(self, sigma_val):
+        if self.verbose:
+            logger(f"Fixing signal sigma to value {sigma_val}", "INFO")
+        self.fixed_sigma = sigma_val
+        if self.minimize_roofit:
+            for name, comp in self.fit_model.items():
+                if comp['type'] == 'sgn':
+                    comp['par_sigma'].setVal(sigma_val)
+                    comp['par_sigma'].setConstant(True)
+
+    def set_sigma_init(self, sigma_val):
+        if self.verbose:
+            logger(f"Setting initial signal sigma to value {sigma_val}", "INFO")
+        self.sigma_init = sigma_val
+        if self.minimize_roofit:
+            for name, comp in self.fit_model.items():
+                if comp['type'] == 'sgn':
+                    comp['par_sigma'].setVal(sigma_val)
 
     def prefit_mc(self, input_path):
         if self.verbose:
@@ -536,7 +557,8 @@ class RawYieldFitter:
             print(f"Setting particle mass for signal function index {i_sgn_mass} to PDG mass {pdg_mass}")
             # self.fitter.set_particle_mass(i_sgn_mass, pdg_id=pdg_mass)
             self.fitter.set_signal_initpar(i_sgn_mass, "mu", pdg_mass, limits=[pdg_mass - 0.03, pdg_mass + 0.03])
-        self.fitter.set_signal_initpar(0, "sigma", 0.015, limits=[0.005, 0.7])
+        sigma_init_val = self.sigma_init if self.sigma_init is not None else 0.015
+        self.fitter.set_signal_initpar(0, "sigma", sigma_init_val, limits=[0.005, 0.7])
         self.fitter.set_background_initpar(len(self.bkg_pdfs)-1, "c0", 1000.0, limits=[0.0, 1e6])         # Resonable value for c0
         self.fitter.set_background_initpar(len(self.bkg_pdfs)-1, "c1", 0.0, limits=[-1000.0, 1000.0])     # Resonable value for c1
         self.fitter.set_background_initpar(len(self.bkg_pdfs)-1, "c2", 0.0, limits=[-1000.0, 1000.0])     # Resonable value for c2
@@ -608,6 +630,11 @@ class RawYieldFitter:
                     if self.verbose:
                         logger(f"Fixing signal parameter {par_name} of function index {i_sgn_func} to first fit value {par_val}\n")
                     self.fitter.set_signal_initpar(i_sgn_func, par_name, par_val, fix=True)
+
+        if self.fixed_sigma is not None:
+            if self.verbose:
+                logger(f"Fixing signal sigma of index {len(self.sgn_pdfs)-1} to value {self.fixed_sigma}", "INFO")
+            self.fitter.set_signal_initpar(len(self.sgn_pdfs)-1, "sigma", self.fixed_sigma, fix=True)
 
         self.fit_result = self.fitter.mass_zfit()
 
@@ -696,8 +723,9 @@ class RawYieldFitter:
             bin_width = int(1000 / self.rebin)  # in MeV/c^2
 
             # --- RooPlot frame ---
+            n_bins_plot = int(1000 / self.rebin * (self.fit_range_max - self.fit_range_min))
             frame = self.roofit_fit_var.frame(
-                RooFit.Bins(int(bin_width * (self.fit_range_max - self.fit_range_min))),
+                RooFit.Bins(n_bins_plot),
                 RooFit.Title(
                     f";M(#pi K#pi) (GeV/#it{{c}}^{{2}});Counts per {self.rebin} MeV/#it{{c}}^{{2}}"
                 )
@@ -713,7 +741,6 @@ class RawYieldFitter:
             self.data.plotOn(
                 frame,
                 RooFit.Range("fit"),
-                RooFit.Binning(int(1000 * (self.fit_range_max - self.fit_range_min) / self.rebin)),
                 RooFit.MarkerStyle(ROOT.kFullCircle),
                 RooFit.MarkerSize(0.8),
                 RooFit.LineColor(ROOT.kBlack),
@@ -823,15 +850,13 @@ class RawYieldFitter:
             if self.verbose:
                 logger(f"Plot saved to {path}", "INFO")
 
-    def plot_raw_residuals(self, path):
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+    def plot_raw_residuals(self):
         fig_res = self.fitter.plot_raw_residuals(style="ATLAS",
                                                  figsize=(8, 8),
                                                  axis_title=self.x_axis_label)
         return fig_res
 
-    def plot_std_residuals(self, path):
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+    def plot_std_residuals(self):
         fig_pulls = self.fitter.plot_std_residuals(style="ATLAS",
                                                    figsize=(8, 8),
                                                    axis_title=self.x_axis_label)
@@ -901,8 +926,18 @@ class RawYieldFitter:
 
         fit_info = {}
         try:
-            fit_info['chi2'] = float(self.fitter.get_chi2())
-            fit_info['chi2_over_ndf'] = float(self.fitter.get_chi2())/self.fitter.get_ndf()
+            if self.minimize_roofit:
+                # RooFit binned fit: chi2 from model vs data (createChi2)
+                chi2_obj = self.model.createChi2(self.data, ROOT.RooFit.Range("fit"), ROOT.RooFit.NumCPU(1))
+                chi2_val = float(chi2_obj.getVal())
+                n_bins = self.hist.GetXaxis().FindBin(self.fit_range_max) - self.hist.GetXaxis().FindBin(self.fit_range_min) + 1
+                n_free = int(self.fit_result.floatParsFinal().getSize())
+                ndf = max(n_bins - n_free, 1)
+                fit_info['chi2'] = chi2_val
+                fit_info['chi2_over_ndf'] = chi2_val / ndf
+            else:
+                fit_info['chi2'] = float(self.fitter.get_chi2())
+                fit_info['chi2_over_ndf'] = float(self.fitter.get_chi2())/self.fitter.get_ndf()
         except Exception as e:
             if self.verbose:
                 logger(f"Could not get chi2: {e}", "WARNING")
@@ -950,6 +985,18 @@ class RawYieldFitter:
                     logger(f"Could not get signal over background: {e}", "WARNING")
                 fit_info[name]['s_over_b'] = -1.
                 fit_info[name]['s_over_b_unc'] = -1.
+            try:
+                if self.minimize_flarefly:
+                    fit_info[name]['sigma'] = self.fitter.get_signal_pars()[sgn_func_idx]['sigma']
+                    fit_info[name]['sigma_unc'] = self.fitter.get_signal_pars_uncs()[sgn_func_idx]['sigma']
+                else:
+                    fit_info[name]['sigma'] = self.fit_model[name]['par_sigma'].getVal()
+                    fit_info[name]['sigma_unc'] = self.fit_model[name]['par_sigma'].getError()
+            except Exception as e:
+                if self.verbose:
+                    logger(f"Could not get sigma: {e}", "WARNING")
+                fit_info[name]['sigma'] = -1.
+                fit_info[name]['sigma_unc'] = -1.
 
             signal_pars = {}
             signal_pars_uncs = {}
@@ -1104,17 +1151,24 @@ class RawYieldFitter:
         #     # RooFit.Range(self.sp_range_min, self.sp_range_max)
         # )
         if self.rebin != 1 and isinstance(self.hist, ROOT.TH1):
-            self.roofit_fit_var.setBins(50)   # new number of bins
-            self.data = ROOT.RooDataHist(
-                "data_rebinned",
-                "data_rebinned",
+            h_reb = self.hist.Clone(f"{self.hist.GetName()}_reb{self.rebin}")
+            h_reb.SetDirectory(0)
+            n_orig = h_reb.GetNbinsX()
+            h_reb.Rebin(self.rebin)
+            n_lost = n_orig - h_reb.GetNbinsX() * self.rebin
+            if n_lost > 0:
+                logger(f"Rebin({self.rebin}): {n_lost} trailing bins dropped "
+                f"({100.*n_lost/n_orig:.2f}%)", "WARNING")
+                self.data = ROOT.RooDataHist(
+                "data_rebinned", "data_rebinned",
                 ROOT.RooArgSet(self.roofit_fit_var),
-                self.hist
-            )
+                h_reb
+                )
         self.fit_result = self.model.fitTo(
             self.data,
             RooFit.Extended(True),
             RooFit.Range("fit"),
+            RooFit.SumW2Error(True),
             RooFit.Save(True),
             RooFit.PrintLevel(1 if self.verbose else -1),
             RooFit.PrintEvalErrors(1 if self.verbose else 0)
@@ -1242,6 +1296,20 @@ class RawYieldFitter:
                 self.fit_model[label]['par_c1'] = 0.0
                 self.fit_model[label]['par_c2'] = 0.0
                 self.fit_model[label]['pdf'] = "chebpol2"
+        elif func == 'kPol3':
+            if self.verbose:
+                logger(f"Adding Chebyshev Polynomial of degree 3 background function", "INFO")
+            if self.minimize_roofit:
+                c1 = ROOT.RooRealVar(f"c1_{label}", f"c1_{label}", 0.0, -1.0, 1.0)
+                c2 = ROOT.RooRealVar(f"c2_{label}", f"c2_{label}", 0.0, -1.0, 1.0)
+                c3 = ROOT.RooRealVar(f"c3_{label}", f"c3_{label}", 0.0, -1.0, 1.0)
+                self.fit_model[label]['par_c1'] = c1
+                self.fit_model[label]['par_c2'] = c2
+                self.fit_model[label]['par_c3'] = c3
+                self.fit_model[label]['pdf'] = ROOT.RooChebychev(label, label, self.roofit_fit_var, ROOT.RooArgList(c1, c2, c3))
+                self.fit_model[label]['yield'] = ROOT.RooRealVar(f"yield_{label}", f"yield_{label}", 100000, 0, 1e8)
+            else:
+                raise RuntimeError("kPol3 is only supported with minimizer='RooFit'")
         else:
             if self.verbose:
                 logger(f"Function {func} not recognized!", "ERROR")
